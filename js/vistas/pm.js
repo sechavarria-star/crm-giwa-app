@@ -23,8 +23,8 @@
    desarrollo crean solos sus alertas de facturación y recordatorios.
 
    PENDIENTE: Cotizar —recotizar, renovar, editar, mejora, horas de
-   soporte—, Análisis y Soporte siguen allá, igual que Tareas, Agenda y
-   Nuevo proyecto.
+   soporte— y Soporte siguen allá, igual que Agenda y Nuevo
+   proyecto. Análisis: v_analisis_clientes (= getAnalisisCliente). La vista Tareas es js/tablero-tareas.js.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'seg',
@@ -368,7 +368,8 @@
       db().from('v_tareas').select('*').contains('project_ids', [id]),
       db().from('comentarios').select('id,tarea_id,proyecto_id,desarrollo_id,texto,fecha,estado,creador,creado,orden').ilike('proyecto_id', '%' + id + '%'),
       db().from('contactos').select('*').eq('empresa_id', p.empresa_id || '-').order('nombre'),
-      db().from('proyecto_horas').select('desarrollo_id,modulo_nombre,etapa,horas_est,horas_reales').eq('proyecto_id', id)
+      db().from('proyecto_horas').select('desarrollo_id,modulo_nombre,etapa,horas_est,horas_reales').eq('proyecto_id', id),
+      db().from('v_analisis_clientes').select('*').eq('empresa', p.empresa_id || '-')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     P.f = {
@@ -377,7 +378,7 @@
       // comentarios del proyecto (la columna puede traer varios, separados por coma), los más nuevos primero
       coms: r[1].data.filter(function (c) { return crmLista(c.proyecto_id).indexOf(id) >= 0; })
         .sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')) || (a.orden - b.orden); }),
-      cons: r[2].data, horas: r[3].data
+      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null
     };
   }
   function crmLista(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
@@ -562,6 +563,23 @@
       (otros.length ? otros.slice(0, 10).map(function (c) { return comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }); }).join('') : '<div class="u-s10-mt">Sin comentarios.</div>');
     return h;
   }
+  // Análisis del cliente (getAnalisisCliente): lo que guardó el Cotizador, no se recalcula
+  function tabAnalisis() {
+    var c = P.f.analisis;
+    if (!c) return '<div class="empty u-p10">Todavía no hay análisis guardado para este cliente.</div>';
+    var pct = function (v) { return v === null || v === undefined || v === '' ? '' : (v >= 0 ? '+' : '') + v + '%'; };
+    return '<div class="ft-info u-mb8">Referencia = horas estimadas × valor hora de venta GIWA a la fecha × Tier. El abono compensa lo que faltó.</div>' +
+      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Desarrollo</th><th class="u-tr">Horas</th><th class="u-tr">VH ref.</th><th class="u-tr">Referencia</th>' +
+      '<th class="u-tr">Cobrado</th><th>Resultado</th><th class="u-tr">Abono</th></tr></thead><tbody>' +
+      (c.devs || []).map(function (d) {
+        return '<tr><td>' + esc(d.id) + ' · ' + esc(d.titulo) + (d.reutiliza ? ' <span class="u-s10-mt">mejora de ' + esc(d.reutiliza) + '</span>' : '') + '</td>' +
+          '<td class="m u-tr">' + d.horas + '</td><td class="m u-tr">' + fmt(d.vh_referencia) + '</td><td class="m u-tr">' + fmt(d.referencia) + '</td>' +
+          '<td class="m m-cobrado u-tr">' + fmt(d.precio) + '</td><td>' + esc(d.veredicto) + ' <span class="m">' + pct(d.desvio_pct) + '</span></td>' +
+          '<td class="m m-abono u-tr">' + (d.mmr ? fmt(d.mmr) + '/mes' : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="ft-info u-mt8">Cobrado − referencia <span class="m">' + fmt(c.dif) + '</span> · abono <span class="m">' + fmt(c.mmr) + '</span>/mes · con 12 meses de abono <span class="m">' + fmt(c.a12) +
+      '</span> · con 24 <span class="m">' + fmt(c.a24) + '</span>' + (c.dif < 0 ? (c.mmr ? ' · lo que faltó son ' + c.meses + ' mes(es) de abono' : ' · sin abono que lo compense') : ' · cobrado igual o arriba de la referencia') + '</div>';
+  }
   function lateral(p) {
     var caja = function (lbl, val, cls, sub, ars) {
       return '<div class="lat-caja"><div class="sec">' + lbl + '</div><div class="m ' + cls + '">' + val + '</div>' +
@@ -588,7 +606,7 @@
   function htmlFicha() {
     var p = P.proys.find(function (x) { return x.id === P.f.id; }); if (!p) return '<div class="empty">Proyecto no encontrado.</div>';
     var lista = P.fLista, i = lista.indexOf(p.id), e = p.estado_proyecto || 'Prospecto', ab = P.f.tareas.filter(function (t) { return !t.closed; }).length;
-    var tabs = [['info', 'Información', tabInfo], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
+    var tabs = [['info', 'Información', tabInfo], ['analisis', 'Análisis', tabAnalisis], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
                 ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
     var h = '<div class="u-row8 u-mb12"><button class="btn bg sm" data-pm="volver">' + ico('izquierda') + ' Volver</button>' +
       (lista.length > 1 ? ib('izquierda', 'Proyecto anterior', 'data-pm="nav" data-dir="-1"') + '<span class="u-s11-mt m">' + (i + 1) + '/' + lista.length + '</span>' + ib('derecha', 'Proyecto siguiente', 'data-pm="nav" data-dir="1"') : '') + '</div>';
@@ -652,6 +670,11 @@
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     if (P.sub === 'seg') el.innerHTML = cab + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + htmlProy();
+    else if (P.sub === 'tar') {
+      el.innerHTML = cab + '<div id="pm-tablero"></div>';
+      montarTablero(document.getElementById('pm-tablero'), { titulo: 'Tareas y pendientes', actividades: true })
+        .catch(function (e) { document.getElementById('pm-tablero').innerHTML = '<div class="empty">No se pudieron cargar las tareas: ' + esc(e.message) + '</div>'; });
+    }
     else el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
   }
