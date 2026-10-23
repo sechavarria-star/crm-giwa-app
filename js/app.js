@@ -11,7 +11,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 var MODULOS = [
   { id: 'hoy',      nombre: 'Hoy',            ico: 'casa',     listo: false },
-  { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: false },
+  { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true  },
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: false },
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: false },
   { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },

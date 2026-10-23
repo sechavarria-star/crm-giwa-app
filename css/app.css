@@ -26,6 +26,11 @@ a.nav-b.on { pointer-events: none; }
 .acceso-tit { font-size: 22px; font-weight: 300; margin: 0 0 8px; }
 .acceso-msg { color: var(--mt); font-size: 13px; line-height: 1.6; margin: 0 0 18px; }
 
+/* Estado «deuda vencida»: el Design System no tenía el rojo para .est.
+   Rojo = vencimiento (regla del DS). PENDIENTE: sumarlo a _Estilos.html. */
+.e-xr { background: var(--rd); }
+.t-xr { color: var(--rd); }
+
 @media (max-width: 720px) {
   .vista { padding: 48px 12px 20px; }
   .nav-der #top-fecha { display: none; }
