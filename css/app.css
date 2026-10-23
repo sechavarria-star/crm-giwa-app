@@ -1,0 +1,32 @@
+/* ══════════════════════════════════════════════════════════════════════
+   app.css · sólo lo de la cáscara de esta app
+   ──────────────────────────────────────────────────────────────────────
+   Todo lo visual sale de estilos.css (el Design System, generado desde
+   _Estilos.html). Acá va únicamente lo que el Apps Script no tenía: la
+   pantalla de acceso y el contenedor de la vista. Sólo tokens, ningún
+   color literal (regla del Design System).
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* hidden manda siempre (.btn y otros definen su propio display y le ganaban) */
+[hidden] { display: none !important; }
+
+/* La barra es fixed (36px): la vista arranca debajo */
+.vista { padding: 52px 18px 24px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; min-width: 0; }
+.vista p { line-height: 1.6; margin: 6px 0 14px; }
+
+/* Los módulos son enlaces (#/hoy, #/pm…): que se vean como los botones de siempre */
+a.nav-b { text-decoration: none; }
+a.nav-b.on { pointer-events: none; }
+
+/* Pantalla de acceso */
+.acceso { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 16px; box-sizing: border-box; }
+.acceso-marca { position: fixed; top: 18px; left: 22px; font-size: 18px; }
+.acceso-card { max-width: 420px; width: 100%; text-align: center; padding: 28px 24px; box-sizing: border-box; }
+.acceso-ico { color: var(--blue); display: inline-block; margin-bottom: 10px; }
+.acceso-tit { font-size: 22px; font-weight: 300; margin: 0 0 8px; }
+.acceso-msg { color: var(--mt); font-size: 13px; line-height: 1.6; margin: 0 0 18px; }
+
+@media (max-width: 720px) {
+  .vista { padding: 48px 12px 20px; }
+  .nav-der #top-fecha { display: none; }
+}

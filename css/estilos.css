@@ -1,0 +1,1456 @@
+/* GENERADO por tools/sincronizar-desde-apps-script.py desde _Estilos.html.
+   No editar a mano mientras dure la transición: se pisa. */
+/* ══════════════════════════════════════════════════════════════
+   LA CASA · estilos compartidos
+   Sacados de Admin_Index, que era donde vivían. Las cuatro
+   pantallas se ven igual porque leen de acá, no porque cada una
+   tenga su copia.
+   ══════════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  color-scheme:dark;   /* diálogos nativos (confirmar/avisos) legibles sobre fondo oscuro */
+  --bg:#060716;--bg2:#0d1130;--bg3:#111840;--card:#0f1535;
+  --b:#1e2a55;--blue:#0090FF;--b2:#0070cc;--violet:#A855F7;--bv:#7c3aed;
+  --tx:#e8eaf6;--mt:#8892b0;--ok:#00c97a;--wa:#f5a623;--rd:#ff4d6d;
+  --r:10px;--mono:'Courier New',monospace;
+
+  /* ══════════════════════════════════════════════════════════════════
+     QUÉ SIGNIFICA CADA COLOR · 01/10/2026
+     ──────────────────────────────────────────────────────────────────
+     Un color = un significado. Si estás por escribir un color adentro de
+     un style=, está mal: va una clase de acá.
+
+     LA PLATA
+       Celeste GIWA  CONTRATADO · lo que me compraron
+       Verde         COBRADO    · ya entró
+       Naranja       PENDIENTE  · falta cobrar o facturar
+       Violeta       POST-VENTA · abono, mantenimiento, soporte, garantía
+       Gris          PIPELINE   · todavía no es mío (va atenuado: es proyección)
+       Rojo          NEGATIVO   · costo, nota de crédito
+
+     LA MONEDA NO VA POR COLOR. Si el color dice el significado no puede
+     además decir la moneda: un «contratado en dólares» tendría que ser
+     celeste y turquesa a la vez. Entonces el peso —el número operativo—
+     lleva el color del significado, y el dólar —que es referencia— va
+     SIEMPRE turquesa, igual que el tipo de cambio.
+
+     LOS ESTADOS · siempre como badge (.bx), nunca como texto suelto.
+     Un badge turquesa y un número turquesa no se confunden: los separa
+     la forma. Por eso se pueden reusar los tonos.
+       Gris      Nuevo · Prospecto      todavía no es nada
+       Amarillo  Negociación            se está vendiendo
+       Celeste   Aprobado               vendido
+       Turquesa  En Curso · Activo      corriendo
+       Violeta   En Garantía            post-venta, como el abono
+       Verde     Finalizado             cerrado
+       Rojo      Rechazado              no va
+
+     LAS ALERTAS · naranja hace doble función a propósito: «pendiente de
+     cobrar» y «alerta media» son la misma idea, algo que requiere acción.
+       Rojo  vencido · Naranja  requiere acción · Amarillo  por vencer
+
+     LOS BOTONES · la acción primaria es SIEMPRE el azul de las pestañas
+     (--b2). Violeta salió de los botones: es de los abonos.             */
+
+  /* --teal se usaba en 5 lugares (colorEstado incluido) y NO ESTABA DEFINIDO:
+     todo lo que debía ser turquesa salía sin color. */
+  --teal:#14b8a6;
+  /* Superficies de modal (22/10/2026): profundidad oscura y borde de luz de la marca */
+  --sup-modal:#052342;--borde-luz:#1A3DB4;
+  /* Amarillo, que faltaba: seguimiento. Distinto del naranja, que es advertencia. */
+  --yl:#e8c547;
+  --mt2:#5a6488;   /* gris más apagado: histórico, deshabilitado */
+
+  /* ── BORDES Y FONDOS TRANSLÚCIDOS ────────────────────────────────
+     Eran 222 rgba() escritos a mano en las cuatro pantallas. Ahora tienen
+     nombre: si hay que cambiar el borde, se cambia acá.                  */
+  --b-tenue:rgba(30,42,85,.25);
+  --b-suave:rgba(30,42,85,.4);
+  --b-fuerte:rgba(30,42,85,.6);
+  --blue-a:rgba(0,144,255,.12);
+  --blue-a2:rgba(0,144,255,.22);
+  --teal-a:rgba(20,184,166,.13);
+  --ok-a:rgba(0,201,122,.13);
+  --yl-a:rgba(232,197,71,.13);
+  --wa-a:rgba(245,166,35,.13);
+  --rd-a:rgba(255,77,109,.13);
+  --violet-a:rgba(168,85,247,.13);
+  --mt-a:rgba(136,146,176,.12);
+}
+/* Montserrat con jerarquía (22/10/2026): títulos grandes Light 300, rótulos y nombres 600,
+   botones 500, texto 400, notas 300. Pesos 300-700, nunca 800/900. Decisión
+   de Victoria, 30/09/2026. Los números van en --mono (Courier New). */
+body{font-family:'Montserrat',sans-serif;font-weight:400;background:var(--bg);color:var(--tx);min-height:100vh;font-size:13px}
+h1,h2,h3,h4,b,strong{font-weight:400}   /* los componentes traen su peso propio */
+.app{display:flex;min-height:100vh;padding-top:36px}
+.sb{width:200px;background:var(--bg2);border-right:1px solid var(--b);display:flex;flex-direction:column;position:fixed;height:calc(100vh - 36px);top:36px;z-index:100;overflow-y:auto}
+.logo{padding:0 14px;min-height:50px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.lg{font-size:14px;font-weight:400;color:var(--blue)}.lia{font-size:11px;color:var(--violet);font-weight:400}
+nav{flex:1;padding:8px 0;overflow-y:auto}
+.nsec{padding:4px 14px 3px;font-size:10.5px;font-weight:400;color:var(--mt);margin-top:5px}
+.ni{display:flex;align-items:center;gap:8px;padding:7px 14px;color:var(--mt);cursor:pointer;font-size:12px;font-weight:500;border-left:3px solid transparent;transition:.15s}
+.ni:hover{color:var(--tx);background:rgba(0,144,255,.06)}.ni.on{color:var(--blue);background:rgba(0,144,255,.1);border-left-color:var(--blue)}
+.ni svg{width:14px;height:14px;flex-shrink:0}
+.sb-badge{background:var(--rd);color:#fff;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:500;margin-left:auto}
+.sb-foot{padding:8px 14px;font-size:10px;color:var(--mt);flex-shrink:0;border-top:1px solid var(--b)}
+.main{margin-left:200px;width:calc(100% - 200px);min-width:0;display:flex;flex-direction:column;min-height:calc(100vh - 36px)}
+.top{background:var(--bg2);border-bottom:1px solid var(--b);padding:0 20px;min-height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:36px;z-index:50}
+.top-t{font-size:16px;font-weight:300}
+.content{padding:12px 16px;flex:1}
+.views>div{display:none}.views>div.on{display:flex;flex-direction:column;flex:1}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--r);border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:500;transition:.15s;white-space:nowrap}
+/* ── LOS BOTONES · un solo color para la acción primaria ─────────────
+   Agregar, guardar, facturar, nuevo: todos iguales, no hay que pensar.
+   Va el azul de las pestañas (--b2), no el celeste: el celeste quedó
+   reservado para CONTRATADO y el canal de acción no pisa el de la plata. */
+.bp{background:var(--b2);color:#fff}.bp:hover{background:var(--blue)}
+.bg{background:var(--b-suave);color:var(--tx)}.bg:hover{background:var(--blue-a);color:var(--blue)}
+/* .bv era el botón violeta («+ Nuevo proyecto», «+ Novedad»). Violeta pasó
+   a ser de los abonos, así que .bv ES .bp: no hay que tocar las 20 llamadas
+   y ningún botón puede volver a salir violeta. */
+.bv{background:var(--b2);color:#fff}.bv:hover{background:var(--blue)}
+.bok{background:var(--ok-a);color:var(--ok)}
+.bwa{background:var(--wa-a);color:var(--wa)}
+.brd{background:var(--rd-a);color:var(--rd)}
+/* HECHO · un Dep ✓ o un Transf ✓ ya marcado dejó de ser una acción: pierde
+   el color y se funde con la fila. Lo que todavía falta es lo que resalta. */
+.bhecho{background:transparent;color:var(--mt2);cursor:default}
+.bhecho:hover{color:var(--mt2)}
+/* El par de .bhecho —lo que TODAVÍA falta— es .bwa, que ya está arriba: naranja
+   es advertencia operativa y un cobro sin depositar es justo eso. No se agrega
+   una clase nueva para lo mismo (Facturación ya usaba .bwa para el pendiente;
+   lo que estaba mal era el HECHO, que salía en verde y gritaba igual que el
+   que falta). Gris = ya está, no lo mires. Naranja = falta esto. */
+/* ── EL VELO DE GUARDANDO ────────────────────────────────────────────
+   Un spinner al centro, encima de todo, mientras una escritura viaja. No es
+   cosmético: sin él no hay nada que diga que la factura se está guardando, y el
+   segundo clic manda el registro dos veces. El que bloquea de verdad es el
+   velo —tapa la pantalla—; el botón deshabilitado sólo tapa un botón. */
+.velo{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;
+      background:rgba(6,7,22,.55);backdrop-filter:blur(2px)}
+.velo.on{display:flex}
+.velo-c{display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--card);
+        border-radius:var(--r);padding:20px 26px}
+.velo-t{font-size:11.5px;color:var(--mt);font-weight:400}
+.sm{padding:4px 9px;font-size:11px}.xs{padding:3px 7px;font-size:10px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+/* ══════════════════════════════════════════════════════════════════════
+   LA PLATA · una clase por significado
+   ──────────────────────────────────────────────────────────────────────
+   Antes un monto en pesos salía en OCHO colores distintos según quién lo
+   hubiera escrito: --wa 19 veces, --ok 15, --blue 9, --violet 6, --rd 5,
+   más --mt, --mt2 y hasta --b. Todos eran style= inline.
+
+   Se usa así, y nunca más un color adentro de un style=:
+       <b class="m m-contratado">$ 14.330.000</b>
+       <b class="m m-usd">USD 445,00</b>
+   ══════════════════════════════════════════════════════════════════════ */
+.m{font-family:var(--mono);font-weight:400;white-space:nowrap}
+.m-contratado{color:var(--blue)}     /* lo que me compraron            */
+.m-cobrado   {color:var(--ok)}       /* ya entró                       */
+.m-pendiente {color:var(--wa)}       /* falta cobrar o facturar        */
+.m-abono     {color:var(--violet)}   /* recurrente, mantenimiento      */
+.m-negativo  {color:var(--mt)}       /* costo, nota de crédito: neutro, no es alerta */
+.m-usd       {color:var(--teal)}     /* dólares y tipo de cambio       */
+/* PIPELINE · gris atenuado: es proyección, todavía no es mío. Ponderado, más atenuado. */
+.m-pipeline  {color:var(--mt);opacity:.75}
+.m-pipeline-p{color:var(--mt);opacity:.55}
+/* Un monto sin significado propio (una referencia, un total de tabla) */
+.m-neutro    {color:var(--mt)}
+
+/* ── LOS RECUADROS ───────────────────────────────────────────────────
+   Una sola variable por recuadro: el borde de arriba y el número salen
+   de --accent, así no se pueden desincronizar. En la vista Proyectos de
+   PM los recuadros habían perdido el borde de color. */
+/* auto-fit, no `repeat(5,1fr)`: estaba clavado en cinco columnas y el dashboard
+   de Admin pasó a seis recuadros, así que el sexto se metía igual y los dejaba
+   a todos aplastados. Con minmax cada recuadro tiene un ancho mínimo digno y la
+   grilla se acomoda sola a 4, 5 o 6 — y en pantalla chica baja de fila. */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin-bottom:16px}
+/* El --accent por defecto NO puede faltar: `border-top:3px solid var(--accent)`
+   sin valor sale sin color, y era por eso que los recuadros habían quedado
+   grises. Ahora el que no declara significado es celeste, no transparente. */
+.kpi{--accent:var(--blue);background:var(--card);border:none;border-radius:var(--r);padding:14px 16px;border-top:3px solid var(--accent)}
+.kpi-lbl{font-size:10px;font-weight:600;color:var(--mt);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+/* Peso normal (20/10/2026): Courier New no tiene 600 y el navegador lo dibujaba en negrita */
+.kpi-val{font-size:14px;font-weight:600;font-family:var(--mono);color:var(--accent);overflow-wrap:anywhere}
+.kpi{min-width:0}
+/* Un recuadro que filtra (22/10/2026): se toca y el elegido queda marcado */
+.kpi-fil{cursor:pointer}
+.kpi-fil.on{outline:1px solid var(--accent)}
+.kpi-sub{font-size:10px;font-weight:300;color:var(--mt);margin-top:3px}
+/* ── EL SIGNIFICADO DEL RECUADRO · lo que faltaba ────────────────────
+   .kpi y .applnk leen --accent, pero NADIE lo definía: no había un solo
+   `--accent:` en el proyecto salvo las tres tarjetas de módulo del Portal.
+   Por eso el borde de arriba y el número salían sin color.
+   Se usa igual que la plata, y el recuadro queda atado al número:
+       <div class="kpi k-cobrado">…<div class="kpi-val">$ 8.200.000</div></div>
+   El tinte del fondo sale del mismo lado, así que un recuadro no puede
+   tener el borde de un significado y el fondo de otro. */
+.k-contratado{--accent:var(--blue);  background:linear-gradient(var(--blue-a),transparent),var(--card)}
+.k-cobrado   {--accent:var(--ok);    background:linear-gradient(var(--ok-a),transparent),var(--card)}
+.k-pendiente {--accent:var(--wa);    background:linear-gradient(var(--wa-a),transparent),var(--card)}
+.k-abono     {--accent:var(--violet);background:linear-gradient(var(--violet-a),transparent),var(--card)}
+.k-usd       {--accent:var(--teal);  background:linear-gradient(var(--teal-a),transparent),var(--card)}
+.k-alerta    {--accent:var(--rd);    background:linear-gradient(var(--rd-a),transparent),var(--card)}
+.k-negativo  {--accent:var(--mt);    background:linear-gradient(var(--mt-a),transparent),var(--card)}
+.k-neutro    {--accent:var(--mt);    background:linear-gradient(var(--mt-a),transparent),var(--card)}
+/* Neutro no es atenuado: acento gris, número legible. Sólo el pipeline se apaga. */
+.k-neutro .kpi-val,.k-neutro .kpi-v{color:var(--tx)}
+/* CONTADORES DE ESTADO · cuántos, no cuánto. Llevan el tono del estado que
+   cuentan (el mismo de los badges). No se confunden con la plata porque no
+   tienen signo: «3» no se lee como dólares, «USD 3,00» sí. */
+.k-activo     {--accent:var(--teal);background:linear-gradient(var(--teal-a),transparent),var(--card)}
+.k-negociacion{--accent:var(--yl);  background:linear-gradient(var(--yl-a),transparent),var(--card)}
+/* PIPELINE · gris atenuado, igual que .m-pipeline: recuadro y número cuentan lo mismo. */
+.k-pipeline  {--accent:var(--mt);    background:linear-gradient(var(--mt-a),transparent),var(--card);opacity:.75}
+
+/* ── LAS PESTAÑAS · se pintaban con style= desde el JS ───────────────
+   showPortalTab escribía background/borderColor/color a mano en cada
+   botón, y la inactiva quedaba --bg2: ése era el gris. Ahora es una
+   clase y el JS sólo prende o apaga .on. */
+.ptabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--b);margin-bottom:12px}
+/* 22/10/2026: pestaña = recuadro con esquinas de arriba apenas redondeadas,
+   apoyado sobre la línea; la elegida tiene una línea arriba. Nada de pills. */
+.ptab{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;color:var(--mt);margin-bottom:-1px;padding:7px 12px}
+.ptab:hover{background:none;color:var(--tx)}
+.ptab.on{background:none;color:var(--tx);border-bottom-color:var(--b2)}
+/* Cargar factura: pasos numerados y totalizador. */
+.cf-paso{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:400;color:var(--tx);margin:14px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--b)}
+.cf-paso:first-of-type{margin-top:0}
+.cf-n{font-family:var(--mono);font-size:12px;color:var(--blue);flex-shrink:0}
+.cf-fila{background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:8px 9px;margin-bottom:7px}
+.cf-fila .cf-top{display:flex;gap:6px;margin-bottom:6px}
+.cf-fila .cf-bot{display:flex;gap:6px;align-items:center}
+.cf-tot{display:flex;align-items:center;gap:9px;margin-top:12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);font-size:12px;font-weight:400}
+/* Panel y ayuda: los usan las vistas de configuración (valor hora, IPC). */
+.card{background:var(--card);border-radius:var(--r);padding:14px 16px}
+/* COMPACTA · la del Portal, que lista muchas filas cortas en una columna.
+   Era un .card propio que redefinía el componente entero; ahora es una
+   variante declarada y la base la pone _Estilos. 30/09/2026. */
+.card.compacta{border-radius:var(--r);padding:8px 10px;margin-bottom:7px}
+.card-t{font-size:11px;font-weight:600;color:var(--tx);margin-bottom:8px}
+/* ── LOS TRES QUE FALTABAN ──────────────────────────────────────────
+   Estaban escritos inline: el rótulo de sección 73 veces, la fila con
+   borde 35, el chip 9. .card ya existía y se reimplementaba 66 veces.   */
+/* ── EL RÓTULO DE SECCIÓN · el canónico ─────────────────────────────
+   Estaba escrito inline 83 veces en 36 variantes distintas (9 / 9.5 / 10 /
+   11px, con y sin letter-spacing, tres colores). Este es el valor elegido:
+   9.5px con .06em, que es la variante más usada más el aire que pidió. */
+.sec{font-size:9.5px;font-weight:600;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+/* Variante con línea: la que hoy es .card-t en algunos bloques */
+.sec-b{border-bottom:1px solid var(--b);padding-bottom:6px}
+
+/* ── EL AVATAR ──────────────────────────────────────────────────────
+   Lo generaba _avatarCircle() con 9 declaraciones inline, 20 veces. El color
+   sigue siendo inline porque es de cada persona; la forma vive acá. */
+.ava{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;color:#fff;font-size:9px;font-weight:400;flex-shrink:0}
+.ava-ov{margin-left:-6px;box-shadow:0 0 0 1.5px var(--card)}   /* apilados */
+.ava-lg{width:26px;height:26px;font-size:11px}
+.rowb{border-bottom:1px solid var(--b-suave)}
+.rowb:last-child{border-bottom:none}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;font-size:10.5px;font-weight:500;background:var(--mt-a);color:var(--mt)}
+.hint{font-size:10.5px;color:var(--mt);margin:4px 0;line-height:1.45}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tbl{width:100%;border-collapse:collapse}
+/* Celda de encabezado y celda de dato. Admin las escribía inline en cada
+   th y td: 14 veces la misma cosa. Son de la tabla, no utilidades. */
+.tbl-h{padding:5px 9px;font-size:9px;color:var(--mt)}
+.tbl-c{padding:6px 9px}
+/* La barra del degradé de marca que corona una tarjeta */
+.accent{height:3px;background:linear-gradient(90deg,var(--blue),var(--violet))}
+/* Imagen que llena su caja sin deformarse: los logos de cliente */
+.img-fit{width:100%;height:100%;object-fit:contain}
+.tbl th{padding:7px 10px;text-align:left;font-size:10px;font-weight:400;color:var(--mt);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--b)}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--b-suave);vertical-align:middle;font-size:12px}
+.tbl tr:last-child td{border-bottom:none}.tbl tr:hover td{background:rgba(0,144,255,.03)}
+.bx{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500}
+/* ── BADGES · un solo juego para las cuatro pantallas ───────────────
+   Sutiles a propósito: fondo translúcido y texto del color, sin pelotas
+   de color. El color dice QUÉ ES, no decora. Ver la tabla del :root.
+   .xt vivía sólo en PM (y usaba un --teal que no existía) y .xy no existía:
+   un badge «En Curso» en Admin o en el Portal salía gris.                */
+.xb{background:var(--blue-a);color:var(--blue)}       /* información, activo   */
+.xt{background:var(--teal-a);color:var(--teal)}       /* en curso, progreso    */
+.xg{background:var(--ok-a);color:var(--ok)}           /* positivo, cobrado     */
+.xy{background:var(--yl-a);color:var(--yl)}           /* seguimiento           */
+.xw{background:var(--wa-a);color:var(--wa)}           /* advertencia operativa */
+.xr{background:var(--rd-a);color:var(--rd)}           /* vencido, error: sólo alertas */
+.xv{background:var(--violet-a);color:var(--violet)}   /* marca, oportunidad    */
+.xm{background:var(--mt-a);color:var(--mt)}           /* inactivo, histórico   */
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11px;font-weight:500;color:var(--mt);margin-bottom:6px}
+.req{color:var(--blue)}
+.fc{width:100%;background:var(--bg3);border:1px solid transparent;border-radius:var(--r);padding:7px 9px;color:var(--tx);font-family:'Montserrat',sans-serif;font-size:12px;transition:.15s}
+.fc:focus{outline:none;border-color:var(--blue)}.fc::placeholder{color:var(--mt)}
+textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg2)}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.mo.open{display:flex}
+.md{background:var(--sup-modal);border:1px solid var(--borde-luz);border-radius:var(--r);width:100%;max-width:880px;margin:auto}
+.md-sm{max-width:560px}
+/* Un modal abierto encima de otro (openM le pone .n2): otra superficie, más profunda */
+.mo.n2 .md{background:var(--bg);border-color:var(--blue)}
+.mh{padding:13px 18px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:var(--r) var(--r) 0 0}
+.mt2{font-size:13px;font-weight:600}.mb2{padding:14px 18px;max-height:calc(100vh - 150px);overflow-y:auto}
+.mf{padding:11px 18px;border-top:1px solid var(--b);display:flex;justify-content:flex-end;gap:7px;position:sticky;bottom:0;background:var(--bg2);border-radius:0 0 var(--r) var(--r)}
+.toasts{position:fixed;bottom:16px;right:16px;z-index:300;display:flex;flex-direction:column;gap:5px}
+.toast{padding:8px 13px;border-radius:var(--r);font-size:12px;font-weight:500;min-width:190px;animation:fadein .2s}
+@keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.tok{background:#0a2a1a;border:1px solid var(--ok);color:var(--ok)}
+.terr{background:#2a0a0f;border:1px solid var(--rd);color:var(--rd)}
+.tinf{background:#0a1020;border:1px solid var(--blue);color:var(--blue)}
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--mt)}
+.spin{width:17px;height:17px;border:2px solid var(--b);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite;margin-right:7px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:28px;color:var(--mt);font-size:12px}
+.sw{position:relative}.sw input{padding-left:24px}
+.sw::before{content:"\1F50D";position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:10px;pointer-events:none}
+.avbar{height:4px;background:var(--b);border-radius:2px;overflow:hidden}
+.avfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--violet));border-radius:2px}
+/* El TC es MONEDA, no abono: va turquesa como el USD. Estaba violeta. */
+.tc-badge{background:none;color:var(--teal);padding:3px 4px;font-size:11px;font-weight:400;cursor:pointer;font-family:var(--mono)}
+.drive-lnk{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--blue-a);border-radius:var(--r);color:var(--blue);font-size:10px;font-weight:400;text-decoration:none}
+.drive-lnk:hover{background:rgba(0,144,255,.15)}
+.tag-list{display:flex;flex-wrap:wrap;gap:5px;min-height:24px;margin-bottom:6px}
+.tag-item{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border-radius:14px;padding:2px 4px 2px 9px;font-size:11px}
+.tag-item button{background:none;border:none;color:var(--mt);cursor:pointer;font-size:13px;line-height:1;padding:0 3px}
+.tag-item button:hover{color:var(--rd)}
+.tag-add{display:flex;gap:5px}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--b);border-radius:4px}
+/* Grilla que acomoda sola cuántas columnas entran. Estaba sólo en PM. */
+.gauto{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+
+/* Las usa _FichaTarea, que es la misma ficha en las cuatro pantallas.
+   Estaban sólo en el Portal, así que en PM la ficha se veía rota. */
+.dt-row{margin-bottom:10px}
+.fl2{font-size:10.5px;color:var(--mt);margin-bottom:2px}
+.ta{width:100%;background:var(--bg);border:1px solid transparent;border-radius:var(--r);padding:7px 9px;color:var(--tx);font-family:inherit;font-size:12px;resize:vertical}
+.nov-i{background:var(--bg3);border-radius:var(--r);padding:7px 10px;margin-bottom:6px;font-size:11px}
+.btn.p{background:var(--blue);border-color:var(--blue);color:#fff}
+/* ══════════════════════════════════════════════════════════════════════
+   LA ESCALA DE DENSIDAD
+   ──────────────────────────────────────────────────────────────────────
+   PM redefinía 10 reglas de _Estilos y todas decían lo mismo: «un poco más
+   grande». No era otro componente, era otra densidad. Ahora se pide con un
+   atributo en <body> y no hay que duplicar ninguna regla:
+       <body data-densidad="comodo">    ← PM
+       <body>                           ← Admin, compacto, el default
+   Si hace falta un tercer nivel, se agrega acá y no en la pantalla.
+   ══════════════════════════════════════════════════════════════════════ */
+[data-densidad="comodo"] .top      { min-height:56px }
+[data-densidad="comodo"] .logo     { min-height:56px; height:56px; padding:0 16px; gap:9px }
+[data-densidad="comodo"] .lg       { font-size:15px }
+[data-densidad="comodo"] .ni       { padding:8px 14px }
+[data-densidad="comodo"] .sb-foot  { padding:10px 14px }
+[data-densidad="comodo"] .content  { padding:14px 18px }
+[data-densidad="comodo"] .sw input { padding-left:26px }
+[data-densidad="comodo"] .md       { max-width:880px }
+[data-densidad="comodo"] .avfill   { transition:.4s }
+
+/* Vinieron del Portal el 28/09/2026 con «Seguimiento de proyectos»: las
+   usan el Portal (pulso) y PM (la reunión). */
+.pulso{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px;margin-bottom:18px}
+.kpi-l{font-size:10.5px;color:var(--mt);margin-bottom:4px}
+/* El número toma el acento del recuadro, igual que .kpi-val. Antes no tenía
+   color propio y cada llamador se lo escribía inline: por eso el número y el
+   borde de arriba se podían desincronizar. */
+.kpi-v{font-size:14px;font-weight:400;font-family:var(--mono);color:var(--accent)}
+
+/* ── SIDEBAR COLAPSABLE ──────────────────────────────────────────────
+   Estaban inyectadas desde un array de strings en JavaScript, DUPLICADAS
+   e idénticas en PM_Index y Admin_Index: 15 reglas invisibles a cualquier
+   búsqueda de CSS. Movidas acá el 30/09/2026, sin cambiar un valor.       */
+.sb{transition:width .18s ease}
+.main{transition:margin-left .18s ease}
+#sb-toggle{margin-left:auto;background:none;border:none;color:var(--mt);font-size:16px;line-height:1;cursor:pointer;padding:4px;border-radius:var(--r);flex-shrink:0}
+#sb-toggle:hover{color:var(--tx);background:rgba(255,255,255,.06)}
+.sb.collapsed{width:56px;overflow:visible}
+.sb.collapsed ~ .main{margin-left:56px;width:calc(100% - 56px)}
+.sb.collapsed .logo>div{display:none}
+.sb.collapsed .logo{justify-content:center}
+.sb.collapsed #sb-toggle{margin-left:0}
+.sb.collapsed .nsec{display:none}
+.sb.collapsed .ni{justify-content:center;gap:0;font-size:0;padding:9px 0;position:relative}
+.sb.collapsed .ni svg{width:18px;height:18px}
+.sb.collapsed .sb-badge{display:none!important}
+.sb.collapsed .ni::after{content:attr(data-label);position:absolute;left:100%;top:50%;transform:translateY(-50%);margin-left:10px;background:var(--bg3);border:1px solid var(--b);color:var(--tx);font-size:11px;font-weight:400;padding:5px 9px;border-radius:var(--r);white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none;transition:.12s;z-index:600;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.sb.collapsed .ni:hover::after{opacity:1;visibility:visible}
+
+
+/* ══════════════════════════════════════════════════════════════
+   UTILIDADES · el 43% de los style= inline decía una de estas
+   ──────────────────────────────────────────────────────────────
+   Eran 1.951 style= repartidos en las pantallas; 84 patrones se
+   repetían idénticos y 558 usos se convirtieron acá el 30/09/2026.
+   VAN AL FINAL A PROPÓSITO: un inline le ganaba siempre a la clase
+   del componente. Como clase, el empate lo resuelve el orden del
+   archivo, así que tienen que estar después de los componentes.
+   El prefijo u- es para que no puedan chocar con uno: ya nos pasó
+   cinco veces con .card, .xs, .app, .top y --r.
+   ══════════════════════════════════════════════════════════════ */
+/* .tbl th gana por especificidad (clase+elemento) sobre .u-tr (clase sola), así
+   que los encabezados quedaban a la izquierda y los montos a la derecha. */
+.tbl th.u-tr{text-align:right}
+.u-tr{text-align:right}
+/* ── BLOQUE DESPLEGABLE ───────────────────────────────────────────────
+   Para lo que se consulta, no lo que se mira. Arranca cerrado. */
+.desp{background:var(--card);border:1px solid var(--b);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+.desp>summary{cursor:pointer;padding:10px 14px;font-size:12px;font-weight:400;color:var(--tx);list-style:none;user-select:none}
+.desp>summary::-webkit-details-marker{display:none}
+/* Desplegable (22/10/2026, regla de Victoria): ▼ cerrado, ▲ abierto. Uno solo para toda la app. */
+/* La flecha va a la DERECHA (22/10/2026). */
+.desp>summary{display:flex;align-items:center;gap:7px}
+.desp>summary::after{content:'\25BC';margin-left:auto;padding-left:8px;font-size:.8em;color:var(--mt)}
+.desp[open]>summary::after{content:'\25B2';color:var(--blue)}
+/* Flecha de plegable, única para todas las vistas (20/10/2026): gris
+   cerrada, azul y girada abierta. .chev genérica; las viejas se alinean. */
+.chev{color:var(--mt);display:inline-flex;transition:transform .15s}
+.chev.on{transform:rotate(90deg);color:var(--blue)}
+.seg-grp:not(.cerr) .seg-chev,.des-card:not(.cerr) .des-chev{color:var(--blue)}
+/* ── CRM · 08/10/2026 ─────────────────────────────────────────────
+   Filtros de la tabla Clientes, sub-ítems del menú y los bloques
+   repetibles de la ficha de empresa (_FichaEmpresa: razones sociales y
+   contactos). Una fila clickeable de tabla abre la ficha.               */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip.fil{cursor:pointer;border:none;background:var(--b-suave);padding:5px 14px;font-size:11.5px;font-family:inherit;border-radius:var(--r)}
+.chip.fil:hover{color:var(--tx)}
+.chip.fil.on{color:var(--tx);background:var(--b2)}   /* el elegido: la celda entera pintada */
+.ni-sub{padding-left:38px;font-size:11.5px}
+.fila-click{cursor:pointer}
+.emp-n{font-weight:400;font-size:12.5px}
+.fe-bloque{border:1px solid var(--b);border-radius:var(--r);padding:10px 12px 2px;margin:0 14px 10px;position:relative}
+.fe-bloque .fe-quitar{position:absolute;top:6px;right:6px}
+.fe-pie{padding:0 14px 12px}
+.fe-drive{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.page-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.page-h h2{font-size:20px;font-weight:300;margin:0 0 4px}
+.page-s{font-size:12px;color:var(--mt)}
+.emp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.emp-logo{width:40px;height:40px;border-radius:var(--r);object-fit:contain;background:#fff;flex-shrink:0}
+.emp-ini{width:40px;height:40px;border-radius:var(--r);background:var(--blue-a);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:400;flex-shrink:0}
+.emp-ini.sm{width:22px;height:22px;font-size:10px;border-radius:50%}
+.con-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:7px}
+.con-grupo-h{display:flex;align-items:center;gap:8px;padding:5px 2px 7px;border-bottom:1px solid var(--b);margin-bottom:8px;font-weight:400;font-size:12.5px}
+.fe-check{display:flex;align-items:center;gap:6px;cursor:pointer}
+.fe-datos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:12px 0}
+.fe-dato{background:var(--bg2);border-radius:var(--r);padding:7px 10px;font-size:12px}
+.fe-linea{padding:8px 0;border-top:1px solid var(--b)}
+.tier-ley{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-4px 0 14px}
+.desp[open]>summary{border-bottom:1px solid var(--b)}
+.desp>summary:hover{color:var(--blue)}
+.desp>*:not(summary){padding:12px 14px}
+.u-tc{text-align:center}
+.u-f1{flex:1}
+.u-f1m{flex:1;min-width:0}
+.u-none{display:none}
+/* Fila de desarrollo adentro de la tarjeta de proyecto (PM). La fila ES el
+   acceso: se despliega al tocarla, por eso marca que es clickeable. */
+.sol-fila:hover{background:rgba(0,144,255,.07)}
+.sol-fila .btn{opacity:0;transition:opacity .12s}
+@media (hover:none){.sol-fila .btn{opacity:1}}
+.sol-fila:hover .btn{opacity:1}
+.u-m0{margin:0}
+.u-p0{padding:0}
+.u-mla{margin-left:auto}
+.u-mt6{margin-top:6px}
+.u-mt10{margin-top:10px}
+.u-mb6{margin-bottom:6px}
+.u-mb12{margin-bottom:12px}
+.u-p10{padding:10px}
+.u-p14{padding:14px}
+.u-p1214{padding:12px 14px}
+.u-fw6{font-weight:400}
+.u-s9{font-size:9px}
+.u-s10{font-size:10px}
+.u-s11{font-size:11px}
+.u-s15{font-size:15px}
+.u-c-mt{color:var(--mt)}
+.u-c-tx{color:var(--tx)}
+.u-c-rd{color:var(--rd)}
+.u-c-wa{color:var(--wa)}
+.u-c-ok{color:var(--ok)}
+.u-c-bl{color:var(--blue)}
+.u-c-vi{color:var(--violet)}
+.u-c-te{color:var(--teal)}
+.u-c-yl{color:var(--yl)}
+/* Cualquier número, en Courier. Es la regla: TODO número va en mono. */
+.u-mono{font-family:var(--mono)}
+.u-help{cursor:help}
+/* Las tres combinaciones más usadas: 100 usos entre las tres */
+.u-s9-mt{font-size:9px;color:var(--mt)}
+.u-s10-mt{font-size:10px;color:var(--mt)}
+.u-s11-mt{font-size:11px;color:var(--mt)}
+/* Filas: dos formas que se repetían enteras */
+.u-row8{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.u-row6{display:flex;gap:6px}
+.u-w100{width:100%}
+.u-ov{overflow:auto}
+
+
+/* ── TEXTO CHICO APAGADO · 02/10/2026 ───────────────────────────────
+   El rótulo gris de 9/10/11px estaba escrito inline decenas de veces, con
+   el margen pegado adentro. Estas variantes cubren las combinaciones que
+   de verdad aparecían, en vez de inventar utilidades sueltas. */
+.u-s9-mt2{font-size:9px;color:var(--mt2)}
+.u-s10-mt-t3{font-size:10px;color:var(--mt);margin-top:3px}
+.u-s10-mt-t4{font-size:10px;color:var(--mt);margin-top:4px}
+.u-s11-mt-b10{font-size:11px;color:var(--mt);margin-bottom:10px}
+.u-s11-mt-fw6{font-size:11px;font-weight:400;color:var(--mt)}
+.u-s10-mt-fw4{font-size:10px;font-weight:400;color:var(--mt)}
+.u-c-mt2{color:var(--mt2)}
+.u-c-mt-fw4{color:var(--mt);font-weight:400}
+/* Texto que no debe desbordar su caja: se corta con puntos suspensivos */
+.u-corta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-s10-mt-corta{font-size:10px;color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Celda de tabla alineada, gris y chica: el th de siempre */
+.u-th-r{padding:8px 14px;text-align:right;font-size:9px;color:var(--mt)}
+.u-th-c{padding:8px 14px;text-align:center;font-size:9px;color:var(--mt)}
+.u-td-mt-r{padding:6px 10px;text-align:right;color:var(--mt);white-space:nowrap}
+.u-tab-mt{padding:6px 12px;font-size:9px;color:var(--mt)}
+/* Una opción clicable en línea (checkbox + etiqueta) */
+.u-opcion{display:inline-flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;color:var(--tx)}
+/* Casillero de monto: mismo tratamiento que un monto mostrado (Courier, a la
+   derecha, negrita) pero editable. El significado lo da la clase m-* de al lado. */
+.m-input{text-align:right;font-family:var(--mono);font-weight:400}
+.u-s20{font-size:20px}
+/* ── COMPONENTES que Admin armaba a mano (09/10/2026) ──────────────────
+   .filtros    la fila de selects y buscador arriba de una lista
+   .aviso      recuadro de aviso; el color, por intención: -bl info · -wa atención
+   .recuadro   datos de referencia en un formulario (razón social, CUIT)
+   .card-h     el encabezado gris de una tarjeta agrupadora (empresa, tipo)
+   .sec-sub    la aclaración en minúscula dentro de un rótulo .sec          */
+.filtros{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+.fc-sm{width:auto;font-size:11px}
+.aviso{border:1px solid;border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:11px}
+.aviso-bl{background:var(--blue-a);border-color:var(--blue);color:var(--blue)}
+.aviso-wa{background:var(--wa-a);border-color:var(--wa);color:var(--wa)}
+.recuadro{background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:7px 9px}
+.card-h{display:flex;align-items:center;gap:9px;padding:8px 14px;background:var(--bg2)}
+.sec-sub{font-weight:400;text-transform:none;letter-spacing:0}
+/* ── UTILIDADES · una declaración cada una, para lo que todavía no es
+   componente. Van después de los componentes: ganan por orden.        */
+.u-s8{font-size:8px}.u-s12{font-size:12px}.u-s13{font-size:13px}.u-s24{font-size:24px}
+.u-fw4{font-weight:400}.u-fw7{font-weight:400}.u-fw8{font-weight:400}
+.u-mb4{margin-bottom:4px}.u-mb8{margin-bottom:8px}.u-mb10{margin-bottom:10px}
+.u-mt4{margin-top:4px}.u-mt8{margin-top:8px}.u-p16{padding:16px}
+.u-nw{white-space:nowrap}.u-ovh{overflow:hidden}.u-ovx{overflow-x:auto}.u-op6{opacity:.6}
+.u-entre{justify-content:space-between}
+.u-claro{color-scheme:light}          /* el calendario nativo de un input date */
+/* .tbl td fija 12px con más especificidad que una utilidad sola */
+.tbl .u-s8{font-size:8px}.tbl .u-s9{font-size:9px}.tbl .u-s10{font-size:10px}.tbl .u-s11{font-size:11px}.tbl .u-s13{font-size:13px}
+/* La marca de la barra global de módulos */
+.nav-marca{font-size:12px;font-weight:400;color:var(--blue);margin-right:8px}
+/* LA BARRA (_Barra.html): módulos a la izquierda; fecha, TC, 🔄 y usuario a la
+   derecha. Una sola, fija arriba; la .top de cada pantalla queda con el título. */
+.nav-g{display:flex;align-items:center;gap:4px;padding:5px 14px;background:var(--bg2);border-bottom:1px solid var(--b);position:fixed;top:0;left:0;right:0;height:36px;z-index:300;box-sizing:border-box}
+.nav-mods{display:flex;align-items:center;gap:4px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nav-mods::-webkit-scrollbar{display:none}
+.nav-der{margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.nav-b{display:inline-flex;align-items:center;gap:5px;background:none;border:1px solid transparent;color:var(--mt);border-radius:var(--r);padding:3px 8px;font-size:11px;font-weight:400;cursor:pointer;font-family:inherit;white-space:nowrap}
+.nav-b:hover{color:var(--tx)}
+.nav-b.on{background:none;border-color:transparent;color:var(--blue);cursor:default}
+.nav-b .ico{width:13px;height:13px}
+#user-lbl-top:empty{display:none}
+/* LOS ÍCONOS (_Iconos.html): de línea, toman el color del texto */
+.ico{width:1em;height:1em;vertical-align:-.125em;flex-shrink:0}
+.girando .ico{animation:girar 1s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+/* ══════════════════════════════════════════════════════════════
+   EL PORTAL (Index) · lo propio de la pantalla, mudado acá el 08/10/2026.
+   Antes era un <style> en el archivo. Va con [data-pag] para que no
+   toque a las otras pantallas: mismo aspecto, una sola fuente.
+   ══════════════════════════════════════════════════════════════ */
+/* MIGRACIÓN A _Estilos · 28/09/2026
+   Borradas porque _Estilos ya las define igual o mejor:
+     .fc .empty .spin .mb2 .md .mh .btn
+   .mb2 gana el scroll de los modales largos · .btn y .mh cambian de aspecto
+   a propósito: es adoptar el sistema.
+
+   SE QUEDAN, y no por pereza:
+     .app → renombrada .applnk   en _Estilos .app es el contenedor de PÁGINA
+     .top      el Portal no tiene sidebar: su header envuelve, no es barra fija
+     body      necesita su padding propio, no hay .main que lo dé
+     .toast    el del Portal se posiciona solo (fixed/bottom); el de _Estilos
+               asume un contenedor #toasts que acá no existe
+     .g2 .g3   en el Portal son de UNA columna a propósito; en _Estilos son
+               de 2 y 3. Cambiarlo es rediseñar los formularios
+     .kpi      _Estilos le pone border-top con var(--accent), que el Portal
+               no define por tarjeta */
+/* PASO 2 · 28/09/2026 · el Portal deja de redefinir lo que ya está en _Estilos.
+   Se borraron por idénticas a _Estilos.html: .btn.p .fc:focus .fl .fl2 .nov-i .req .ta textarea.fc */
+/* El :root del Portal se borró el 30/09/2026: de 15 tokens, 13 decían
+   exactamente lo mismo que _Estilos y los 2 que diferían eran el problema.
+   --card:#0d1130 es --bg2: por eso los recuadros se veían negros.
+   --r:12px daba esquinas distintas al resto de la app. Manda el canónico. */
+/* El Portal es una sola columna sin menú lateral: lo único suyo es el
+   padding. Tipografía, peso y colores los pone _Estilos — sin esto el body
+   del Portal pisaba el font-weight:300 y todo se veía más grueso. */
+body[data-pag="portal"]{padding:54px 20px 40px}   /* 36 de la barra + 18 */
+[data-pag="portal"] a{color:inherit;text-decoration:none}
+/* Pills Seguimiento / Resumen Adm. / Resumen Fin.: fijas debajo de la barra (15/10/2026).
+   El margen negativo tapa el padding del body para que nada asome por detrás. */
+[data-pag="portal"] .ptabs{display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:36px;z-index:40;
+  background:var(--bg);margin:-18px -20px 14px;padding:12px 20px 10px;border-bottom:1px solid var(--b)}
+/* El header del Portal NO es la barra fija de _Estilos: es un encabezado que
+   envuelve. Con el mismo nombre las dos reglas se SUMAN —la del sistema trae
+   position:sticky, background, border-bottom y padding— y por eso se pegaba
+   arriba y dejaba margen. Renombrado, igual que .app → .applnk. */
+[data-pag="portal"] .btn:hover{border-color:var(--blue)}
+[data-pag="portal"] .btn.xs{padding:2px 7px;font-size:11px;border-radius:var(--r)}
+/* OJO · DEUDA CONOCIDA (27/09/2026): este .xs NO es el de _Estilos.
+   Allá es un modificador de tamaño del badge; acá es el chip propio del
+   Portal, usado 15 veces. Y el Portal todavía no incluye _Estilos, así que
+   no puede usar .bx —lo usa 0 veces— ni los badges compartidos.
+   Se resuelve cuando el Portal adopte el Design System. */
+/* Pulso */
+/* Sólo lo propio: la base la pone _Estilos. */
+/* El ::before era un parche: _Estilos ya pinta la barra con border-top, pero
+   el Portal no definía --accent por tarjeta y salía sin color. Ahora cada
+   recuadro lleva su clase k-*, así que el parche sobra y además daba barra
+   doble (3px de border-top + 3px de ::before). */
+[data-pag="portal"] .kpi{position:relative;overflow:hidden}
+[data-pag="portal"] .kpi-s{font-size:9px;color:var(--mt);margin-top:2px}
+/* Columnas */
+[data-pag="portal"] .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:14px;align-items:start;margin-bottom:22px}
+[data-pag="portal"] .col{background:rgba(13,17,48,.4);border:1px solid var(--b);border-radius:var(--r);padding:12px}
+[data-pag="portal"] .col-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+[data-pag="portal"] .col-t{font-size:11px;font-weight:400;color:var(--mt)}
+[data-pag="portal"] .col-n{background:var(--b);color:var(--tx);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400}
+/* .card se borró: la base la pone _Estilos y lo compacto es .card.compacta */
+[data-pag="portal"] .card.v{border-color:var(--rd)} [data-pag="portal"] .card.h{border-color:var(--wa)}
+[data-pag="portal"] .c-t{font-size:12px;font-weight:400;line-height:1.25}
+[data-pag="portal"] .c-ctx{font-size:10px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+[data-pag="portal"] .c-sub{font-size:10px;color:var(--mt);margin-top:2px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+[data-pag="portal"] .c-monto{font-family:var(--mono);font-weight:400;color:var(--ok)}
+[data-pag="portal"] .sec-t{font-size:12px;font-weight:400;color:var(--mt);margin:6px 0 10px}
+/* Módulos */
+/* CINCO desde el 08/10/2026, cuando CRM salió de Admin. CUATRO columnas, no tres: con repeat(3,1fr) Configuración caía sola a la
+   segunda fila y quedaba a otra altura que las demás. Los cuatro módulos
+   son lo mismo y entran en una línea. */
+/* Configuración no tenía acento y salía sin la barra de color que tienen
+   las otras tres. Le toca el azul de la acción, igual que las pestañas. */
+[data-pag="portal"] .nov{font-size:11px;color:var(--mt);padding:5px 0;border-bottom:1px solid var(--b-suave)}
+[data-pag="portal"] .nov b{color:var(--tx);font-weight:400}
+[data-pag="portal"] .toast.show{opacity:1}
+/* Modal detalle de tarea */
+[data-pag="portal"] .mo.on{display:flex}
+[data-pag="portal"] .mh .mt2{font-size:14px;font-weight:400;flex:1}
+/* Formularios · mismas clases que PM y Admin, así la ficha compartida
+   (_FichaTarea) se ve igual en los tres módulos y no cruda como antes. */
+/* .btn.bp y .btn.bv estaban redefinidos acá y le ganaban a _Estilos por
+   especificidad: bp volvía al celeste (que es CONTRATADO, no acción) y bv
+   devolvía el violeta a los botones, que ya es de los abonos. Se van los
+   dos: el botón primario lo define _Estilos y nadie más. */
+[data-pag="portal"] .btn.bg{background:transparent;color:var(--mt);border:1px solid var(--b)}
+[data-pag="portal"] .btn.brd{background:rgba(255,77,109,.1);color:var(--rd);border:1px solid rgba(255,77,109,.2)}
+[data-pag="portal"] .btn.sm{padding:5px 10px;font-size:11.5px}
+@media(max-width:560px){[data-pag="portal"] .g2, [data-pag="portal"] .g3{grid-template-columns:1fr}}
+[data-pag="portal"] .pill{border-radius:var(--r);padding:3px 11px;font-size:11px;font-weight:400;cursor:pointer;background:transparent}
+
+/* ══════════════════════════════════════════════════════════════
+   PM · lo propio de la pantalla, mudado acá el 08/10/2026.
+   Antes era un <style> en el archivo. Va con [data-pag] para que no
+   toque a las otras pantallas: mismo aspecto, una sola fuente.
+   ══════════════════════════════════════════════════════════════ */
+/* PASO 3 · 28/09/2026 · PM pide DENSIDAD, no redefine componentes.
+   Estas reglas se borraron porque decían lo mismo que _Estilos pero «un poco
+   más grande», y eso ahora lo da [data-densidad="comodo"] en el <body>:
+     .lg .ni .sb-foot .top .content .avfill .logo .sw input
+   .bv NO se borró: su diferencia es de COLOR (--violet vs --bv), no de
+   densidad. Unificar los dos violetas es una decisión del Design System. */
+/* PASO 2 · 28/09/2026 · PM deja de redefinir _Estilos. .mb2 y nav se borran
+   porque SÓLO le quitaban el scroll: sin ellas los modales largos y el menú
+   vuelven a scrollear.
+   Se borraron por idénticas a _Estilos.html: .sb .sb-badge nav */
+/* La base de la casa está en _Estilos (la misma que usa Administración).
+   Acá quedan SÓLO las reglas propias de PM y las que PM pisa a propósito:
+   .top más alto, .md más angosto, la grilla de proyectos, el riel de estados. */
+
+/* * y :root se borraron el 30/09/2026: los 14 tokens y color-scheme decían
+   EXACTAMENTE lo mismo que _Estilos. El único distinto era --mono ('DM Mono'),
+   y quedó el canónico: los números van en Courier New. */
+/* PM NO lleva el padding-top de la casa: la barra global la compensa cada
+   elemento por su cuenta (.sb y .top con top:36px). Con el padding puesto
+   quedaba una franja negra entre la barra y el título. */
+[data-pag="pm"] .app{display:flex;min-height:100vh;padding-top:0}
+[data-pag="pm"] .main{margin-left:200px;width:calc(100% - 200px);min-width:0;display:flex;flex-direction:column;min-height:100vh;padding-top:36px}
+/* .bv se borró: el violeta de los botones es var(--bv), el del sistema. */
+[data-pag="pm"] .bw{width:100%}
+/* .xt se fue a _Estilos: es el mismo badge para las cuatro pantallas */
+/* .md se borró: gana el ancho de _Estilos (640px). */
+/* .mb2 se borró: sólo le quitaba el max-height y el overflow, o sea el scroll
+   de los modales largos. Ahora vale el de _Estilos. */
+/* .gauto se borró: gana la grilla de _Estilos (minmax 190px). */
+/* Campos de dos o tres dígitos: no necesitan el ancho de un párrafo. */
+[data-pag="pm"] .fc.num2{max-width:96px}
+[data-pag="pm"] .g3 .fc.num2, [data-pag="pm"] .gauto .fc.num2{max-width:none}
+[data-pag="pm"] .g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:9px}
+[data-pag="pm"] .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+/* Los dos @keyframes estaban DUPLICADOS y rompían los de _Estilos: dos
+   @keyframes con el mismo nombre no se mezclan, gana el último. El de PM
+   decía «sp{}» —vacío—, así que el spinner de PM NO GIRABA. */
+
+/* .sw::before se borró: es la misma lupa de _Estilos. */
+[data-pag="pm"] .nota{background:var(--bg3);border-left:3px solid var(--blue);border-radius:0 7px 7px 0;padding:8px 11px;margin-bottom:6px;font-size:12px}
+[data-pag="pm"] .alta{background:var(--bg3);border:1px solid var(--blue);border-radius:var(--r);padding:11px;margin-top:7px}
+[data-pag="pm"] .alta-t{font-size:10px;font-weight:400;color:var(--blue);margin-bottom:9px}
+[data-pag="pm"] .wsteps{display:flex;gap:0;margin-bottom:14px;background:var(--bg);border:1px solid var(--b);border-radius:var(--r);padding:3px}
+[data-pag="pm"] .wstep{flex:1;text-align:center;padding:6px 4px;border-radius:var(--r);font-size:10px;font-weight:400;color:var(--mt);line-height:1.3;transition:.15s}
+[data-pag="pm"] .wstep .sn{display:block;font-size:13px;font-weight:400;margin-bottom:1px}
+[data-pag="pm"] .wstep.done{color:var(--ok)}[data-pag="pm"] .wstep.on{background:var(--blue);color:#fff}
+[data-pag="pm"] .stab{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:400;color:var(--mt);cursor:pointer;border:1px solid var(--b);transition:.15s;display:inline-block}
+[data-pag="pm"] .stab:hover{color:var(--tx)}[data-pag="pm"] .stab.on{background:var(--blue-a);color:var(--blue);border-color:var(--blue)}
+/* Pestañas Tareas · Agenda: eran el mismo inline copiado en v-tar, v-nov y v-agenda. */
+[data-pag="pm"] .vtabs{display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid var(--b);padding-bottom:8px}
+[data-pag="pm"] .vtab{background:transparent;color:var(--mt);border:1px solid var(--b);border-radius:var(--r);padding:5px 14px;font-size:12px;font-weight:400;cursor:pointer}
+[data-pag="pm"] .vtab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+[data-pag="pm"] .nav-proy-btn{background:var(--bg2);border:1px solid var(--b);color:var(--blue);border-radius:var(--r);padding:4px 14px;cursor:pointer;font-size:22px;line-height:1;font-weight:400;font-family:'Montserrat',sans-serif;transition:.15s}
+[data-pag="pm"] .nav-proy-btn:hover:not(:disabled){background:rgba(0,144,255,.15);border-color:var(--blue)}
+[data-pag="pm"] .nav-proy-btn:disabled{opacity:.25;cursor:not-allowed}
+
+/* ── PROY CARDS (estilo limpio, inspirado en Pendientes original) ── */
+[data-pag="pm"] .proy-emp-block{margin-bottom:16px}
+[data-pag="pm"] .proy-emp-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r) var(--r) 0 0;border-bottom:none}
+.proy-emp-logo{width:32px;height:32px;border-radius:50%;object-fit:contain;background:#fff;flex-shrink:0}
+.proy-emp-initial{width:32px;height:32px;border-radius:50%;background:rgba(0,144,255,.18);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:400;color:var(--blue);flex-shrink:0}
+[data-pag="pm"] .proy-emp-name{font-size:12px;font-weight:400;color:var(--tx);flex:1;text-transform:uppercase;letter-spacing:.06em}
+[data-pag="pm"] .proy-emp-n{font-size:10px;font-weight:300;color:var(--mt)}
+.proy-emp-h{display:flex;align-items:center;gap:10px}
+.proy-emp-h .sec{margin:0 0 0 8px}
+.proy-emp-h .m{font-size:12px}
+.proy-orden{width:150px;height:32px;font-size:11px}
+.proy-row-nov{font-size:11px;color:var(--mt);display:flex;flex-direction:column;gap:2px}
+.proy-row-pie{padding-top:6px;border-top:1px solid var(--b-suave)}
+[data-pag="pm"] .proy-row{background:var(--card);border:1px solid var(--b);border-left:3px solid var(--b);border-top:none;padding:10px 14px;display:flex;flex-direction:column;gap:5px}
+[data-pag="pm"] .proy-row:last-child{border-radius:0 0 var(--r) var(--r)}
+[data-pag="pm"] .proy-row-name{font-size:13px;font-weight:400;color:var(--tx);margin-bottom:3px}
+[data-pag="pm"] .proy-row-meta{font-size:11px;color:var(--mt);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── INLINE STATUS SELECT ── */
+[data-pag="pm"] .inline-est{background:var(--bg3);border:1px solid var(--b);border-radius:var(--r);padding:2px 6px;color:var(--tx);font-size:10px;font-weight:400;font-family:'Montserrat',sans-serif;cursor:pointer;height:24px}
+[data-pag="pm"] .inline-est:focus{outline:none;border-color:var(--blue)}
+
+/* ── ACTIVIDADES agrupadas ── */
+[data-pag="pm"] .act-group{margin-bottom:14px;background:var(--card);border:1px solid var(--b);border-radius:var(--r);overflow:hidden}
+[data-pag="pm"] .act-group-header{padding:9px 13px;background:var(--bg2);border-bottom:1px solid var(--b);display:flex;align-items:center;gap:8px}
+[data-pag="pm"] .act-group-cliente{font-size:13px;font-weight:400;color:var(--blue)}
+[data-pag="pm"] .act-group-sol{font-size:11px;color:var(--mt)}
+[data-pag="pm"] .act-row{padding:8px 13px;border-bottom:1px solid var(--b-suave);display:flex;align-items:center;gap:8px}
+[data-pag="pm"] .act-row:last-child{border-bottom:none}
+
+/* ── NOVEDADES ── */
+[data-pag="pm"] .nov-card{background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:10px 14px;margin-bottom:8px}
+[data-pag="pm"] .nov-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+[data-pag="pm"] .nov-proy{font-size:11px;font-weight:400;color:var(--blue)}
+[data-pag="pm"] .nov-meta{font-size:10px;color:var(--mt)}
+[data-pag="pm"] .nov-txt{font-size:12px;line-height:1.6;color:var(--tx)}
+[data-pag="pm"] .nov-group{margin-bottom:16px}
+[data-pag="pm"] .nov-group-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--b)}
+[data-pag="pm"] .nov-group-t{font-size:12px;font-weight:400;color:var(--tx)}
+[data-pag="pm"] .nov-group-c{background:rgba(255,255,255,.1);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:400;color:var(--mt)}
+[data-pag="pm"] .nov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+[data-pag="pm"] .nov-card2{background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:8px 10px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:4px;min-height:88px}
+[data-pag="pm"] .nov-card2:hover{border-color:var(--blue)}
+[data-pag="pm"] .nov-c2top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+[data-pag="pm"] .nov-proy2{font-size:10px;font-weight:400;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-pag="pm"] .nov-meta2{font-size:9px;color:var(--mt);flex-shrink:0}
+[data-pag="pm"] .nov-txt2{font-size:10px;line-height:1.45;color:var(--tx);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+[data-pag="pm"] .nov-foot2{font-size:9px;color:var(--mt);margin-top:auto}
+[data-pag="pm"] .gantt-wrap{border:1px solid var(--b);border-radius:var(--r);overflow:auto;background:var(--card);max-height:calc(100vh - 200px)}
+[data-pag="pm"] .gantt-head{display:flex;border-bottom:1px solid var(--b);position:sticky;top:0;background:var(--bg2);z-index:3}
+[data-pag="pm"] .gantt-row{display:flex;align-items:stretch;border-bottom:1px solid var(--b);min-height:30px;position:relative}
+[data-pag="pm"] .gantt-row:hover .crono-del{opacity:1!important;color:var(--rd)!important}
+[data-pag="pm"] .gantt-row:hover{background:rgba(0,144,255,.05)}
+[data-pag="pm"] .gantt-lbl{width:240px;min-width:240px;display:flex;align-items:center;gap:6px;padding:5px 10px;border-right:1px solid var(--b);position:sticky;left:0;background:var(--card);z-index:2;cursor:pointer}
+[data-pag="pm"] .gantt-head .gantt-lbl{background:var(--bg2);font-weight:400;font-size:10px;color:var(--mt);text-transform:uppercase}
+[data-pag="pm"] .gantt-time{position:relative;flex-shrink:0}
+[data-pag="pm"] .gantt-bar{position:absolute;top:7px;height:16px;border-radius:4px;cursor:pointer;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
+[data-pag="pm"] .gantt-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.4)}
+[data-pag="pm"] .gantt-hito{position:absolute;top:6px;width:14px;height:14px;transform:rotate(45deg);cursor:pointer;border:1px solid #fff;border-radius:2px}
+[data-pag="pm"] .gantt-tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--b);font-size:9px;color:var(--mt);padding-left:3px;padding-top:4px}
+[data-pag="pm"] .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--violet);z-index:1;opacity:.7}
+/* ── La puerta: cinco preguntas y nada más ─────────────────────────────── */
+[data-pag="pm"] .qgate{max-width:560px;margin:0 auto;background:var(--bg2);border:1px solid var(--b);
+  border-radius:var(--r);overflow:hidden}
+[data-pag="pm"] .qg-h{display:flex;align-items:center;gap:9px;padding:14px 18px;border-bottom:1px solid var(--b)}
+[data-pag="pm"] .qg-h h2{margin:0;font-size:16px}
+[data-pag="pm"] .qg-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:400;flex-shrink:0}
+[data-pag="pm"] .qg-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+[data-pag="pm"] .qg-fila{display:flex;flex-direction:column;gap:5px}
+[data-pag="pm"] .qg-l{font-size:10.5px;font-weight:400;color:var(--mt)}
+[data-pag="pm"] .qg-f{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;
+  border-top:1px solid var(--b);background:var(--bg3)}
+[data-pag="pm"] .qg-f .hint{margin:0;flex:1;min-width:120px}
+
+/* ── Popup de desarrollo ─────────────────────────────────────────────────── */
+[data-pag="pm"] .ck-col{display:flex;flex-direction:column;gap:6px;padding:3px 0}
+[data-pag="pm"] .ms-hs{background:var(--bg3);border-radius:var(--r);padding:11px 13px;margin:10px 0}
+[data-pag="pm"] .ms-hs-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;
+  font-size:10.5px;font-weight:400;color:var(--mt)}
+[data-pag="pm"] .ms-hs-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+[data-pag="pm"] .ms-hs-i{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tx)}
+[data-pag="pm"] .ms-hs-i span{flex:1;min-width:0}
+[data-pag="pm"] .ms-hs-i .fc{width:66px;text-align:right;padding:5px 8px;font-size:12px}
+[data-pag="pm"] .ms-hs-t{text-align:right;font-size:12px;color:var(--mt);margin-top:9px}
+[data-pag="pm"] .ms-hs-t b{color:var(--tx);font-size:15px;font-family:var(--mono)}
+[data-pag="pm"] .ms-prec{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:9px}
+[data-pag="pm"] .ms-p{background:var(--bg3);border-radius:var(--r);padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+[data-pag="pm"] .ms-p span{font-size:10.5px;color:var(--mt)}
+[data-pag="pm"] .ms-p b{font-size:13px;font-family:var(--mono)}
+[data-pag="pm"] .ms-banda{border-radius:var(--r);padding:9px 12px;font-size:11.5px;margin-bottom:10px;line-height:1.45}
+[data-pag="pm"] .ms-banda.ok{background:rgba(0,201,122,.1);border:1px solid rgba(0,201,122,.35);color:var(--tx)}
+[data-pag="pm"] .ms-banda.wa{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.4);color:var(--tx)}
+[data-pag="pm"] .ms-banda-f{font-size:10px;color:var(--mt);margin-top:4px}
+/* ── Lista de desarrollos ───────────────────────────────────────────────
+   Una línea por desarrollo, legible de un vistazo. Nada se edita acá: se hace
+   clic y se abre la ficha. Antes era una tabla de diez columnas abreviadas con
+   scroll horizontal y no se entendía qué era cada cosa. */
+[data-pag="pm"] .sol-list{display:flex;flex-direction:column;gap:6px}
+[data-pag="pm"] .sol-li{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--b);
+  border-radius:var(--r);padding:10px 13px;cursor:pointer;transition:.12s}
+[data-pag="pm"] .sol-li:hover{border-color:var(--blue);background:var(--bg3)}
+[data-pag="pm"] .sol-li.es-mant{border-left:3px solid var(--violet)}
+[data-pag="pm"] .sl-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--bg3);color:var(--mt);font-size:10.5px;font-weight:400;flex-shrink:0}
+[data-pag="pm"] .sol-li:hover .sl-n{background:var(--blue);color:#fff}
+[data-pag="pm"] .sl-txt{flex:1;min-width:0}
+[data-pag="pm"] .sl-tit{font-size:13px;font-weight:400;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-pag="pm"] .sl-sub{font-size:11px;color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+[data-pag="pm"] .sl-num{text-align:right;flex-shrink:0;display:flex;flex-direction:column;line-height:1.15}
+[data-pag="pm"] .sl-num b{font-family:var(--mono);font-size:13.5px;color:var(--tx)}
+[data-pag="pm"] .sl-num span{font-size:10.5px;color:var(--mt)}
+[data-pag="pm"] .sl-precio b{color:var(--violet)}
+[data-pag="pm"] .sl-acc{display:flex;gap:3px;flex-shrink:0}
+@media(max-width:620px){
+  [data-pag="pm"] .sol-li{flex-wrap:wrap}
+  [data-pag="pm"] .sl-txt{flex:1 1 100%;order:1}
+  [data-pag="pm"] .sl-n{order:0}
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   FICHA DE DESARROLLO (_SolFicha, sólo en PM) · lo propio de la pantalla, mudado acá el 08/10/2026.
+   Antes era un <style> en el archivo. Va con [data-pag] para que no
+   toque a las otras pantallas: mismo aspecto, una sola fuente.
+   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   CSS DE LA FICHA — viaja con ella.
+   Antes dependía del CSS de cada pantalla: en el Cotizador faltaban .stab,
+   .mb2 y .bx, así que los tabs salían como texto pegado y el modal sin aire.
+   Todo lo que la ficha usa se define acá, y no pisa lo del host.
+   ══════════════════════════════════════════════════════════════════════════ */
+[data-pag="pm"] #m-item .mb2{padding:16px 18px;max-height:74vh;overflow-y:auto}
+[data-pag="pm"] #m-item .stab{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:400;color:var(--mt);
+  cursor:pointer;border:1px solid var(--b);transition:.15s;display:inline-block;white-space:nowrap;background:var(--bg2)}
+[data-pag="pm"] #m-item .stab:hover{color:var(--tx);border-color:var(--b2,var(--blue))}
+[data-pag="pm"] #m-item .stab.on{color:var(--blue);border-color:var(--blue);background:var(--blue-a)}
+[data-pag="pm"] #m-item /* .bx se fue a _Estilos */
+#m-item .pills{display:flex;gap:5px;flex-wrap:wrap}
+[data-pag="pm"] #m-item .pill{border:1px solid var(--b);background:var(--bg2);color:var(--mt);border-radius:14px;
+  padding:4px 11px;font-size:11.5px;cursor:pointer;font-family:inherit;font-weight:400}
+[data-pag="pm"] #m-item .pill:hover{color:var(--tx)}
+[data-pag="pm"] #m-item .pill.on{border-color:var(--blue);color:var(--blue);background:var(--blue-a)}
+[data-pag="pm"] #m-item .hint{font-size:10.5px;color:var(--mt);margin:4px 0}
+[data-pag="pm"] #m-item .empty{text-align:center;color:var(--mt);font-size:11.5px;padding:12px}
+/* Un campo de dos dígitos no necesita el ancho de un párrafo: los números se
+   acotan y el formulario deja de verse vacío. */
+[data-pag="pm"] #m-item input[type="number"], [data-pag="pm"] #m-item input[inputmode="numeric"]{max-width:150px}
+[data-pag="pm"] #m-item input[type="date"]{max-width:170px}
+/* Filas que acomodan solas cuántas columnas entran, en vez de dos fijas. */
+[data-pag="pm"] #m-item .gauto{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px}
+[data-pag="pm"] #m-item table{width:100%;border-collapse:collapse}
+
+/* ── Estimación: primero las horas, el precio abajo y como referencia ─────── */
+[data-pag="pm"] .est-box{background:var(--bg2);border:1px solid var(--b);border-radius:10px;overflow:hidden}
+[data-pag="pm"] .est-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:12px 14px;border-bottom:1px solid var(--b);flex-wrap:wrap}
+[data-pag="pm"] .est-k{font-size:10.5px;color:var(--mt)}
+[data-pag="pm"] .est-hs{font-family:var(--mono);font-size:24px;font-weight:400;color:var(--wa);line-height:1.1;margin-top:2px}
+[data-pag="pm"] .est-hs span{font-size:12px;font-weight:500;color:var(--mt);font-family:inherit}
+[data-pag="pm"] .est-prom{font-family:var(--mono);font-size:17px;font-weight:400;color:var(--ok);margin-top:2px}
+[data-pag="pm"] .est-sub{font-size:10px;color:var(--mt);margin-top:2px}
+[data-pag="pm"] .est-etapas{padding:8px 14px}
+[data-pag="pm"] .est-et{display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer}
+[data-pag="pm"] .est-et:hover .est-et-n{color:var(--tx)}
+[data-pag="pm"] .est-et-n{font-size:11px;color:var(--mt);width:104px;flex-shrink:0}
+[data-pag="pm"] .est-et-b{flex:1;height:5px;border-radius:3px;background:var(--bg);overflow:hidden}
+[data-pag="pm"] .est-et-b span{display:block;height:100%;background:var(--blue);border-radius:3px}
+[data-pag="pm"] .est-et-h{font-family:var(--mono);font-size:11.5px;font-weight:400;width:48px;text-align:right;flex-shrink:0}
+[data-pag="pm"] .est-et-d{font-size:10px;color:var(--mt);padding:2px 0 7px 114px;line-height:1.55}
+[data-pag="pm"] .est-et-d i{color:var(--mt2);font-style:normal}
+[data-pag="pm"] .est-pie{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 14px;
+  border-top:1px solid var(--b);background:var(--bg3)}
+[data-pag="pm"] .est-precio{font-family:var(--mono);font-size:15px;font-weight:400;color:var(--violet)}
+[data-pag="pm"] .est-alerta{font-size:10px;color:var(--rd);background:rgba(255,77,109,.1);border:1px solid var(--rd);
+  border-radius:var(--r);padding:2px 7px;margin-left:auto}
+
+
+/* ══ MÁS LIVIANO · 09/10/2026 ══════════════════════════════════════
+   Montserrat en 700/800 se veía pesada: la negrita del sistema es 600 y
+   el máximo 700. Las clases ya lo dicen; esto alcanza también a los
+   style= que todavía quedan escritos a mano, en cualquier pantalla. */
+[style*="font-weight:700"],[style*="font-weight: 700"]{font-weight:600!important}
+[style*="font-weight:800"],[style*="font-weight: 800"]{font-weight:600!important}
+th,summary{font-weight:400}   /* el navegador los pone en negrita solo */
+/* ══ FORMULARIOS EN DOS COLUMNAS · 09/10/2026 ═══════════════════════
+   El modal es más ancho y los campos (.fg) se acomodan solos de a dos:
+   la mitad de scroll. Lo que no es un campo suelto —títulos, grillas
+   propias, textos largos— ocupa todo el ancho. md-sm sigue de a uno. */
+.md:not(.md-sm) .mb2{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));column-gap:14px;align-content:start}
+.md:not(.md-sm) .mb2>*{grid-column:1/-1}
+.md:not(.md-sm) .mb2>.fg{grid-column:auto}
+.md:not(.md-sm) .mb2>.fg:has(textarea,.ta,.g2,.g3,.gauto,.tag-list){grid-column:1/-1}
+/* Las filas .g2/.g3 se disuelven: sus campos entran en la misma grilla y
+   el modal ancho los pone de a tres en vez de de a dos. */
+.md:not(.md-sm) .mb2>.g2,.md:not(.md-sm) .mb2>.g3{display:contents}
+.md:not(.md-sm) .mb2>.g2>*,.md:not(.md-sm) .mb2>.g3>*{grid-column:auto}
+.md:not(.md-sm) .mb2>.g2>.fg:has(textarea,.ta),.md:not(.md-sm) .mb2>.g3>.fg:has(textarea,.ta){grid-column:1/-1}
+/* ── SEGUIMIENTO (PM) · tarjetas por cliente · 09/10/2026 ── */
+.seg-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.seg-grp{margin-bottom:14px}
+.seg-grp-h{display:flex;align-items:center;gap:8px;padding:6px 2px;cursor:pointer;border-bottom:1px solid var(--b-suave);margin-bottom:8px}
+.seg-grp-n{font-weight:400;font-size:11.5px;color:var(--tx);text-transform:uppercase;letter-spacing:.04em}
+.seg-chev{color:var(--mt);display:inline-flex}
+.seg-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:12px}
+.seg-track.carr{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
+.seg-track.carr .seg-card{flex:0 0 420px;scroll-snap-align:start}
+.seg-card{background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-height:260px}
+.seg-card.det{opacity:.6}
+.seg-card.rev{opacity:.5}
+.seg-h{display:flex;align-items:flex-start;gap:8px}
+.seg-nom{font-weight:300;font-size:16px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg-devs{display:flex;flex-direction:column;gap:5px}
+.seg-dev{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.seg-dev.det{opacity:.55}
+.seg-dev-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}
+.seg-mono{font-family:var(--mono);font-size:10px}
+.seg-sig{display:flex;gap:5px;flex-wrap:wrap}
+.seg-nov{display:flex;gap:6px;align-items:center;font-size:10.5px;color:var(--mt)}
+.seg-ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg-plata{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--b-suave);padding-top:6px}
+.seg-kv{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--mt)}
+.seg-nota{display:flex;gap:5px;align-items:center}
+.seg-nota .fc{height:28px;font-size:11px}
+.seg-acc{display:flex;gap:5px;align-items:center;border-top:1px solid var(--b-suave);padding-top:7px}
+.seg-rev-on{color:var(--ok)}
+/* ── FICHA DE PROYECTO · secciones y desarrollos plegables · 09/10/2026 ── */
+.fs{border-bottom:1px solid var(--b-suave);padding:4px 0}
+.fs:last-child{border-bottom:none}
+.fs-h{display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer}
+.fs-t{font-weight:400;font-size:12.5px;color:var(--tx)}
+.fs-h:hover .fs-t{color:var(--blue)}
+.fs-b{padding:2px 0 12px}
+.fs.cerr .fs-b{display:none}
+.des-h{cursor:pointer}
+.des-card .des-chev{transform:rotate(90deg);transition:transform .12s}
+.des-card.cerr .des-chev{transform:none}
+.des-card.cerr .des-b{display:none}
+.tk-row{font-size:11px;color:var(--tx);padding:3px 0;border-top:1px solid var(--b-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ══════════════════════════════════════════════════════════════
+   TAREAS (_TareasDash) · era un <style> propio; mudado acá el 09/10/2026 y compactado.
+   ══════════════════════════════════════════════════════════════ */
+.td{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px;align-items:start}
+@media(max-width:980px){.td{grid-template-columns:1fr}}
+.td-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.td-h1{font-size:15px;font-weight:300;color:var(--tx)}
+/* Seguimiento (15/10/2026): saludo arriba, Mías/Todas al lado del título, filtros en chips */
+.td-hello{margin-bottom:14px}
+.td-hello-h{font-size:19px;font-weight:400;color:var(--tx)}
+.td-hello .td-sub b{color:var(--blue);font-family:var(--mono)}
+.td-head-l{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.td-head-l .chip.fil{padding:3px 12px}
+
+.td-sub{font-size:11px;color:var(--mt);margin-top:3px}
+.td-search{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:0 10px;margin-bottom:14px}
+.td-search input{flex:1;background:transparent;border:0;outline:0;color:var(--tx);font-size:12px;padding:7px 0;font-family:inherit}
+.td-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+@media(max-width:700px){.td-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.td-kpi{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:7px 10px;cursor:pointer;text-align:left;font-family:inherit;color:var(--tx)}
+.td-kpi:hover,.td-kpi.on{border-color:var(--k)}
+.td-kpi-ic{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:var(--r);border:1px solid var(--k);background:var(--ka);color:var(--k);flex-shrink:0}
+.td-kpi-ic .ico{font-size:13px}
+.td-kpi-n{font-size:15px;font-weight:400;font-family:var(--mono,monospace);line-height:1.1}
+.td-kpi-l{font-size:10px;color:var(--mt)}
+.td-kpi .td-go{margin-left:auto;color:var(--mt)}
+.td-tabs{display:flex;gap:4px;border-bottom:1px solid var(--b);margin-bottom:12px;flex-wrap:wrap}
+.td-tab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--mt);font-size:11.5px;font-weight:500;padding:6px 10px;cursor:pointer;font-family:inherit}
+.td-tab.on{color:var(--tx);border-bottom-color:var(--blue)}
+.td-sec{background:var(--card);border:1px solid var(--b);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+.td-sec-h{display:flex;align-items:center;gap:8px;padding:7px 11px;border-bottom:1px solid var(--b)}
+.td-sec-ic{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:var(--r);border:1px solid var(--k);color:var(--k);background:var(--ka)}
+.td-sec-t{font-size:12px;font-weight:400}
+.td-sec-n{font-size:10.5px;color:var(--mt)}
+.td-link{margin-left:auto;background:transparent;border:0;color:var(--blue);font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-family:inherit}
+.td-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.td-tbl th{font-size:9px;font-weight:400;color:var(--mt);text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:7px 8px;border-bottom:1px solid var(--b-suave)}
+.td-tbl td{font-size:11px;padding:5px 8px;border-bottom:1px solid var(--b-tenue);vertical-align:middle;overflow:hidden;text-overflow:ellipsis}
+.td-tbl tr:last-child td{border-bottom:0}
+.td-tbl tr:hover td{background:var(--bg3)}
+.td-t{font-weight:500;color:var(--tx);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-t2{font-size:10px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-cp{color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.td-due{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.td-due.late{color:var(--rd)} .td-due.today{color:var(--yl)}
+.td-chk{width:17px;height:17px;border:1.5px solid var(--mt);border-radius:4px;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--ok);padding:0}
+.td-chk:hover{border-color:var(--ok)}
+.td-chk.done{border-color:var(--ok);background:var(--ok-a)}
+.td-pill{display:inline-block;padding:1px 10px;border-radius:var(--r);font-size:10px;font-weight:400;border:1px solid var(--b);color:var(--mt)}
+.td-pill.rd{border-color:var(--rd);color:var(--rd);background:var(--rd-a)}
+.td-pill.yl{border-color:var(--yl);color:var(--yl);background:var(--yl-a)}
+.td-pill.mt{border-color:var(--mt);color:var(--mt);background:var(--mt-a)}
+.td-st{display:inline-block;padding:0 7px;border-radius:10px;font-size:9.5px;font-weight:400;border:1px solid;margin-left:6px;vertical-align:1px}
+.td-st.nueva{color:var(--blue);border-color:var(--blue);background:var(--blue-a)}
+.td-st.curso{color:var(--teal);border-color:var(--teal);background:var(--teal-a)}
+.td-st.detenida{color:var(--mt);border-color:var(--mt);background:var(--mt-a)}
+.td-st.finalizada{color:var(--ok);border-color:var(--ok);background:var(--ok-a)}
+.td-st.cancelada{color:var(--mt2);border-color:var(--mt2)}
+.td-st.late{color:var(--rd);border-color:var(--rd);background:var(--rd-a)}
+.td-ibtn{background:transparent;border:0;color:var(--mt);cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 4px;font-family:inherit}
+.td-ibtn:hover{color:var(--tx)}
+.td-empty{padding:14px;font-size:11.5px;color:var(--mt)}
+/* Portal · Por cliente (20/10/2026): cliente plegable con sus proyectos */
+.desp>.desp-tbl{padding:0;overflow-x:auto}
+.desp-chart{position:relative;height:260px}
+.pe-tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:660px}
+.pe-tbl th{text-align:right;padding:5px 14px;border-bottom:1px solid var(--b);white-space:nowrap;margin:0}
+.pe-tbl th:first-child{text-align:left}
+.pe-tbl td{padding:5px 14px}
+.pe-tbl td.m{text-align:right}
+.pe-tbl td.m:not(.b){font-weight:400}
+.pe-tbl .b{font-weight:400}
+.pe-cli{background:var(--bg3);cursor:pointer}
+.pe-cli:hover td:first-child{color:var(--blue)}
+.pe-cli td:first-child{display:flex;align-items:center;gap:6px}
+.pe-pro td:first-child{padding-left:34px;color:var(--mt);font-size:11.5px}
+.pe-est{color:var(--mt2);font-size:10px}
+.pe-tot{border-top:2px solid var(--b)}
+.pe-tot td:first-child{font-weight:400}
+/* Tarea desplegable (15/10/2026): ▸ abre sus novedades debajo de la fila */
+.td-exp{background:transparent;border:0;color:var(--mt);cursor:pointer;padding:0 2px;display:inline-flex;align-items:center;transition:transform .15s}
+.td-exp:hover{color:var(--tx)} .td-exp.on{transform:rotate(90deg);color:var(--blue)}
+.td-lead{display:inline-flex;align-items:center;gap:3px}
+.td-tbl tr.td-x td{background:var(--bg3);padding:10px 14px 4px;white-space:normal}
+.td-tbl tr.td-x:hover td{background:var(--bg3)}
+/* Actividades (ProyectoHoras): por proyecto y desarrollo, sin horas */
+.td-act-dev{font-size:10.5px;font-weight:400;color:var(--blue);padding:7px 11px 2px;border-top:1px solid var(--b-tenue)}
+.td-act-dev:first-of-type{border-top:0}
+.td-acts col:nth-child(1){width:24%} .td-acts col:nth-child(3){width:20%} .td-acts col:nth-child(4){width:150px}
+.td-tbl select.fc{padding:3px 6px;font-size:11px;width:100%}
+/* Adjuntar en novedades: link o archivo a Drive */
+.ft-attach{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ft-attach input[type=file]{display:none}
+.ft-attach .fc{flex:1;min-width:180px}
+.ft-note-t a{color:var(--blue);text-decoration:underline;word-break:break-all}
+.td-side .td-card{background:var(--card);border:1px solid var(--b);border-radius:var(--r);padding:9px 11px;margin-bottom:10px}
+.td-side-h{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:400;margin-bottom:10px}
+.td-side-h .td-link{font-weight:500}
+.td-side label{display:block;font-size:10.5px;color:var(--mt);margin:8px 0 4px}
+.td-side select{width:100%}
+.td-sw{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:11.5px;color:var(--tx)}
+.td-tog{width:30px;height:16px;border-radius:var(--r);border:1px solid var(--b);background:var(--bg3);position:relative;cursor:pointer;padding:0}
+.td-tog::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:3px;background:var(--mt);transition:.15s}
+.td-tog.on{border-color:var(--blue);background:var(--blue-a)} .td-tog.on::after{left:16px;background:var(--blue)}
+.td-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.td-cal .wd{font-size:9.5px;color:var(--mt);padding-bottom:4px}
+.td-day{font-size:11px;padding:5px 0;border-radius:var(--r);border:1px solid transparent;cursor:pointer;color:var(--tx);background:transparent;font-family:inherit}
+.td-day.out{visibility:hidden;cursor:default}
+.td-day.has{border-color:var(--blue)}
+.td-day.has-today{border-color:var(--yl)}
+.td-day.has-late{border-color:var(--rd)}
+.td-day.today{background:var(--blue-a);font-weight:400}
+.td-day.sel{background:var(--blue-a2);color:var(--tx);border-color:var(--blue)}
+.td-up{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:5px 0;cursor:pointer;color:var(--tx)}
+.td-up span{display:inline-flex;align-items:center;gap:6px}
+.td-up b{font-family:var(--mono,monospace);font-size:10.5px;border:1px solid var(--b);border-radius:var(--r);padding:0 7px;color:var(--mt)}
+.td-up.on b{border-color:var(--blue);color:var(--blue)}
+.td-rc{padding:6px 0;border-bottom:1px solid var(--b-tenue);cursor:pointer}
+.td-rc:last-child{border-bottom:0}
+.td-rc-h{font-size:10px;color:var(--mt);display:flex;justify-content:space-between}
+.td-rc-t{font-size:11px;color:var(--tx);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.td-k-blue{--k:var(--blue);--ka:var(--blue-a)} .td-k-teal{--k:var(--teal);--ka:var(--teal-a)}
+.td-k-yl{--k:var(--yl);--ka:var(--yl-a)} .td-k-violet{--k:var(--violet);--ka:var(--violet-a)}
+.td-k-wa{--k:var(--wa);--ka:var(--wa-a)} .td-k-rd{--k:var(--rd);--ka:var(--rd-a)}
+.td.compact{display:block}
+.td-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.td-bar .td-search{flex:1;min-width:160px;margin:0}
+.td-bar select{width:auto}
+
+/* ══════════════════════════════════════════════════════════════
+   HOY (_HoyDash) · era un <style> propio; mudado acá el 09/10/2026.
+   ══════════════════════════════════════════════════════════════ */
+.hoy{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media(max-width:980px){.hoy{grid-template-columns:1fr}}
+.hoy-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.hoy-h1{font-size:20px;font-weight:300;color:var(--tx)}
+.hoy-sub{font-size:12px;color:var(--mt);margin-top:3px}
+.hoy-fil{display:flex;gap:6px}
+.hoy-kpis .kpi{cursor:pointer;text-align:left;font-family:inherit;color:inherit}
+.hoy-kpis .kpi.on{outline:1px solid var(--accent)}
+.hoy-sec{background:var(--card);border:1px solid var(--b);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+.hoy-sec-h{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--b);font-weight:400;font-size:13px;color:var(--tx)}
+.hoy-sec-h .hoy-go{margin-left:auto;font-weight:400;font-size:11px;color:var(--blue);cursor:pointer}
+.hoy-row{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--b-suave)}
+.hoy-row:last-child{border-bottom:none}
+.hoy-bar{width:3px;align-self:stretch;border-radius:2px;background:var(--mt2);flex-shrink:0}
+.hoy-bar.rd{background:var(--rd)}
+.hoy-bar.wa{background:var(--wa)}
+.hoy-bar.bl{background:var(--blue)}
+.hoy-bar.vi{background:var(--violet)}
+.hoy-main{flex:1;min-width:0}
+.hoy-t{font-size:12.5px;color:var(--tx);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hoy-t:hover{color:var(--blue)}
+.hoy-t2{font-size:10.5px;color:var(--mt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hoy-due{font-family:var(--mono);font-size:11px;color:var(--mt);white-space:nowrap}
+.hoy-due.late{color:var(--rd)}
+.hoy-due.today{color:var(--blue)}
+.hoy-ev{display:flex;gap:10px;padding:9px 13px;border-bottom:1px solid var(--b-suave);font-size:12px;color:var(--tx)}
+.hoy-ev:last-child{border-bottom:none}
+.hoy-ev-h{font-family:var(--mono);font-size:11px;color:var(--mt);min-width:44px}
+.hoy-plata{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--b-suave);font-size:12px;color:var(--mt)}
+.hoy-plata:last-child{border-bottom:none}
+.hoy-vacio{padding:14px 13px;font-size:12px;color:var(--mt)}
+
+/* FICHA DE TAREA (_FichaTarea) · era un <style> propio; mudado acá el 09/10/2026. */
+.ft-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.ft-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:14px;font-size:11px;font-weight:400;
+background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;font-family:inherit}
+.ft-pill:hover{border-color:var(--b-fuerte)}
+.ft-pill.on{background:var(--blue-a);color:var(--blue);border-color:var(--blue)}
+.ft-pill.t-rd.on{background:var(--rd-a);color:var(--rd);border-color:var(--rd)}
+.ft-pill.t-yl.on{background:var(--yl-a);color:var(--yl);border-color:var(--yl)}
+.ft-pill.t-mt.on{background:var(--mt-a);color:var(--tx);border-color:var(--mt)}
+/* 15/10/2026 · la ficha era monocromática: cada pill con tono muestra su color
+   apagado (texto + borde tenue) y lleno al elegirla. Tono = significado. */
+.ft-pill.t-rd{color:var(--rd)}.ft-pill.t-yl{color:var(--yl)}.ft-pill.t-ok{color:var(--ok)}
+.ft-pill.t-violet{color:var(--violet)}.ft-pill.t-blue{color:var(--blue)}.ft-pill.t-wa{color:var(--wa)}.ft-pill.t-teal{color:var(--teal)}
+.ft-pill.t-ok.on{background:var(--ok-a);color:var(--ok);border-color:var(--ok)}
+.ft-pill.t-violet.on{background:var(--violet-a);color:var(--violet);border-color:var(--violet)}
+.ft-pill.t-wa.on{background:var(--wa-a);color:var(--wa);border-color:var(--wa)}
+.ft-pill.t-teal.on{background:var(--teal-a);color:var(--teal);border-color:var(--teal)}
+/* Alta de tarea / alerta / reunión (15/10/2026, pedido de Victoria): más ancho para que
+   las pills entren en una línea, y más aire entre filas. */
+#m-ft .md{max-width:780px}
+#m-ft .g2,#m-ft .g3{column-gap:16px}
+#m-ft .ft-pills{flex-wrap:nowrap}
+#m-ft .ft-pill{white-space:nowrap}
+.ft-sum{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--tx);background:var(--teal-a);border:1px solid var(--b-suave);border-radius:var(--r);padding:7px 11px;margin:2px 0 10px}
+.ft-sum b{font-family:var(--mono);color:var(--teal);font-weight:400}
+.ft-days{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mt)}
+.ft-days .fc{max-width:70px;text-align:center;font-family:var(--mono)}
+.ft-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--mt);margin-bottom:12px}
+.ft-meta span{display:inline-flex;align-items:center;gap:5px}
+.ft-ctx{font-size:11px;color:var(--blue);margin-bottom:10px}
+.ft-note{background:var(--bg3);border:1px solid var(--b-suave);border-radius:var(--r);padding:8px 11px;margin-bottom:7px}
+.ft-note.follow{border-color:var(--yl);background:var(--yl-a)}
+.ft-note-h{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--mt);margin-bottom:3px}
+.ft-note-t{font-size:12px;line-height:1.5;color:var(--tx);white-space:pre-wrap;word-break:break-word}
+.ft-sep{border-top:1px solid var(--b);margin:14px 0 10px;padding-top:10px}
+.ft-box{display:none;background:var(--bg3);border:1px solid var(--b-suave);border-radius:var(--r);padding:10px 12px;margin-top:10px}
+.ft-box.on{display:block}
+.ft-err{font-size:11px;color:var(--rd);min-height:14px;margin-top:6px}
+.ft-info{font-size:10.5px;color:var(--mt);margin-top:4px}
+.ft-busy{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:var(--mt-a);cursor:wait}
+.ft-busy.on{display:flex}
+.ft-busy-box{display:flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r);padding:12px 18px;font-size:12px;color:var(--tx)}
+
+/* PORTAL · Resumen financiero (.fin-dos) · era un <style> propio; mudado acá el 09/10/2026. */
+[data-pag="portal"] .fin-dos{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+[data-pag="portal"] .fin-dos .pulso{margin-bottom:0}
+@media (max-width:900px){ [data-pag="portal"] .fin-dos{grid-template-columns:minmax(0,1fr)} }
+
+.seg-tars{display:flex;flex-direction:column;gap:3px}
+.seg-tar{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--tx)}
+.seg-chips{display:flex;gap:4px;flex-wrap:wrap}
+.seg-chips .chip.fil{padding:2px 9px;font-size:10px}
+/* Seguimiento · 15/10/2026 */
+.seg-logo{width:22px;height:22px;border-radius:50%;object-fit:contain;background:var(--tx);flex-shrink:0}
+.seg-logo-l{display:inline-flex;align-items:center;justify-content:center;background:var(--blue-a);color:var(--blue);font-size:10px;font-weight:400}
+.seg-linea{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;font-size:11px;color:var(--mt)}
+.seg-sec{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:400;color:var(--mt);border-top:1px solid var(--b-suave);padding-top:6px}
+.seg-com{display:flex;align-items:baseline;gap:8px;font-size:11px;padding:2px 0}
+.seg-com-t{flex:1;min-width:0;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg-com-m{flex-shrink:0;font-size:10px;color:var(--mt);white-space:nowrap}
+.seg-com-a{color:var(--mt)}
+/* Seguimiento · 22/10/2026: estado = punto chico + texto; barra con un tramo
+   por desarrollo; secciones colapsables sin caja (no tarjeta en tarjeta). */
+.est{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:11px}
+.t-xm{color:var(--mt)}.t-xy{color:var(--yl)}.t-xw{color:var(--wa)}.t-xb{color:var(--blue)}
+.t-xt{color:var(--teal)}.t-xv{color:var(--violet)}.t-xg{color:var(--ok)}
+.dev-tit{font-weight:600}   /* el nombre del desarrollo, chico: en negrita (22/10/2026) */
+.seg-hacc{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.seg-hacc .est{margin-right:4px}
+/* Botón-ícono (22/10/2026): sin palabra; al pasar el cursor, un tooltip
+   flotante con data-tip dice qué hace. Para toda la app. */
+.btn-ico{width:32px;height:32px;padding:0;justify-content:center;flex-shrink:0;position:relative;background:none;border:0;color:var(--mt);transition:color .15s}
+.btn-ico:hover,.btn-ico:focus-visible{background:none;color:var(--blue)}
+.btn-ico.h-ok:hover,.btn-ico.h-ok:focus-visible{color:var(--ok)}
+.btn-ico.h-mt:hover,.btn-ico.h-mt:focus-visible{color:var(--tx)}
+.btn-ico.seg-rev-on,.btn-ico.seg-rev-on:hover{color:var(--ok)}   /* revisado: estado fijo, no hover */
+.btn-ico[data-tip]:hover::after,.btn-ico[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);right:0;z-index:60;
+  background:var(--bg3);color:var(--tx);font-size:11px;font-weight:400;line-height:1.35;padding:6px 9px;border-radius:var(--r);
+  white-space:normal;width:max-content;max-width:240px;text-align:left;pointer-events:none}
+.seg-porque{font-size:10px;font-weight:300;color:var(--mt);margin-top:-4px}
+.seg-s{margin:6px 0 0}
+.est-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.e-xm{background:var(--mt)}.e-xy{background:var(--yl)}.e-xw{background:var(--wa)}.e-xb{background:var(--blue)}
+.e-xt{background:var(--teal)}.e-xv{background:var(--violet)}.e-xg{background:var(--ok)}
+.seg-est{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:11px;color:var(--mt)}
+.seg-barra{display:flex;gap:2px;height:4px;border-radius:2px;overflow:hidden}
+.seg-barra>i{flex:1}
+.seg-barra>i.pas{opacity:.3}   /* lo ya cerrado, apagado */
+/* Estado de un desarrollo: columna fija a la derecha, las acciones no lo corren */
+.dev-est{flex-shrink:0;width:92px;text-align:right;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev-sub{font-size:10px;font-weight:300;color:var(--mt)}
+.seg-sub{padding-left:13px}
+/* Desplegable plano: el mismo .desp, dentro de una tarjeta (sin caja: no
+   tarjeta en tarjeta). Su rótulo es el título de la sección; anidado, normal. */
+.desp.plano{background:none;border:0;border-top:1px solid var(--b-suave);border-radius:0;margin:0;overflow:visible}
+.desp.plano>summary{display:flex;align-items:center;gap:6px;padding:6px 0;font-size:9.5px;font-weight:600;color:var(--mt);text-transform:uppercase;letter-spacing:.06em}
+.desp.plano .desp.plano{border-top:0}
+.desp.plano .desp.plano>summary{text-transform:none;letter-spacing:0;font-size:11px;font-weight:400;color:var(--tx)}
+.desp.plano[open]>summary{border-bottom:0}
+.desp.plano>*:not(summary){padding:0 0 4px}
+.seg-otros{margin:4px 0 0;padding-top:6px;border-top:1px solid var(--b-suave)}
+/* Barra de estado del proyecto (22/10/2026): fina, cada paso en el color de
+   su estado, lo pasado apagado, lo que no se puede elegir en gris. */
+/* Lateral de la ficha (22/10/2026): fondo propio, una caja por renglón. */
+.ficha-lat{display:flex;flex-direction:column;gap:10px;position:sticky;top:36px;min-width:0}
+.ficha-lat>.card{background:var(--bg2)}
+.lat-cajas{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:5px;margin-top:6px}
+.lat-caja{background:var(--bg3);border-radius:var(--r);padding:5px 7px;min-width:0}
+.lat-caja .m{font-size:12px;overflow-wrap:anywhere}
+.lat-caja .lat-usd{font-size:10px}
+.lat-sub{font-size:9px;font-weight:300;color:var(--mt);margin-top:1px}
+/* Barra de un desarrollo (22/10/2026): tramos de 6 px en el color de cada
+   estado; lo pasado apagado, lo que falta gris tenue. */
+.riel-des{display:flex;gap:3px;margin:6px 0 2px}
+.riel-des>i{flex:1;height:6px;border-radius:3px}
+.riel-des>i.pas{opacity:.35}
+.riel-des>i.fut{opacity:.25}
+.riel{margin-top:10px}
+.riel-h{display:flex;align-items:center;gap:8px}
+.riel-pasos{flex:1;min-width:0;display:flex;gap:3px}
+.riel-paso{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;background:none;border:0;padding:0;font-family:inherit;font-size:10.5px;color:var(--mt);cursor:pointer;text-align:left}
+.riel-paso>i{height:6px;border-radius:3px}
+.riel-paso>span{overflow-wrap:anywhere;line-height:1.25}
+.riel-paso.pas>i{opacity:.35}
+.riel-paso.aqui{cursor:default}
+.riel-paso.no{cursor:default;opacity:.45}
+
+/* Cotizador (20/10/2026): lo que suma y los precios quedan a la vista al bajar,
+   debajo de la barra de título (36 de la barra GIWA + 50 de .top) */
+[data-pag="cot"] .pegado{position:sticky;top:96px;align-self:start}
+/* Herramientas del Cotizador (22/10/2026): Reunión · README · Reutilizar. Una por pantalla. */
+[data-pag="cot"] .ch-top{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg);padding:8px 0 10px;border-bottom:1px solid var(--b);margin-bottom:12px}
+[data-pag="cot"] .ch-tot{display:flex;gap:14px;align-items:baseline;margin-left:auto}
+[data-pag="cot"] .ch-tot b{font-family:var(--mono);font-size:16px;color:var(--accent)}
+[data-pag="cot"] .ch-dos{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+[data-pag="cot"] .ch-minuta{width:100%;min-height:62vh;resize:vertical}
+[data-pag="cot"] .ch-readme{width:100%;min-height:40vh;resize:vertical;font-family:var(--mono);font-size:11.5px}
+[data-pag="cot"] .ch-fila{display:grid;grid-template-columns:22px 1fr 86px 64px 92px;gap:6px;align-items:center;padding:5px 2px;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .ch-fila.hija{padding-left:18px}
+[data-pag="cot"] .ch-fila .fc{padding:4px 6px}
+[data-pag="cot"] .ch-num{font-family:var(--mono);text-align:right}
+[data-pag="cot"] .ch-auto{width:auto;min-width:160px}
+[data-pag="cot"] .ch-etapa{font-size:10px;color:var(--mt)}
+@media (max-width:900px){[data-pag="cot"] .ch-dos{grid-template-columns:1fr}}
+
+/* ── COTIZADOR · ALTA DE PROYECTO (22/10/2026) ─────────────────────────
+   Letra fina: Montserrat 200 en el texto, 600 como máximo (nunca más gruesa).
+   1 Resumen fijo arriba · 2 Empresa con campos angostos · 3 Desarrollos. */
+[data-pag="cot"] .cn-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;font-weight:200}
+[data-pag="cot"] .cn-wrap .fl,[data-pag="cot"] .cn-wrap .chip,[data-pag="cot"] .cn-wrap .btn{font-weight:400}
+[data-pag="cot"] .cn-wrap b,[data-pag="cot"] .cn-wrap strong,[data-pag="cot"] .cn-wrap .sec,[data-pag="cot"] .cn-wrap h3{font-weight:600}
+[data-pag="cot"] .cn-wrap .m{font-weight:400}
+[data-pag="cot"] .cn-res{position:sticky;top:0;z-index:5}
+[data-pag="cot"] .cn-res{border-left:3px solid var(--violet);padding:18px 20px}
+[data-pag="cot"] .cn-r1{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 28px}
+@media (max-width:720px){[data-pag="cot"] .cn-r1{grid-template-columns:minmax(0,1fr)}[data-pag="cot"] .cn-r1-d{align-items:stretch}}
+[data-pag="cot"] .cn-r1-t{min-width:0}
+[data-pag="cot"] .cn-r1-nom{font-size:16px;font-weight:400;color:var(--tx);margin-bottom:2px}
+[data-pag="cot"] .cn-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0}
+[data-pag="cot"] .cn-r1-d{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+[data-pag="cot"] .cn-r1-op{display:flex;gap:6px}
+[data-pag="cot"] .cn-r1-op .fc{width:auto;font-size:11px;padding:4px 8px}
+[data-pag="cot"] .cn-r1-n{display:grid;grid-template-columns:auto auto;gap:2px 10px;align-items:baseline}
+[data-pag="cot"] .cn-r1-n span{font-size:10.5px;color:var(--mt)}
+[data-pag="cot"] .cn-r1-n b{text-align:right;font-size:14px}
+[data-pag="cot"] .cn-r1-b{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:auto}
+[data-pag="cot"] .cn-acc:hover,[data-pag="cot"] .cn-acc:focus-visible{background:var(--blue);color:#fff}
+[data-pag="cot"] .cn-campos{display:grid;gap:8px;max-width:380px}
+[data-pag="cot"] .cn-campos .fg{margin:0}
+[data-pag="cot"] .cn-ent{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--b);max-width:640px}
+[data-pag="cot"] .cn-dev{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:start;padding:10px;border:1px solid var(--b);border-radius:var(--r);margin-bottom:6px;cursor:pointer}
+[data-pag="cot"] .cn-dev.on{border-color:var(--blue)}
+[data-pag="cot"] .cn-dev-s{font-size:11px;color:var(--mt);margin-top:3px}
+[data-pag="cot"] .cn-dev-n{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+[data-pag="cot"] .cn-dev-a{display:flex;gap:3px}
+[data-pag="cot"] .cn-inc-l{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .cn-ico{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+[data-pag="cot"] .cn-i{width:26px;height:26px;border-radius:50%;border:1px solid var(--b);background:transparent;color:var(--mt);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+[data-pag="cot"] .cn-i .ico{width:13px;height:13px}
+[data-pag="cot"] .cn-i:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+[data-pag="cot"] .cn-i.on.xg{background:var(--ok);border-color:var(--ok);color:#fff}
+[data-pag="cot"] .cn-i.on.xm{background:var(--mt);border-color:var(--mt);color:#fff}
+[data-pag="cot"] .cn-i.on.xw{background:var(--wa);border-color:var(--wa);color:#fff}
+[data-pag="cot"] .cn-i.on.xv{background:var(--violet);border-color:var(--violet);color:#fff}
+[data-pag="cot"] .cn-nota{margin-top:4px;font-size:11px;font-weight:200;padding:4px 8px}
+[data-pag="cot"] #cn-preg .u-s11{font-weight:200}
+[data-pag="cot"] .cn-r-mod{padding:4px 0 6px;cursor:pointer}
+[data-pag="cot"] .cn-r-t{font-size:11.5px;font-weight:600}
+[data-pag="cot"] .cn-r-li{margin:2px 0 0;padding-left:16px;font-family:var(--mono);font-size:11px;font-weight:400}
+[data-pag="cot"] .cn-r-li b{font-weight:600}
+[data-pag="cot"] .cn-r-xg b{color:var(--ok)} [data-pag="cot"] .cn-r-xw b{color:var(--wa)}
+[data-pag="cot"] .cn-r-xv b{color:var(--violet)} [data-pag="cot"] .cn-r-xm b{color:var(--mt)}
+/* Secciones desplegables: el botón lleva ► y gira al abrir */
+[data-pag="cot"] .cn-sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;margin-bottom:4px}
+[data-pag="cot"] .cn-sec>summary::-webkit-details-marker{display:none}
+[data-pag="cot"] .cn-sec[open]>summary{margin-bottom:12px}
+[data-pag="cot"] .cn-flecha{display:inline-block;font-size:9px;color:var(--blue);transition:transform .15s}
+[data-pag="cot"] .cn-sec[open]>summary .cn-flecha{transform:rotate(90deg)}
+[data-pag="cot"] .cn-pop-b .cn-flecha{font-size:10px}
+/* Ayuda flotante: ícono que al pasar el cursor o enfocarlo muestra el texto */
+.tip{position:relative;display:inline-flex;align-items:center;color:var(--mt);cursor:help;vertical-align:middle}
+.tip .ico{width:13px;height:13px}
+.tip:hover,.tip:focus-visible{color:var(--blue);outline:none}
+.tip::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);width:max-content;max-width:240px;
+  background:var(--bg2);color:var(--tx);border:1px solid var(--b);border-radius:var(--r);padding:7px 9px;font-size:11px;font-weight:300;line-height:1.4;
+  text-transform:none;letter-spacing:0;white-space:normal;z-index:300;opacity:0;pointer-events:none;transition:opacity .12s}
+.tip:hover::after,.tip:focus-visible::after{opacity:1}
+/* Datos del cliente: empresa · sponsor · responsable en una fila (se apilan en angosto) */
+[data-pag="cot"] .cn-cli{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px;align-items:start}
+[data-pag="cot"] .cn-cli .fg{margin:0;min-width:0}
+[data-pag="cot"] .cn-cli .bar{flex-wrap:nowrap}
+[data-pag="cot"] .cn-cli .bar .fc{min-width:0}
+[data-pag="cot"] .cn-cli .bar .btn{flex-shrink:0}
+[data-pag="cot"] .cn-cli .btn .ico+.ico{margin-left:-2px}
+[data-pag="cot"] .cn-li{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .cn-li>.ico,[data-pag="cot"] .cn-wa .ico{width:14px;height:14px;color:var(--mt)}
+[data-pag="cot"] a.cn-wa .ico{color:var(--ok)}
+/* Preguntas: texto a la izquierda, íconos a la derecha a la misma altura, nota debajo */
+[data-pag="cot"] .cn-q{padding:6px 0;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .cn-q.hija{padding-left:14px}
+[data-pag="cot"] .cn-q-l{display:flex;align-items:flex-start;gap:8px}
+[data-pag="cot"] .cn-q-t{flex:1;min-width:0;font-size:11.5px;font-weight:200}
+[data-pag="cot"] .cn-q .cn-ico{flex-shrink:0;justify-content:flex-end}
+/* Respuestas: grupo con lápiz, módulo y sus opciones una debajo de la otra */
+[data-pag="cot"] .cn-rb{padding:6px 0 8px;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .cn-rb-h{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+[data-pag="cot"] .cn-rl{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:2px 0 2px 10px}
+[data-pag="cot"] .cn-rl .ico{width:13px;height:13px}
+[data-pag="cot"] .cn-rh{min-width:52px;text-align:right}
+[data-pag="cot"] .cn-rn{font-family:var(--mono);font-size:10.5px;color:var(--mt);padding:0 0 3px 10px}
+.mo.mo-c{align-items:center}
+@media (max-width:720px){[data-pag="cot"] .cn-res{position:static}}
+
+[data-pag="cot"] .cn-dev{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+[data-pag="cot"] .cn-dev-tipo{font-size:10.5px;color:var(--mt)}
+[data-pag="cot"] .cn-dev-f{display:flex;align-items:center;gap:10px;min-width:0}
+[data-pag="cot"] .cn-dev-f .cn-dev-s{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-pag="cot"] .cn-om.on{color:var(--wa);border-color:var(--wa)}
+[data-pag="cot"] .cn-mt,[data-pag="cot"] .cn-mt>span{display:inline-flex;align-items:center;gap:6px}
+[data-pag="cot"] .cn-mt .ico{width:14px;height:14px;color:var(--mt)}
+[data-pag="cot"] .cn-pop-b.abierto .cn-flecha{transform:rotate(90deg)}
+[data-pag="cot"] .cn-dot.vi{background:var(--violet)}
+[data-pag="cot"] .cn-mm-n{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+[data-pag="cot"] .cn-r1-n .btn{padding:3px 6px}
+[data-pag="cot"] .cn-r1-n{grid-template-columns:auto auto auto}
+[data-pag="cot"] .cn-pago-op{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end}
+[data-pag="cot"] .cn-pago-op .fg{margin:0}
+[data-pag="cot"] .cn-pago-tot{display:flex;flex-direction:column;align-items:flex-end;margin-left:auto}
+[data-pag="cot"] .cn-mon{background:none;border:1px solid var(--b);color:var(--mt)}
+[data-pag="cot"] .cn-mon.ars.on{border-color:var(--blue);color:var(--blue)}
+[data-pag="cot"] .cn-mon.usd.on{border-color:var(--teal);color:var(--teal)}
+[data-pag="cot"] .u-c-teal{color:var(--teal)}
+[data-pag="cot"] .cn-pago-dos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+@media (max-width:720px){[data-pag="cot"] .cn-pago-dos{grid-template-columns:minmax(0,1fr)}}
+[data-pag="cot"] .cn-ter{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11.5px;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .cn-ter-q{width:84px;text-align:right}
+[data-pag="cot"] .cn-reu-l{flex-wrap:wrap}
+[data-pag="cot"] .cn-min-col{min-height:340px;font-size:12px;font-weight:200}
+[data-pag="cot"] .cn-bmin{padding:8px 0;border-bottom:1px solid var(--b)}
+[data-pag="cot"] .cn-bmin-t{white-space:pre-line}
+[data-pag="cot"] .u-c-teal{color:var(--teal)}
+[data-pag="cot"] .cn-ck{padding:5px 0;border-bottom:1px solid var(--b);font-size:11.5px}
+[data-pag="cot"] .cn-ck .bar{gap:8px;cursor:pointer}
+[data-pag="cot"] .cn-ck.sub{padding-left:22px}
+[data-pag="cot"] .cn-r1-top{display:flex;align-items:center;gap:6px}
+[data-pag="cot"] .cn-r1-top .bx{margin-right:6px}
+[data-pag="cot"] .cn-acc .ico{width:15px;height:15px}
+[data-pag="cot"] .cn-dev-inc{border-top:1px solid var(--b);margin-top:6px;padding-top:2px;cursor:default}
+[data-pag="cot"] .cn-dev-inc .cn-inc-l:last-child{border-bottom:none}
+[data-pag="cot"] .cn-fun{cursor:pointer}
+[data-pag="cot"] .cn-tog{font-size:9px;color:var(--blue);width:22px;text-align:center}
+[data-pag="cot"] .cn-sum{display:flex;align-items:center;gap:8px}
+[data-pag="cot"] .cn-st{margin-left:auto;font-size:11px;padding-left:12px}
+[data-pag="cot"] .cn-q .cn-ico{margin-left:auto;padding-left:14px}
+[data-pag="cot"] .cn-min-d{margin-bottom:8px}
+[data-pag="cot"] .cn-pago-uno{display:grid;gap:12px;margin-top:12px}
+[data-pag="cot"] .cn-px-g td{padding-top:10px}
+[data-pag="cot"] .cn-px-h{padding-left:22px}
+/* Revisión propuesta económica y cuestionario (23/10/2026) */
+[data-pag="cot"] .cn-r1-top{grid-column:1/-1;justify-content:flex-end}
+[data-pag="cot"] .cn-rev-l{display:grid;gap:4px;margin:6px 0 12px}
+[data-pag="cot"] .cn-rev-d{display:flex;align-items:center;gap:10px;width:100%;background:none;border:1px solid var(--b);border-radius:var(--r);padding:8px 10px;color:var(--tx);font:inherit;font-size:12px;font-weight:200;cursor:pointer;text-align:left}
+[data-pag="cot"] .cn-rev-d.on{border-color:var(--blue)}
+[data-pag="cot"] .cn-rev-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
+[data-pag="cot"] .cn-rev-g .fg{margin:0}
+[data-pag="cot"] .cn-rev-k{display:flex;align-items:baseline;gap:10px;padding:6px 0;font-size:12px}
+[data-pag="cot"] .cn-rev-k span:first-child{flex:1;color:var(--mt)}
+[data-pag="cot"] .cn-money{text-align:right}
+[data-pag="cot"] .cn-cols3{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:980px){[data-pag="cot"] .cn-cols3{grid-template-columns:minmax(0,1fr)}}
+[data-pag="cot"] .cn-cue{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+[data-pag="cot"] .cn-bus{display:flex;align-items:center;gap:6px;border:1px solid var(--b);border-radius:var(--r);padding:0 8px;min-width:0;flex:0 1 240px}
+[data-pag="cot"] .cn-bus .fc{border:none;background:none;padding:6px 0}
+[data-pag="cot"] .cn-bus .ico{width:13px;height:13px;color:var(--mt)}
+[data-pag="cot"] .cn-q .cn-q-t{margin-bottom:6px}
+[data-pag="cot"] .cn-rads{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:6px}
+[data-pag="cot"] .cn-rad{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer}
+[data-pag="cot"] .cn-hijas{margin:2px 0 6px}
+[data-pag="cot"] .cn-nota-w{position:relative}
+[data-pag="cot"] .cn-cnt{position:absolute;right:8px;bottom:4px;font-size:9.5px;color:var(--mt);font-family:var(--mono)}
+[data-pag="cot"] .md.cn-md-xl{max-width:1240px;width:96vw}
+[data-pag="cot"] .ce-dos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px}
+@media (max-width:720px){[data-pag="cot"] .ce-dos{grid-template-columns:minmax(0,1fr)}}
+/* ── COTIZADOR · EDITAR (22/10/2026) ── */
+[data-pag="cot"] .ce-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;font-weight:200}
+[data-pag="cot"] .ce-wrap b,[data-pag="cot"] .ce-wrap .sec{font-weight:600}
+[data-pag="cot"] .ce-wrap .btn,[data-pag="cot"] .ce-wrap .fl{font-weight:400}
+[data-pag="cot"] .ce-fijo{display:grid;grid-template-columns:16px 90px minmax(0,1fr);gap:6px;align-items:center;font-size:12px}
+[data-pag="cot"] .ce-fijo .fl{margin:0}
+[data-pag="cot"] .ce-fijo .ico,[data-pag="cot"] .ce-dev-h .ico{width:13px;height:13px;color:var(--mt)}
+[data-pag="cot"] .ce-dev-h{display:flex;gap:10px;align-items:flex-start}
+[data-pag="cot"] .ce-acc{flex-wrap:wrap}
+[data-pag="cot"] .ce-ref{margin-top:10px;padding:8px 10px;border:1px solid var(--b);border-radius:var(--r);display:grid;gap:3px;font-size:12px}
+[data-pag="cot"] .ce-sem{display:inline-flex;align-items:center;gap:4px;font-size:11px}
+[data-pag="cot"] .ce-sem .ico{width:12px;height:12px}
+[data-pag="cot"] .ce-kv{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:4px 0}
+[data-pag="cot"] .ce-kv span:first-child{min-width:110px;font-size:11px;color:var(--mt)}
+[data-pag="cot"] .ce-log{margin:0;padding-left:16px;font-family:var(--mono);font-size:11px;display:grid;gap:3px}
+[data-pag="cot"] .ce-sum{display:grid;gap:6px}
+[data-pag="cot"] .ce-hs{width:76px;text-align:right}
+[data-pag="cot"] .ce-fila-acc{white-space:nowrap;text-align:right}
+[data-pag="cot"] .ce-fila-acc .btn{margin-left:3px}
+@media (max-width:720px){[data-pag="cot"] .cn-campos{max-width:none}}
+
+
+/* ── PANTALLA ANGOSTA (≤720px) · 22/10/2026 ───────────────────────────
+   El menú queda en íconos (56px) y si se despliega pasa POR ENCIMA del
+   contenido en vez de empujarlo. Grillas a una columna, tablas con su
+   propio scroll: la página nunca se desplaza de costado. */
+@media (max-width:720px){
+  .sb ~ .main{margin-left:56px;width:calc(100% - 56px)}
+  .content{padding:10px}
+  .top{padding:0 10px;flex-wrap:wrap;gap:6px}
+  .g2,.g3{grid-template-columns:minmax(0,1fr)}
+  .kpi-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+  .tbl{display:block;overflow-x:auto}
+  .mo{padding:6px}
+  .mh,.mb2,.mf{padding-left:12px;padding-right:12px}
+  .mf{flex-wrap:wrap}
+}

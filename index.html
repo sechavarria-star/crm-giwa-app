@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GIWA · CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+  <!-- Entrar / sin acceso -->
+  <main id="acceso" class="acceso" hidden>
+    <div class="nav-marca acceso-marca">GIWA <span class="u-c-vi">{IA}</span></div>
+    <div class="card acceso-card">
+      <span class="acceso-ico" data-ico="candado"></span>
+      <h1 id="acceso-tit" class="acceso-tit">CRM interno</h1>
+      <p id="acceso-msg" class="acceso-msg"></p>
+      <button id="acceso-btn" class="btn bp" onclick="entrarConGoogle()">Entrar con Google</button>
+      <button id="acceso-salir" class="btn bg sm" onclick="salir()" hidden>Entrar con otra cuenta</button>
+    </div>
+  </main>
+
+  <!-- La app -->
+  <div id="app" hidden>
+    <header id="nav-global" class="nav-g">
+      <div class="nav-marca">GIWA <span class="u-c-vi">{IA}</span></div>
+      <nav id="nav-mods" class="nav-mods" aria-label="Módulos"></nav>
+      <div class="nav-der">
+        <span class="u-s11-mt" id="top-fecha"></span>
+        <button class="nav-b btn-ico" id="btn-refresh" onclick="recargar()" data-tip="Actualizar datos" aria-label="Actualizar datos"><span data-ico="recargar"></span></button>
+        <span class="u-s11-mt-fw6" id="user-lbl-top"></span>
+        <button class="nav-b btn-ico" onclick="salir()" data-tip="Cerrar sesión" aria-label="Cerrar sesión"><span data-ico="candado"></span></button>
+      </div>
+    </header>
+    <main id="vista" class="vista"></main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/base.js"></script>
+  <script src="js/iconos.js"></script>
+  <script src="js/dialogo.js"></script>
+  <script src="js/sb.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
