@@ -10,7 +10,7 @@
    VISTAS['<id>'] = async function(el) { … } y marcarlo listo:true.
    ══════════════════════════════════════════════════════════════════════ */
 var MODULOS = [
-  { id: 'hoy',      nombre: 'Hoy',            ico: 'casa',     listo: false },
+  { id: 'hoy',      nombre: 'Hoy',            ico: 'casa',     listo: true  },
   { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true  },
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: false },
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: false },

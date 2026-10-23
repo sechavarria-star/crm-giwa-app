@@ -35,3 +35,9 @@ a.nav-b.on { pointer-events: none; }
   .vista { padding: 48px 12px 20px; }
   .nav-der #top-fecha { display: none; }
 }
+
+/* ancho según el contenido (un date al lado de botones) */
+.u-wauto{width:auto}
+
+/* «ver todo» de Hoy es un botón con aspecto de enlace */
+button.hoy-go{background:none;border:0;padding:0;font-family:inherit}

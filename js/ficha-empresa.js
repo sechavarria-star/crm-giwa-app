@@ -63,7 +63,6 @@
     var d = document.createElement('div'); d.innerHTML = HTML;
     while (d.firstChild) document.body.appendChild(d.firstChild);
     document.body.addEventListener('click', function (ev) {
-      var c = ev.target.closest('[data-cerrar]'); if (c) return closeM(c.getAttribute('data-cerrar'));
       var a = ev.target.closest('[data-acc]'); if (!a) return;
       var acc = a.getAttribute('data-acc');
       if (acc === 'rs') agregarRS();
