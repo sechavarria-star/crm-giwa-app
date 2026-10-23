@@ -19,9 +19,10 @@
    reanudar, las del desarrollo (arrancar, deployar, finalizar, rechazar),
    fechas, cerrar una etapa de módulos y marcar contactos.
 
-   PENDIENTE: los recordatorios que nacen con esos cambios (facturación,
-   IPC, renovación, reunión mensual) se crean todavía desde Administración
-   del CRM actual. Cotizar —recotizar, renovar, editar, mejora, horas de
+   Como en el Apps Script, arrancar / deployar / finalizar / rechazar un
+   desarrollo crean solos sus alertas de facturación y recordatorios.
+
+   PENDIENTE: Cotizar —recotizar, renovar, editar, mejora, horas de
    soporte—, Análisis y Soporte siguen allá, igual que Tareas, Agenda y
    Nuevo proyecto.
    ══════════════════════════════════════════════════════════════════════ */
@@ -132,7 +133,9 @@
     if (prosp && ['aprobado', 'activo', 'finalizado'].indexOf(a) >= 0) return { ok: false, msg: 'Un proyecto ' + p.estado_proyecto + ' no vuelve a ' + nuevo + '.' };
     return { ok: true };
   }
-  var AVISO_ALERTAS = 'Los recordatorios que nacen con este cambio (facturación, IPC, renovación, reunión mensual) todavía se crean desde Administración del CRM actual: «Faltan recordatorios».';
+  // Aprobar o rechazar el proyecto no crea recordatorios (tampoco en el Apps Script):
+  // quedan en «Faltan recordatorios» del dashboard de Administración.
+  var AVISO_ALERTAS = 'Revisá «Faltan recordatorios» en Administración: los de este cambio se crean desde ahí.';
 
   // ══ SEGUIMIENTO · tarjetas por cliente ══════════════════════
   function segPasa(p, fil) {
@@ -747,7 +750,10 @@
       if (a === 'acc-des') {
         ev.preventDefault();
         var acc = b.getAttribute('data-acc');
-        var go = function () { hacer('accion_desarrollo', { did: id, accion: acc }, function (r) { return r.de + ' → ' + r.a; }, acc !== 'cerrar'); };
+        // accion_desarrollo crea sola las alertas de facturación y los recordatorios del desarrollo
+        var go = function () { hacer('accion_desarrollo', { did: id, accion: acc }, function (r) {
+          var f = r.alertas_facturacion || {}, extra = (f.creadas ? ' · ' + f.creadas + ' alerta(s) de facturación' : '') + (f.cerradas ? ' · ' + f.cerradas + ' cerrada(s)' : '');
+          return r.de + ' → ' + r.a + extra; }); };
         if (acc === 'rechazar') return ask('¿Rechazar este desarrollo? Se puede recotizar después.', 'Rechazar desarrollo', { peligro: true }).then(function (ok) { if (ok) go(); });
         return go();
       }

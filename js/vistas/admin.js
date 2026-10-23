@@ -12,11 +12,14 @@
    Orden de la plata: tablero → qué falta cobrar → qué ajustar → qué
    facturar → qué transferirle al socio → otros recordatorios → gastos.
 
-   PENDIENTE: «Facturar» (Cargar factura y mail, al final de la etapa 4),
-   la ventana de ajuste IPC y Renovar, y «Faltan recordatorios».
+   «Faltan recordatorios» = crearRecordatorios (crm_giwa.v_recordatorios_faltan
+   y crear_recordatorios).
+
+   PENDIENTE: «Facturar» (Cargar factura y mail, al final de la etapa 4) y
+   la ventana de ajuste IPC y Renovar.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' } };
+  var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' }, recAbierto: false };
   var SUBS = [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']];
 
   async function cargar() {
@@ -30,13 +33,14 @@
       db().from('v_alertas_admin').select('*').order('fecha'),
       db().from('v_gastos_plata').select('*'),
       db().from('indices_ipc').select('mes').not('ipc', 'is', null).order('mes', { ascending: false }).limit(1),
-      db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 })
+      db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 }),
+      db().from('v_recordatorios_faltan').select('*').order('o').order('ord')
     ];
     var r = await Promise.all(q);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     A.d = { cobros: r[0].data, mens: r[1].data, saldos: r[2].data, sinDes: r[3].data, aj: r[4].data,
             rep: r[5].data, alertas: r[6].data, gastos: r[7].data,
-            ultimoIpc: (r[8].data[0] || {}).mes || '', diasVenc: Number(r[9].data) || 30 };
+            ultimoIpc: (r[8].data[0] || {}).mes || '', diasVenc: Number(r[9].data) || 30, faltan: r[10].data };
   }
 
   // ── ayudas ───────────────────────────────────────────────────
@@ -63,6 +67,27 @@
       k('Vendido a facturar', fmt(suma(D.saldos, 'saldo')), n(D.saldos.length, 'desarrollo'), 'k-contratado') +
       k('Ajustes pendientes', D.aj.length, 'por IPC', D.aj.length ? 'k-pendiente' : 'k-neutro') +
     '</div>';
+  }
+
+  // ── recordatorios que faltan (crearRecordatorios): una línea sólo si hay ──
+  // «Ver y crear» despliega la lista acá; la ventana de facturación de un abono
+  // y la fecha de la reunión mensual se pueden cambiar antes de crear.
+  function faltan(D) {
+    var rows = D.faltan || []; if (!rows.length) return '';
+    var n = {}; rows.forEach(function (x) { var k = x.kind + (x.aprobado ? ' (aprobado sin facturar)' : ''); n[k] = (n[k] || 0) + 1; });
+    var h = '<div class="u-row8 u-mb6"><span class="m m-pendiente u-s11">' + ico('campana') + ' Faltan recordatorios: ' +
+      Object.keys(n).map(function (k) { return n[k] + ' ' + esc(k); }).join(' · ') + '</span>' +
+      '<button class="btn bg sm" data-adm="rec-ver">' + (A.recAbierto ? 'Ocultar' : 'Ver y crear') + '</button></div>';
+    if (A.recAbierto) {
+      h += '<table class="tbl u-mb6"><thead><tr><th>Tipo</th><th>Cliente</th><th>Desarrollo</th><th>Cada cuánto</th><th>Cuándo</th></tr></thead><tbody>' +
+        rows.map(function (x, i) {
+          var cuando = (x.kind === 'Facturación' && x.freq === 'Mensual')
+            ? '<span class="ft-days">del <input class="fc" type="number" min="1" max="31" data-rec-f="' + esc(x.item) + '" value="' + x.from + '" aria-label="Desde el día"> al <input class="fc" type="number" min="1" max="31" data-rec-t="' + esc(x.item) + '" value="' + x.to + '" aria-label="Hasta el día"> de cada mes</span>'
+            : (x.kind === 'Reunión mensual' ? '<input class="fc u-wauto" type="date" data-rec-d="' + esc(x.cid) + '" value="' + esc(x.due || '') + '" aria-label="Fecha de la reunión">' : esc(ff(x.due)));
+          return '<tr><td>' + esc(x.kind) + (x.aprobado ? ' · aprobado' : '') + '</td><td>' + esc(x.cliente) + '</td><td>' + esc(x.titulo) + '</td><td>' + esc(x.freq) + '</td><td>' + cuando + '</td></tr>';
+        }).join('') + '</tbody></table><div class="u-mb6"><button class="btn bp sm" data-adm="rec-crear">' + ico('check') + ' Crear ' + rows.length + '</button></div>';
+    }
+    return h;
   }
 
   // ── 2 · pendiente de cobrar, por empresa, con selección ──────
@@ -222,7 +247,9 @@
       }).join('') + '</div>';
     };
     var h = grupo('Vencidas', 'xr', g.vencidas) + grupo('Hoy', 'xw', g.hoy) + grupo('Esta semana', 'xb', g.semana) + grupo('Próximamente', 'xm', g.futuras);
-    return sec('alt', 'Otros recordatorios', alts.length, '', h || '<div class="empty u-p10">Nada pendiente.</div>');
+    var nuevo = '<div class="u-row8 u-mb10"><span class="u-s11-mt u-f1">IPC, renovación de mantenimientos y carga de gastos.</span>' +
+      '<button class="btn bp sm" data-adm="regla-nueva">' + ico('campana') + ' Nuevo recordatorio</button></div>';
+    return sec('alt', 'Otros recordatorios', alts.length, '', nuevo + (h || '<div class="empty u-p10">Nada pendiente.</div>'));
   }
 
   // ── 7 · gastos del mes (sin impuestos) ───────────────────────
@@ -380,7 +407,7 @@
       return;
     }
     var D = A.d;
-    el.innerHTML = cab + tablero(D) + pendiente(D) + ajustes(D) + facturacion(D) + socio(D) + otros(D) + gastos(D);
+    el.innerHTML = cab + tablero(D) + faltan(D) + pendiente(D) + ajustes(D) + facturacion(D) + socio(D) + otros(D) + gastos(D);
   }
 
   VISTAS.admin = async function (el) {
@@ -419,6 +446,20 @@
         return pintar(el);
       }
       if (a.indexOf('fa-') === 0) return accionFact(el, a, id);
+      if (a === 'regla-nueva') return nuevaRegla({}, { onSave: refrescar });
+      if (a === 'rec-ver') { A.recAbierto = !A.recAbierto; return pintar(el); }
+      if (a === 'rec-crear') {
+        var w = {};
+        document.querySelectorAll('[data-rec-f]').forEach(function (f) {
+          var it = f.getAttribute('data-rec-f'), t = document.querySelector('[data-rec-t="' + it + '"]');
+          w[it] = { from: Number(f.value), to: Number(t && t.value) };
+        });
+        document.querySelectorAll('[data-rec-d]').forEach(function (d) { if (d.value) w['meet:' + d.getAttribute('data-rec-d')] = { due: d.value }; });
+        if (!(await ask('Se crean ' + A.d.faltan.length + ' recordatorio(s).', 'Crear recordatorios', { ok: 'Crear' }))) return;
+        var rr = await db().rpc('crear_recordatorios', { ventanas: w, solo_item: null });
+        if (rr.error) return toast(rr.error.message, 'err');
+        toast(rr.data.msg, 'ok'); A.recAbierto = false; return refrescar();
+      }
       if (a === 'pc-reg') {
         var ids = Array.prototype.map.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-id'); });
         var f = (document.getElementById('pc-fecha') || {}).value;

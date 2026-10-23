@@ -7,6 +7,8 @@
      verTarea(id, opts)       la tarea + sus comentarios, con sus acciones
      nuevaTarea(ctx, opts)    alta; ctx = { clientId, projectId }
      tareaHecha(t, opts)      el tilde de las listas: finalizar o procesar
+     nuevaRegla(ctx, opts)    «Nuevo recordatorio» (regla de alerta, sólo
+                              Administración); ctx = { clientId, projectId, itemId }
        opts  { onSave: fn() }   se llama después de cualquier cambio
 
    Lee de crm_giwa.v_tareas y escribe con las funciones de la base
@@ -16,8 +18,8 @@
    Un solo responsable por tarea (regla del 20/10): «Para quién» es un
    desplegable, no una lista para tildar.
 
-   PENDIENTE 2ª tanda: reglas de alerta y reuniones (Calendar, puente de
-   Google), facturar y ajustar cuota desde la alerta (Administración).
+   PENDIENTE: reuniones (Calendar, puente de Google), facturar y ajustar
+   cuota desde la alerta (Administración).
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var T = { base: null, baseT: 0, t: null, onSave: null };
@@ -62,6 +64,23 @@
         '<div class="fg"><label class="fl" for="ftn-det">Detalle <span class="req">*</span></label><textarea class="fc" id="ftn-det" rows="2"></textarea></div>' +
       '</div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-ftn">Cancelar</button><button class="btn bp" id="ftn-ok">Guardar</button></div>' +
+    '</div></div>' +
+    '<div class="mo" id="m-fta"><div class="md md-sm">' +
+      '<div class="mh"><span class="mt2">Nuevo recordatorio</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-fta">' + ico('cerrar') + '</button></div>' +
+      '<div class="mb2">' +
+        '<div class="fg"><label class="fl" for="fta-tipo">Tipo de recordatorio <span class="req">*</span></label><select class="fc" id="fta-tipo"></select></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="fta-cli">Cliente <span class="req">*</span></label><select class="fc" id="fta-cli"></select></div>' +
+          '<div class="fg"><label class="fl" for="fta-alc">Proyectos / Desarrollos</label><select class="fc" id="fta-alc"></select></div></div>' +
+        '<div class="g3"><div class="fg"><label class="fl" for="fta-ini">Fecha desde <span class="req">*</span></label><input class="fc" type="date" id="fta-ini"></div>' +
+          '<div class="fg"><label class="fl" for="fta-meses">Durante (meses)</label><input class="fc u-tr" type="number" min="1" id="fta-meses" value="12"></div>' +
+          '<div class="fg"><label class="fl" for="fta-frec">Cada cuánto</label><select class="fc" id="fta-frec"></select></div></div>' +
+        '<div class="g2"><div class="fg" id="fta-win"><label class="fl">Se factura</label><div class="ft-days">del <input class="fc" type="number" min="1" max="31" id="fta-d1" value="1" aria-label="Desde el día">' +
+          ' al <input class="fc" type="number" min="1" max="31" id="fta-d2" value="10" aria-label="Hasta el día"> de cada mes</div></div>' +
+          '<div class="fg"><label class="fl" for="fta-who">Para quién</label><select class="fc" id="fta-who"></select></div></div>' +
+        '<div class="ft-sum" id="fta-sum"></div><div class="ft-info" id="fta-ipc"></div>' +
+        '<div class="fg"><label class="fl" for="fta-det">Detalle</label><textarea class="fc" id="fta-det" rows="2"></textarea></div>' +
+      '</div>' +
+      '<div class="mf"><button class="btn bg" data-cerrar="m-fta">Cancelar</button><button class="btn bp" id="fta-ok">Guardar</button></div>' +
     '</div></div>';
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -80,6 +99,11 @@
       if (a === 'comentar') comentar();
     });
     $('ftn-ok').onclick = guardarNueva;
+    $('fta-ok').onclick = guardarRegla;
+    $('fta-tipo').onchange = function () { reglaTipo(); };
+    $('fta-cli').onchange = function () { reglaCliente(); };
+    $('fta-alc').onchange = function () { reglaInicio(); };
+    ['fta-ini', 'fta-meses', 'fta-frec', 'fta-d1', 'fta-d2'].forEach(function (id) { $(id).addEventListener('change', function () { if (id === 'fta-ini') T.iniTocado = true; reglaResumen(); }); });
     $('ftn-cli').onchange = function () { llenarProyectos(''); };
     $('ftv-qk').onchange = function () { if (this.value) { $('ftv-txt').value = this.value; $('ftv-txt').focus(); this.value = ''; } };
   });
@@ -90,7 +114,7 @@
     if (T.base && Date.now() - T.baseT < 60000) return T.base;
     var r = await Promise.all([
       db().from('usuarios').select('mail,nombre,rol').eq('es_giwa', true).eq('activo', true).order('orden'),
-      db().from('cot_config').select('clave,valor').in('clave', ['Tarea_Prioridad', 'Tarea_Rapida', 'Comentario_Estado', 'Comentario_Rapido']),
+      db().from('cot_config').select('clave,valor').in('clave', ['Tarea_Prioridad', 'Tarea_Rapida', 'Comentario_Estado', 'Comentario_Rapido', 'Tarea_AlertaTipo', 'Tarea_Frecuencia']),
       db().from('empresas').select('id,nombre').order('nombre'),
       db().from('proyectos').select('id,nombre,empresa_id').order('nombre')
     ]);
@@ -103,6 +127,7 @@
       seguimiento: lista(cfg.Comentario_Estado).filter(function (s) { return /seguim/i.test(s); })[0] || '',
       // Los comentarios rápidos llevan comas adentro («Lo llamé, no contestó»): se separan con ;
       notas: lista(cfg.Comentario_Rapido, ';'),
+      tiposAlerta: lista(cfg.Tarea_AlertaTipo), frecuencias: lista(cfg.Tarea_Frecuencia),
       clientes: r[2].data, proyectos: r[3].data
     };
     T.baseT = Date.now();
@@ -246,6 +271,91 @@
     }, desdeFicha ? 'm-ftv' : null);
   }
   window.tareaHecha = function (t, opts) { T.onSave = (opts || {}).onSave || null; return hecho(t, false); };
+
+  // ── nuevo recordatorio (regla de alerta) ─────────────────────
+  // Sólo se ofrece lo que tiene algo por facturar; Renovación, además, abonos
+  // en curso que vencen en 2 meses o menos (v_alertas_elegibles). La base valida igual.
+  function reglaOk(i) { return i.pending && (!/renov/i.test(v('fta-tipo')) || i.renewable); }
+  function reglaProyectos(cid) {
+    var ps = {};
+    T.eleg.filter(function (i) { return i.cliente_id === cid && reglaOk(i); }).forEach(function (i) { (ps[i.proy_id] = ps[i.proy_id] || []).push(i); });
+    return ps;
+  }
+  function reglaTipo() {
+    var t = v('fta-tipo'), want = /ipc/i.test(t) ? /trimes/i : (/factur/i.test(t) ? /mensual/i : null);
+    if (want) { var o = Array.prototype.find.call($('fta-frec').options, function (x) { return want.test(x.value); }); if (o) $('fta-frec').value = o.value; }
+    $('fta-win').hidden = !/factur/i.test(t);
+    var keep = v('fta-cli') || T.rctx.clientId || '';
+    var cids = {}; T.eleg.forEach(function (i) { if (reglaOk(i) && i.cliente_id) cids[i.cliente_id] = 1; });
+    var cs = T.base.clientes.filter(function (c) { return cids[c.id]; });
+    $('fta-cli').innerHTML = '<option value="">— Elegí el cliente —</option>' + cs.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === keep ? ' selected' : '') + '>' + esc(c.nombre) + '</option>'; }).join('');
+    reglaCliente();
+  }
+  function reglaCliente() {
+    var prev = v('fta-alc'), ps = reglaProyectos(v('fta-cli'));
+    var ctx = T.rctx.itemId ? 'd:' + T.rctx.itemId : (T.rctx.projectId ? 'p:' + T.rctx.projectId : '');
+    $('fta-alc').innerHTML = '<option value="">Todos los proyectos</option>' + Object.keys(ps).map(function (pid) {
+      var pn = (T.base.proyectos.find(function (p) { return p.id === pid; }) || {}).nombre || pid;
+      return '<optgroup label="' + esc(pn) + '"><option value="p:' + esc(pid) + '">Todo el proyecto</option>' +
+        ps[pid].map(function (i) { return '<option value="d:' + esc(i.item_id) + '">' + esc(i.nombre) + '</option>'; }).join('') + '</optgroup>';
+    }).join('');
+    var opts = Array.prototype.map.call($('fta-alc').options, function (o) { return o.value; });
+    $('fta-alc').value = opts.indexOf(prev) >= 0 ? prev : (opts.indexOf(ctx) >= 0 ? ctx : '');
+    reglaInicio();
+  }
+  function reglaAlcance() {
+    var a = v('fta-alc'), id = a.slice(2), cid = v('fta-cli');
+    if (a.indexOf('d:') === 0) { var it = T.eleg.find(function (i) { return i.item_id === id; }); return { pids: it ? [it.proy_id] : [], iids: [id], items: it ? [it] : [] }; }
+    if (a.indexOf('p:') === 0) return { pids: [id], iids: [], items: T.eleg.filter(function (i) { return i.proy_id === id; }) };
+    return { pids: [], iids: [], items: T.eleg.filter(function (i) { return i.cliente_id === cid; }) };
+  }
+  // Fecha desde = el inicio del desarrollo (o el primero del alcance); se puede pisar a mano
+  function reglaInicio() {
+    var sc = reglaAlcance();
+    var ini = sc.items.map(function (i) { return i.inicio; }).filter(Boolean).sort()[0] || '';
+    var meses = sc.iids.length ? sc.items.map(function (i) { return Number(i.cuotas) || 0; }).filter(Boolean) : [];
+    if (!T.iniTocado) { $('fta-ini').value = ini; if (meses.length) $('fta-meses').value = Math.max.apply(null, meses); }
+    reglaResumen();
+  }
+  // El primer aviso lo calcula la base (ventana_alerta), igual que al guardar
+  async function reglaResumen() {
+    var ini = v('fta-ini'), sum = $('fta-sum'), fac = /factur/i.test(v('fta-tipo'));
+    if (!ini) { sum.innerHTML = ''; $('fta-ipc').innerHTML = ''; return; }
+    var r = await db().rpc('ventana_alerta', { inicio: ini, frecuencia: v('fta-frec'), dia_desde: fac ? Number(v('fta-d1')) : null, dia_hasta: fac ? Number(v('fta-d2')) : null });
+    if (r.error) { sum.textContent = r.error.message; return; }
+    var w = Array.isArray(r.data) ? r.data[0] : r.data, m = Number(v('fta-meses')) || 0;
+    var desde = _pd(w.due); desde.setDate(desde.getDate() - (w.aviso || 0));
+    var fin = m ? mCorrerDias(_pd(ini), 0) : null; if (fin) fin.setMonth(fin.getMonth() + m);
+    sum.innerHTML = '<span>' + ico('calendario') + ' Primer aviso <b>' + ff(w.due) + '</b></span><span>Se ve desde <b>' + ff(desde) + '</b></span>' +
+      '<span>Fecha fin <b>' + (fin ? ff(fin) : 'fin del contrato') + '</b></span>';
+    if (!/ipc/i.test(v('fta-tipo'))) { $('fta-ipc').innerHTML = ''; return; }
+    var ip = await db().rpc('ipc_ventana', { fecha: w.due });
+    var d = ip.data || {};
+    $('fta-ipc').innerHTML = d.ok ? ico('porcentaje') + ' IPC aplicable al primer aviso: ' + d.months.map(function (x) { return esc(x.month) + ' ' + String(x.pct).replace('.', ',') + '%'; }).join(' · ') +
+      ' → <b>' + String(d.pct).replace('.', ',') + '%</b>' : esc(d.msg || (ip.error && ip.error.message) || 'No se pudo calcular el IPC');
+  }
+  window.nuevaRegla = async function (ctx, opts) {
+    T.rctx = ctx || {}; T.onSave = (opts || {}).onSave || null; T.iniTocado = false;
+    try {
+      var r = await Promise.all([base(), db().from('v_alertas_elegibles').select('*').order('orden'), db().rpc('mail_admin')]);
+      if (r[1].error) throw new Error(r[1].error.message);
+      T.eleg = r[1].data;
+      var B = r[0], adm = r[2].data || '';
+      $('fta-tipo').innerHTML = '<option value="">— Elegí el tipo —</option>' + B.tiposAlerta.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('');
+      $('fta-frec').innerHTML = (B.frecuencias.length ? B.frecuencias : ['Mensual', 'Trimestral', 'Anual']).map(function (f) { return '<option' + (/mensual/i.test(f) ? ' selected' : '') + '>' + esc(f) + '</option>'; }).join('');
+      $('fta-who').innerHTML = B.users.map(function (u) { return '<option value="' + esc(u.mail) + '"' + (u.mail === adm ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('');
+      $('fta-det').value = ''; $('fta-meses').value = 12; $('fta-d1').value = 1; $('fta-d2').value = 10;
+      reglaTipo();
+      openM('m-fta');
+    } catch (e) { toast('No se pudo abrir: ' + e.message, 'err'); }
+  };
+  async function guardarRegla() {
+    var sc = reglaAlcance(), fac = /factur/i.test(v('fta-tipo')), b = $('fta-ok'); b.disabled = true;
+    await hacer('nueva_regla_alerta', { p: { type: v('fta-tipo'), clientId: v('fta-cli'), projectIds: sc.pids.join(', '), itemIds: sc.iids.join(', '),
+      start: v('fta-ini'), months: v('fta-meses'), frequency: v('fta-frec'), dayFrom: fac ? v('fta-d1') : '', dayTo: fac ? v('fta-d2') : '',
+      assignees: v('fta-who'), detail: v('fta-det') } }, function (r) { return 'Recordatorio creado · ' + r.id + ' · primer aviso ' + ff(r.due); }, 'm-fta');
+    b.disabled = false;
+  }
 
   // ── nueva ────────────────────────────────────────────────────
   function llenarProyectos(sel) {
