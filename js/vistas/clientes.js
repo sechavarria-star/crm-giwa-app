@@ -55,9 +55,12 @@
     var s = EST[e] || 'xm';
     return '<span class="est"><span class="est-dot e-' + s + '"></span><span class="t-' + s + '">' + esc(e) + '</span></span>';
   }
+  // Logo de Drive; si no se puede ver (archivo sin compartir: 403), la inicial
   function logo(e, sm) {
-    return e.logo ? '<img class="emp-logo" src="' + esc(e.logo) + '" referrerpolicy="no-referrer" alt="">'
-                  : '<div class="emp-ini' + (sm ? ' sm' : '') + '">' + esc((e.nombre || '?').charAt(0).toUpperCase()) + '</div>';
+    var ini = '<div class="emp-ini' + (sm ? ' sm' : '') + '">' + esc((e.nombre || '?').charAt(0).toUpperCase()) + '</div>';
+    if (!e.logo) return ini;
+    return '<img class="emp-logo" src="' + esc(e.logo) + '" referrerpolicy="no-referrer" alt="" ' +
+           'onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' + esc(ini) + '">';
   }
   function consDe(e) { return D.cons.filter(function (c) { return c.empresa_id === e.id; }); }
   function coincide(texto) { return !busca || String(texto || '').toLowerCase().indexOf(busca) >= 0; }
