@@ -48,3 +48,13 @@ button.hoy-go{background:none;border:0;padding:0;font-family:inherit}
 .pc-emp-f{background:var(--blue-a)}
 .pc-concepto{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pc-barra{position:sticky;bottom:0;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--b-tenue);background:var(--bg2)}
+
+/* PM · el borde de la tarjeta de un proyecto toma el color de su estado (antes, style en línea) */
+.proy-row.e-borde-xb{border-left-color:var(--blue)}
+.proy-row.e-borde-xg{border-left-color:var(--ok)}
+.proy-row.e-borde-xm{border-left-color:var(--mt2)}
+.proy-row.e-borde-xt{border-left-color:var(--teal)}
+.proy-row.e-borde-xv{border-left-color:var(--violet)}
+.proy-row.e-borde-xw{border-left-color:var(--wa)}
+.proy-row.e-borde-xy{border-left-color:var(--yl)}
+.proy-row.det{opacity:.65}

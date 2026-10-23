@@ -14,6 +14,8 @@ Genera (pisa) estos archivos — no editarlos a mano mientras se use este script
     js/base.js        ← el <script> de _Estilos.html (set, fmt, ff, velo…)
     js/iconos.js      ← el <script> de _Iconos.html (ico, _ICO)
     js/dialogo.js     ← _Dialogo.html: el markup se inyecta al cargar + su <script>
+    js/calculos.js    ← el <script> de _Calculos.html (fechas, mTotal, sum… · sin plata nueva)
+    js/estados.js     ← el <script> de _Estados.html (canon, colores, activo/detenido…)
 """
 import os, re, sys, json
 
@@ -53,6 +55,9 @@ def main():
           'while(d.firstChild)document.body.appendChild(d.firstChild);})();\n\n' % json.dumps(markup))
     js += '\n\n'.join(bloques(dlg, 'script'))
     escribir(raiz, 'js/dialogo.js', js, '_Dialogo.html')
+
+    for nombre, rel in (('_Calculos.html', 'js/calculos.js'), ('_Estados.html', 'js/estados.js')):
+        escribir(raiz, rel, '\n\n'.join(bloques(leer(src, nombre), 'script')), nombre)
 
 if __name__ == '__main__':
     main()

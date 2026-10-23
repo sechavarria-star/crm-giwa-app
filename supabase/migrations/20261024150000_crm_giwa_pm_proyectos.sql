@@ -81,12 +81,15 @@ select p.id, p.detenido,
        pp.monto_final_ars, 0 as monto_final_usd, pp.monto_cotizado, pp.recurrente_mensual, pp.mant_vivos,
        pp.saldo, pp.saldo_mant, pp.detenido_monto, pp.bonificacion, pp.bonificacion_mant,
        pp.cuotas_totales, pp.cuotas_restantes, pp.monto_facturado, pp.cobrado_dev, pp.cobrado_mant, pp.cobrado_sin,
-       coalesce((select jsonb_agg(i.item order by i.orden) from crm_giwa.v_pm_items i where i.proyecto_id = p.id), '[]'::jsonb) as items,
+       coalesce(it.items, '[]'::jsonb) as items,
        p.orden
 from crm_giwa.proyectos p
 join crm_giwa.v_proyectos_plata pp on pp.id = p.id
 left join crm_giwa.empresas e on e.id = p.empresa_id
 left join crm_giwa.contactos c on c.id = p.sponsor_id
+-- los desarrollos de todos los proyectos en UNA pasada (una subconsulta por
+-- proyecto recalculaba la plata 52 veces: 2,4 s)
+left join (select proyecto_id, jsonb_agg(item order by orden) as items from crm_giwa.v_pm_items group by proyecto_id) it on it.proyecto_id = p.id
 where crm_giwa.norm(p.estado_id) !~ 'borrador';
 
 -- ── getSeguimientoExtra ──
