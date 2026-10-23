@@ -11,16 +11,27 @@
    servidor nunca devolvía: el KPI Alertas daba siempre 0 y posponer una
    alerta usaba la función de tareas.
 
-   PENDIENTE: la agenda (Google Calendar) llega con el puente de Google, y
-   los números de Plata con Administración (etapa 4).
+   Plata: cuántos cobros vencidos y cuánto hay para facturar, de las vistas
+   del dashboard de Administración (v_cobros_pendientes, v_facturar_*).
+
+   PENDIENTE: la agenda (Google Calendar) llega con el puente de Google.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var H = { tareas: [], mias: false, kpi: '' };
+  var H = { tareas: [], mias: false, kpi: '', plata: null };
 
   async function cargar() {
-    var r = await db().from('v_tareas').select('*').eq('closed', false).eq('hidden', false).not('due', 'is', null);
-    if (r.error) throw new Error(r.error.message);
-    H.tareas = r.data;
+    var r = await Promise.all([
+      db().from('v_tareas').select('*').eq('closed', false).eq('hidden', false).not('due', 'is', null),
+      db().from('v_cobros_pendientes').select('dias'),
+      db().from('v_facturar_mensuales').select('item_id'),
+      db().from('v_facturar_saldos').select('item_id'),
+      db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 })
+    ]);
+    var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
+    H.tareas = r[0].data;
+    var dv = Number(r[4].data) || 30;
+    H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
+                mens: r[2].data.length, saldos: r[3].data.length };
   }
 
   function yo() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').trim().toLowerCase(); }
@@ -57,6 +68,7 @@
     if (H.kpi === 'hoy') ahora = deHoy;
     if (H.kpi === 'alertas') ahora = alertas;
 
+    var P = H.plata || { venc: 0, mens: 0, saldos: 0 }, nPlata = P.venc + P.mens + P.saldos;
     var nombre = (CRM_USUARIO && CRM_USUARIO.nombre) || '';
     var fecha = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
     var k = function (key, cls, lbl, val, sub) {
@@ -73,6 +85,7 @@
       k('venc', venc.length ? 'k-alerta' : 'k-neutro', 'Vencidas', venc.length, 'tareas y alertas atrasadas') +
       k('hoy', 'k-contratado', 'Para hoy', deHoy.length, 'vencen hoy') +
       k('alertas', alertas.length ? 'k-pendiente' : 'k-neutro', 'Alertas', alertas.length, 'facturar, cobrar, renovar') +
+      k('plata', nPlata ? 'k-abono' : 'k-neutro', 'Plata', nPlata, 'ver en Administración') +
       '</div>';
     h += '<div class="hoy"><div>' +
       '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('alerta') + ' Ahora <span class="u-s11-mt">' + ahora.length + '</span>' +
@@ -83,9 +96,10 @@
       '</div><div>' +
       '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('reloj') + ' Agenda de hoy</div>' +
         '<div class="hoy-vacio">La agenda de Google Calendar llega con el puente de Google.</div></div>' +
-      '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('plata') + ' Plata</div>' +
-        '<div class="hoy-vacio">Cobros vencidos y lo que hay que facturar, por ahora en Administración del CRM actual.</div>' +
-        '<a class="btn bg sm u-mt6" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir Administración</a></div>' +
+      '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('plata') + ' Plata<a class="hoy-go" href="#/admin">Administración</a></div>' +
+        '<div class="hoy-plata"><span>Cobros vencidos</span><b class="m' + (P.venc ? ' u-c-rd' : '') + '">' + P.venc + '</b></div>' +
+        '<div class="hoy-plata"><span>Abonos a facturar</span><b class="m">' + P.mens + '</b></div>' +
+        '<div class="hoy-plata"><span>Desarrollos a facturar</span><b class="m">' + P.saldos + '</b></div></div>' +
       '</div></div>';
     el.innerHTML = h;
   }
@@ -111,7 +125,11 @@
       var b = ev.target.closest('[data-hoy]'); if (!b) return;
       var a = b.getAttribute('data-hoy'), t = buscar(b.getAttribute('data-id'));
       if (a === 'mias') { H.mias = b.getAttribute('data-v') === '1'; return pintar(el); }
-      if (a === 'kpi') { var k = b.getAttribute('data-k'); H.kpi = H.kpi === k ? '' : k; return pintar(el); }
+      if (a === 'kpi') {
+        var k = b.getAttribute('data-k');
+        if (k === 'plata') { location.hash = '#/admin'; return; }
+        H.kpi = H.kpi === k ? '' : k; return pintar(el);
+      }
       if (a === 'nueva') return nuevaTarea({}, alGuardar);
       if (!t) return;
       if (a === 'hecho') return tareaHecha(t, alGuardar);
