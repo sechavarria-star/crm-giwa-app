@@ -63,6 +63,10 @@
            'onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' + esc(ini) + '">';
   }
   function consDe(e) { return D.cons.filter(function (c) { return c.empresa_id === e.id; }); }
+  // Botón-ícono que abre algo (Design System: nada se abre sin un ícono visible)
+  function bIco(acc, id, icono, tip) {
+    return '<button class="btn bg xs btn-ico" data-' + acc + '="' + esc(id) + '" data-tip="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + ico(icono) + '</button>';
+  }
   function coincide(texto) { return !busca || String(texto || '').toLowerCase().indexOf(busca) >= 0; }
 
   // ── las pestañas ─────────────────────────────────────────────
@@ -80,7 +84,7 @@
     });
     if (!filas.length) return fil + ley + '<div class="empty">Ninguna empresa con este filtro.</div>';
     var h = '<div class="card u-p0"><table class="tbl"><thead><tr><th>Empresa</th><th>Tier</th><th>Estado</th>' +
-            '<th class="u-tr">Contratado</th><th class="u-tr">Saldo</th><th>Último contacto</th></tr></thead><tbody>';
+            '<th class="u-tr">Contratado</th><th class="u-tr">Saldo</th><th>Último contacto</th><th></th></tr></thead><tbody>';
     filas.forEach(function (e) {
       var g = clienteDe(e), pros = g.estado === 'prospecto';
       h += '<tr><td class="emp-n">' + esc(e.nombre) + '</td>' +
@@ -88,7 +92,8 @@
            '<td>' + estado(g.estado) + '</td>' +
            '<td class="m m-contratado u-tr">' + (pros ? '—' : fmt(g.contratado)) + '</td>' +
            '<td class="m m-pendiente u-tr">' + (pros ? '—' : fmt(g.saldo)) + '</td>' +
-           '<td class="u-c-mt">' + hace(g.ultimo) + '</td></tr>';
+           '<td class="u-c-mt">' + hace(g.ultimo) + '</td>' +
+           '<td class="u-tr">' + bIco('ver', e.id, 'abrir', 'Abrir ficha') + '</td></tr>';
     });
     return fil + ley + h + '</tbody></table></div>';
   }
@@ -101,7 +106,8 @@
       var web = e.web ? (e.web.indexOf('http') === 0 ? e.web : 'https://' + e.web) : '';
       return '<div class="card"><div class="u-p1214">' +
         '<div class="u-row8">' + logo(e) + '<div class="u-f1m"><div class="emp-n">' + esc(e.nombre) + '</div>' +
-          '<div class="u-s11-mt">' + esc([e.rubro, e.localidad].filter(Boolean).join(' · ') || '—') + '</div></div></div>' +
+          '<div class="u-s11-mt">' + esc([e.rubro, e.localidad].filter(Boolean).join(' · ') || '—') + '</div></div>' +
+          bIco('ver', e.id, 'abrir', 'Abrir ficha') + bIco('ed', e.id, 'editar', 'Editar empresa') + '</div>' +
         '<div class="u-s11-mt u-mt6">' + [e.tier_id, n ? n + ' contacto' + (n !== 1 ? 's' : '') : '',
           np ? np + ' proyecto' + (np !== 1 ? 's' : '') : ''].filter(Boolean).map(esc).join(' · ') + '</div>' +
         ((e.drive_interno || web) ? '<div class="u-row6 u-mt6">' +
@@ -128,7 +134,7 @@
            '<span class="u-s10-mt">' + cs.length + '</span></div><div class="con-grid">';
       cs.forEach(function (c) {
         var nom = ((c.nombre || '') + ' ' + (c.apellido || '')).trim(), wp = String(c.telefono || '').replace(/[^0-9]/g, '');
-        h += '<div class="card u-p1214"><div class="emp-n">' + esc(nom) + '</div>' +
+        h += '<div class="card u-p1214"><div class="u-row8"><div class="emp-n u-f1m">' + esc(nom) + '</div>' + bIco('con', c.id, 'editar', 'Editar contacto') + '</div>' +
              '<div class="u-s10-mt">' + esc([c.puesto, c.area_trabajo].filter(Boolean).join(' · ') || '—') + '</div>' +
              ((c.email || wp) ? '<div class="u-row6 u-mt6">' +
                (c.email ? '<a class="btn bg xs" href="mailto:' + esc(c.email) + '" title="' + esc(c.email) + '">' + ico('mail') + ' Mail</a>' : '') +
@@ -159,13 +165,14 @@
     el.querySelector('#cli-cuerpo').innerHTML = cuerpo;
     el.querySelectorAll('[data-pest]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-pest') === pest); });
     el.querySelector('#cli-exportar').hidden = pest !== 'cli';
+    el.querySelector('#cli-nuevo').innerHTML = ico('mas') + (pest === 'con' ? ' Nuevo contacto' : ' Nueva empresa');
   }
 
   VISTAS.clientes = async function (el) {
     el.innerHTML =
       '<div class="page-h"><div><h2>Clientes</h2><div class="page-s">Empresas, su estado y sus contactos.</div></div>' +
         '<div class="u-row8"><input class="fc" id="cli-q" placeholder="Buscar empresa o contacto…" aria-label="Buscar">' +
-        '<button class="btn bg" id="cli-exportar">Exportar</button></div></div>' +
+        '<button class="btn bg" id="cli-exportar">Exportar</button><button class="btn bp" id="cli-nuevo"></button></div></div>' +
       '<div class="ptabs" role="tablist">' +
         '<button class="ptab on" data-pest="cli" role="tab">Clientes</button>' +
         '<button class="ptab" data-pest="emp" role="tab">Empresas</button>' +
@@ -174,10 +181,19 @@
     el.querySelector('#cli-q').value = busca;
     await cargar();
     pintar(el);
+    // después de guardar en la ficha: releer y repintar, sin perder pestaña ni filtro
+    var alGuardar = { onSave: async function () { await cargar(); pintar(el); } };
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-pest],[data-filtro],#cli-exportar');
+      var b = ev.target.closest('[data-pest],[data-filtro],[data-ver],[data-ed],[data-con],#cli-exportar,#cli-nuevo');
       if (!b) return;
       if (b.id === 'cli-exportar') return exportar();
+      if (b.id === 'cli-nuevo') return pest === 'con' ? abrirContacto(null, alGuardar) : abrirFichaEmpresa('', alGuardar);
+      if (b.hasAttribute('data-ver')) return verFichaEmpresa(b.getAttribute('data-ver'), alGuardar);
+      if (b.hasAttribute('data-ed')) return abrirFichaEmpresa(b.getAttribute('data-ed'), alGuardar);
+      if (b.hasAttribute('data-con')) {
+        var id = b.getAttribute('data-con');
+        return abrirContacto(D.cons.find(function (c) { return c.id === id; }), alGuardar);
+      }
       if (b.hasAttribute('data-pest')) pest = b.getAttribute('data-pest');
       if (b.hasAttribute('data-filtro')) filtro = b.getAttribute('data-filtro');
       pintar(el);
