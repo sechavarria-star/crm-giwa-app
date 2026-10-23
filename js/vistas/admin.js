@@ -1,9 +1,9 @@
 /* ══════════════════════════════════════════════════════════════════════
    vistas/admin.js · Administración
    ──────────────────────────────────────────────────────────────────────
-   Reemplaza Admin_Index.html + _ResumenAdm.html. Por ahora el Dashboard;
-   las otras vistas (Facturación, Gastos, IPC y TC, Impuestos, Tipos) abren
-   el CRM actual hasta que pasen.
+   Reemplaza Admin_Index.html + _ResumenAdm.html. Dashboard y Facturación;
+   las otras vistas (Gastos, IPC y TC, Impuestos, Tipos) abren el CRM
+   actual hasta que pasen.
 
    Dashboard: cada número sale de una vista de la base, validada contra
    getResumenAdmin. Acá no se suma plata: sólo se agrupa y se muestra (los
@@ -16,7 +16,7 @@
    la ventana de ajuste IPC y Renovar, y «Faltan recordatorios».
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {} };
+  var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' } };
   var SUBS = [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']];
 
   async function cargar() {
@@ -258,12 +258,123 @@
     return sec('gas', 'Gastos del mes', op.length, '<span class="m m-pendiente u-s11 u-mla">' + fmt(tot) + '</span>', h);
   }
 
+  // ══ FACTURACIÓN · la lista de cobros (getAllCobros = v_cobros) ══
+  // Los recuadros son de lo que se está viendo: cambian con cada filtro.
+  async function cargarFact() {
+    var r = await Promise.all([
+      db().from('v_cobros').select('*'),
+      db().from('empresas').select('id,logo'),
+      db().from('usuarios').select('mail,nombre')
+    ]);
+    var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
+    var logos = {}; r[1].data.forEach(function (e) { logos[e.id] = e.logo; });
+    var nombres = {}; r[2].data.forEach(function (u) { nombres[String(u.mail || '').trim().toLowerCase()] = u.nombre; });
+    A.f = { cobros: r[0].data, logos: logos, nombres: nombres };
+  }
+  function sinDep(c) { return c.monto > 0 && !c.fecha_deposito && !c.fecha_transf; }
+  function filtrarFact() {
+    var F = A.ff, hoy = isoMas(0);
+    return A.f.cobros.filter(function (c) {
+      if (F.emp && c.empresa !== F.emp) return false;
+      if (F.own && c.factura_owner !== F.own) return false;
+      if (F.dep === 'pendiente' && !sinDep(c)) return false;
+      if (F.dep === 'vencida' && !(sinDep(c) && c.fecha_comp && c.fecha_comp < hoy)) return false;
+      if (F.dep === 'sinfc' && String(c.nro_factura || '').trim()) return false;
+      if (F.dep === 'depositado' && !(c.fecha_deposito || c.fecha_transf)) return false;
+      if (F.q && (c.empresa + c.proy_nombre + c.concepto + c.nro_factura).toLowerCase().indexOf(F.q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return String(b.fecha_comp || '').localeCompare(String(a.fecha_comp || '')); });
+  }
+  function htmlFact() {
+    var F = A.ff, C = A.f.cobros;
+    var emps = {}, owns = {}; C.forEach(function (c) { if (c.empresa) emps[c.empresa] = 1; if (c.factura_owner) owns[c.factura_owner] = 1; });
+    var opt = function (v, t, sel) { return '<option value="' + esc(v) + '"' + (v === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; };
+    var h = '<div class="filtros u-row8 u-mb12">' +
+      '<input class="fc u-f1" id="fa-q" placeholder="Buscar empresa, proyecto, comprobante…" aria-label="Buscar" value="' + esc(F.q) + '">' +
+      '<select class="fc u-wauto" id="fa-emp" aria-label="Empresa">' + opt('', 'Todas las empresas', F.emp) + Object.keys(emps).sort().map(function (e) { return opt(e, e, F.emp); }).join('') + '</select>' +
+      '<select class="fc u-wauto" id="fa-dep" aria-label="Depósito">' + opt('', 'Todos', F.dep) + opt('pendiente', 'Sin depósito', F.dep) + opt('vencida', 'Vencidas sin depósito', F.dep) +
+        opt('sinfc', 'Cobros sin factura', F.dep) + opt('depositado', 'Depositados', F.dep) + '</select>' +
+      '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Quién facturó: todos', F.own) +
+        Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select>' +
+      viejo() + ico('mas') + ' Nueva facturación</a></div>';
+    var list = filtrarFact(), pend = list.filter(sinDep);
+    h += '<div class="g3 u-mb12">' +
+      '<div class="kpi k-cobrado"><div class="kpi-lbl">Total cobrado ARS (neto)</div><div class="kpi-val">' + fmt(suma(list, 'monto')) + '</div><div class="kpi-sub">' + n(list.length, 'cobro') + '</div></div>' +
+      '<div class="kpi k-usd"><div class="kpi-lbl">Total USD</div><div class="kpi-val">' + fmt(Math.round(suma(list, 'total_usd')), 'USD') + '</div><div class="kpi-sub">al TC de cada comprobante</div></div>' +
+      '<div class="kpi ' + (pend.length ? 'k-alerta' : 'k-neutro') + '"><div class="kpi-lbl">Sin depósito</div><div class="kpi-val">' + pend.length + '</div><div class="kpi-sub">' + (pend.length ? fmt(suma(pend, 'monto')) : 'todo depositado') + '</div></div></div>';
+    if (!list.length) return h + '<div class="empty">Sin cobros para este filtro.</div>';
+    var porE = {}; list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
+    Object.keys(porE).sort().forEach(function (emp) {
+      var cs = porE[emp], e0 = cs[0], logo = e0.empresa_id && A.f.logos[e0.empresa_id];
+      h += '<div class="card u-p0 u-mb10"><div class="card-h u-row8">' +
+        // logo de Drive; si no se puede ver (archivo sin compartir: 403), la inicial
+        (logo ? '<img class="proy-emp-logo" src="' + esc(logo) + '" referrerpolicy="no-referrer" alt="" onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' +
+                esc('<div class="proy-emp-initial">' + esc(emp.charAt(0).toUpperCase()) + '</div>') + '">'
+              : '<div class="proy-emp-initial">' + esc(emp.charAt(0).toUpperCase()) + '</div>') +
+        '<span class="u-fw6">' + esc(emp) + '</span><span class="u-s10-mt">' + n(cs.length, 'cobro') + '</span>' +
+        '<span class="m m-cobrado u-mla">' + fmt(suma(cs, 'monto')) + '</span></div>' +
+        '<div class="u-ovx"><table class="tbl"><thead><tr><th>Concepto</th><th>Comprobante</th><th>Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead><tbody>';
+      var porP = {}, ordP = [];
+      cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; if (!porP[k]) { porP[k] = []; ordP.push(k); } porP[k].push(c); });
+      ordP.sort().forEach(function (pn) {
+        h += '<tr class="pc-emp-f"><td colspan="7"><span class="u-s11 u-fw6">' + esc(pn) + '</span> <span class="m m-cobrado u-s10">' + fmt(suma(porP[pn], 'monto')) + '</span></td></tr>';
+        porP[pn].forEach(function (c) {
+          var nc = c.monto < 0, editable = sinDep(c) || nc;
+          // el color del monto dice si la plata entró: cobrado · pendiente · nota de crédito (neutra)
+          var mc = nc ? 'm-neutro' : sinDep(c) ? 'm-pendiente' : 'm-cobrado';
+          h += '<tr><td><span class="u-fw6">' + esc(c.concepto || '—') + '</span>' + (c.cuota_nro ? ' <span class="u-s10-mt">· cuota ' + esc(c.cuota_nro) + '</span>' : '') + '</td>' +
+            '<td class="u-nw">' + esc(c.tipo_comp || '—') + (c.nro_factura ? ' <span class="u-s10-mt">#' + esc(c.nro_factura) + '</span>' : ' <span class="u-s10 u-c-wa">sin N°</span>') + '</td>' +
+            '<td class="u-c-mt u-nw">' + esc(ff(c.fecha_comp)) + '</td>' +
+            '<td class="m ' + mc + ' u-tr u-nw">' + fmt(c.monto) + '</td>' +
+            '<td class="m m-usd u-tr u-nw">' + (c.total_usd > 0 ? fmt(Math.round(c.total_usd), 'USD') : '—') + '</td>' +
+            '<td>' + (c.link_fc ? '<a class="btn bg xs" href="' + esc(c.link_fc) + '" target="_blank" rel="noopener">' + ico('documento') + ' Ver</a>'
+                                : '<button class="btn bg xs btn-ico" data-adm="fa-link" data-id="' + esc(c.id) + '" data-tip="Adjuntar el PDF (link)" aria-label="Adjuntar el PDF">' + ico('clip') + '</button>') + '</td>' +
+            '<td class="u-nw u-tr">' + (editable
+              ? viejo().replace('btn bg xs"', 'btn bg xs btn-ico" data-tip="Editar en el CRM actual" aria-label="Editar"') + ico('editar') + '</a>' +
+                '<button class="btn bg xs btn-ico" data-adm="fa-borrar" data-id="' + esc(c.id) + '" data-tip="Eliminar este cobro" aria-label="Eliminar">' + ico('borrar') + '</button>'
+              : '<button class="btn bg xs btn-ico" data-adm="fa-com" data-id="' + esc(c.id) + '" data-tip="Ya cobrado: sólo se le puede comentar" aria-label="Comentar">' + ico('chat') + '</button>') +
+            '</td></tr>';
+        });
+      });
+      h += '</tbody></table></div></div>';
+    });
+    return h;
+  }
+  async function accionFact(el, a, id) {
+    var c = A.f.cobros.find(function (x) { return x.id === id; }); if (!c) return;
+    var que = [c.empresa, c.concepto, c.nro_factura ? '#' + c.nro_factura : ''].filter(Boolean).join(' · ');
+    var r;
+    if (a === 'fa-borrar') {
+      if (!(await ask('¿Eliminar este cobro?\n\n' + (que || id) + '\n' + fmt(c.monto) + '\n\nNo se puede deshacer.', 'Eliminar cobro', { peligro: true }))) return;
+      r = await db().rpc('borrar_cobro', { cid: id });
+      if (r.error) return toast(r.error.message, 'err');
+      toast('Cobro eliminado', 'ok');
+    }
+    if (a === 'fa-com') {
+      var t = await pedir('Cobrado el ' + ff(c.fecha_deposito || c.fecha_transf) + '.\nUn cobro con la plata adentro no se edita.\n\n' + que, '', 'Comentario sobre este cobro');
+      if (!t || !String(t).trim()) return;
+      r = await db().rpc('comentar_cobro', { cid: id, texto: String(t).trim() });
+      if (r.error) return toast(r.error.message, 'err');
+      return toast('Comentario guardado', 'ok');
+    }
+    if (a === 'fa-link') {
+      // Subir el archivo a Drive llega con el puente de Google; mientras, el link del PDF
+      var l = await pedir('Link del PDF de la factura (Drive)', '', 'Adjuntar factura');
+      if (!l || !String(l).trim()) return;
+      r = await db().rpc('cobro_link', { cid: id, link: String(l).trim() });
+      if (r.error) return toast(r.error.message, 'err');
+      toast('Factura adjuntada', 'ok');
+    }
+    await cargarFact(); pintar(el);
+  }
+
   // ── pintar ───────────────────────────────────────────────────
   function pintar(el) {
     var cab = '<div class="page-h"><div><h2>Administración</h2><div class="page-s">Facturación, cobros y gastos.</div></div></div>' +
       '<div class="ptabs" role="tablist">' + SUBS.map(function (s) {
         return '<button class="ptab' + (A.sub === s[0] ? ' on' : '') + '" data-adm="sub" data-s="' + s[0] + '" role="tab">' + s[1] + '</button>';
       }).join('') + '</div>';
+    if (A.sub === 'fact') { el.innerHTML = cab + htmlFact(); return; }
     if (A.sub !== 'dash') {
       el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' + viejo() + ico('abrir') + ' Abrir el CRM actual</a></div>';
       return;
@@ -274,7 +385,7 @@
 
   VISTAS.admin = async function (el) {
     el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando Administración…</div>';
-    var refrescar = async function () { await cargar(); pintar(el); };
+    var refrescar = async function () { await cargar(); if (A.sub === 'fact') await cargarFact(); pintar(el); };
     await refrescar();
     var alerta = function (id) { return A.d.alertas.find(function (a) { return a.id === id; }); };
     if (!el._admToggle) {                      // una vez: #vista es el mismo para todos los módulos
@@ -283,9 +394,17 @@
         var d = ev.target; if (d.matches && d.matches('details[data-sec]')) A.abiertos[d.getAttribute('data-sec')] = d.open;
       }, true);
     }
+    // la búsqueda repinta sólo la lista, para no perder el foco del campo
+    el.oninput = function (ev) {
+      if (ev.target.id !== 'fa-q') return;
+      A.ff.q = ev.target.value.toLowerCase().trim();
+      var pos = ev.target.selectionStart; pintar(el);
+      var q = document.getElementById('fa-q'); q.focus(); q.setSelectionRange(pos, pos);
+    };
     el.onchange = function (ev) {
       var t = ev.target;
       if (t.id === 'adm-gmes') { A.gastosMes = t.value; return pintar(el); }
+      if (t.id === 'fa-emp' || t.id === 'fa-dep' || t.id === 'fa-own') { A.ff[t.id.slice(3)] = t.value; return pintar(el); }
       var pc = t.getAttribute && t.getAttribute('data-pc');
       if (pc === 'todas') document.querySelectorAll('#pc-wrap [data-pc=fc], #pc-wrap [data-pc=emp]').forEach(function (x) { x.checked = t.checked; });
       if (pc === 'emp') document.querySelectorAll('#pc-wrap [data-pc=fc][data-e="' + t.getAttribute('data-e') + '"]').forEach(function (x) { x.checked = t.checked; });
@@ -294,7 +413,12 @@
     el.onclick = async function (ev) {
       var b = ev.target.closest('[data-adm]'); if (!b) return;
       var a = b.getAttribute('data-adm'), id = b.getAttribute('data-id');
-      if (a === 'sub') { A.sub = b.getAttribute('data-s'); return pintar(el); }
+      if (a === 'sub') {
+        A.sub = b.getAttribute('data-s');
+        if (A.sub === 'fact' && !A.f) { el.querySelector('.ptabs').insertAdjacentHTML('afterend', '<div class="loading"><div class="spin"></div></div>'); await cargarFact(); }
+        return pintar(el);
+      }
+      if (a.indexOf('fa-') === 0) return accionFact(el, a, id);
       if (a === 'pc-reg') {
         var ids = Array.prototype.map.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-id'); });
         var f = (document.getElementById('pc-fecha') || {}).value;
