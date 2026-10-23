@@ -50,11 +50,21 @@ button.hoy-go{background:none;border:0;padding:0;font-family:inherit}
 .pc-barra{position:sticky;bottom:0;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--b-tenue);background:var(--bg2)}
 
 /* PM · el borde de la tarjeta de un proyecto toma el color de su estado (antes, style en línea) */
-.proy-row.e-borde-xb{border-left-color:var(--blue)}
-.proy-row.e-borde-xg{border-left-color:var(--ok)}
-.proy-row.e-borde-xm{border-left-color:var(--mt2)}
-.proy-row.e-borde-xt{border-left-color:var(--teal)}
-.proy-row.e-borde-xv{border-left-color:var(--violet)}
-.proy-row.e-borde-xw{border-left-color:var(--wa)}
-.proy-row.e-borde-xy{border-left-color:var(--yl)}
+.proy-row.e-borde-xb,.des-card.e-borde-xb{border-left-color:var(--blue)}
+.proy-row.e-borde-xg,.des-card.e-borde-xg{border-left-color:var(--ok)}
+.proy-row.e-borde-xm,.des-card.e-borde-xm{border-left-color:var(--mt2)}
+.proy-row.e-borde-xt,.des-card.e-borde-xt{border-left-color:var(--teal)}
+.proy-row.e-borde-xv,.des-card.e-borde-xv{border-left-color:var(--violet)}
+.proy-row.e-borde-xw,.des-card.e-borde-xw{border-left-color:var(--wa)}
+.proy-row.e-borde-xy,.des-card.e-borde-xy{border-left-color:var(--yl)}
 .proy-row.det{opacity:.65}
+
+/* PM · la ficha del proyecto: contenido + lateral de plata (antes, style en línea) */
+.ficha-grid{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:12px;align-items:start}
+@media (max-width:720px){.ficha-grid{grid-template-columns:minmax(0,1fr)}}
+.ficha-cab{padding:12px 14px;border-bottom:1px solid var(--b-tenue)}
+.ficha-tit{font-size:18px;font-weight:300;margin:2px 0}
+.ficha-desc{font-size:12px;line-height:1.5;max-width:72ch}
+.des-card{background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:7px;border-left:3px solid var(--b-suave)}
+.des-card > summary{cursor:pointer;list-style:none}
+.des-card.apagado{opacity:.7}
