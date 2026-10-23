@@ -14,11 +14,16 @@
    La ficha del proyecto (5b) es de lectura: Información, Desarrollos y
    Tareas y comentarios, con la plata al costado.
 
-   PENDIENTE (5c): las acciones que cambian el proyecto o el desarrollo —
-   detener, aprobar, enviar propuesta, arrancar, deployar, cerrar etapa,
-   fechas, editar, marcar contactos—. Mientras, «Acciones en el CRM
-   actual». Análisis y Soporte (tickets, otra planilla) también siguen
-   allá, igual que Tareas, Agenda y Nuevo proyecto.
+   Acciones (5c), en la base: el estado del proyecto desde la barra o la
+   tarjeta (enviar propuesta, aprobar, finalizar, rechazar), detener y
+   reanudar, las del desarrollo (arrancar, deployar, finalizar, rechazar),
+   fechas, cerrar una etapa de módulos y marcar contactos.
+
+   PENDIENTE: los recordatorios que nacen con esos cambios (facturación,
+   IPC, renovación, reunión mensual) se crean todavía desde Administración
+   del CRM actual. Cotizar —recotizar, renovar, editar, mejora, horas de
+   soporte—, Análisis y Soporte siguen allá, igual que Tareas, Agenda y
+   Nuevo proyecto.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'seg',
@@ -92,6 +97,43 @@
   function tareasAbiertas(p) { return (p.tareas || []).filter(function (t) { return tareaAbierta(t.estado); }); }
   function vencida(t) { var f = _pd(t.fecha_vencimiento); return f && f < mHoy(); }
 
+  // ══ ACCIONES (5c) · las tablas de Estados.gs, en espejo ══════
+  // El backend (crm_giwa.accion_desarrollo…) valida siempre; esto sólo decide
+  // qué botón mostrar. Si cambia una, cambia la otra.
+  var RECH = ['rechazar', 'Rechazar', 'cerrar', 'Dijeron que no. Se puede recotizar'];
+  var ACC_DES = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó el trabajo'], RECH],
+                  curso: [['entregar', 'Deployar', 'subir', 'Sale a producción y empieza a correr la garantía']],
+                  garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplió la garantía. Acá arranca el mantenimiento']] };
+  var ACC_MANT = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó a facturar'], RECH],
+                   curso: [['cerrar', 'Finalizar', 'check', 'Se cumplieron las cuotas']], garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplieron las cuotas']] };
+  function accionesDes(it) { return ((esMant(it) ? ACC_MANT : ACC_DES)[_canonSol(it.estado || '')] || []); }
+  function botonesDes(it, soloPrincipal) {
+    var acc = accionesDes(it); if (soloPrincipal) acc = acc.filter(function (a) { return a[0] !== 'rechazar'; }).slice(0, 1);
+    return acc.map(function (a) { return ib(a[2], a[1] + ': ' + a[3], 'data-pm="acc-des" data-id="' + esc(it.id) + '" data-acc="' + a[0] + '"'); }).join('');
+  }
+  // La próxima acción del proyecto según dónde está (Activo sale solo al arrancar un desarrollo)
+  function accionesProy(p) {
+    if (p.detenido) return [];
+    switch (_canonProy(p.estado_proyecto)) {
+      case 'prospecto': return [['negociacion', 'Enviar propuesta', 'mail']];
+      case 'negociacion': return [['aprobado', 'Aprobar', 'check'], ['rechazado', 'Rechazar', 'cerrar']];
+      case 'activo': return [['finalizado', 'Finalizar', 'check']];
+    }
+    return [];
+  }
+  // ¿Se puede pasar el proyecto a «nuevo» desde la barra? (_puedeEstado)
+  function puedeEstado(p, nuevo) {
+    var a = _canonProy(p.estado_proyecto), b = _canonProy(nuevo), aprob = (p.items || []).some(function (it) { return esGanado(it.estado); });
+    if (a === b) return { ok: true };
+    if (a === 'finalizado') return { ok: false, msg: 'El proyecto está Finalizado: su estado no se cambia.' };
+    if (b === 'activo') return { ok: false, msg: '«Activo» se calcula solo: arranca un desarrollo y el proyecto pasa a Activo.' };
+    var prosp = b === 'prospecto' || b === 'negociacion';
+    if (prosp && aprob) return { ok: false, msg: 'Tiene desarrollos aprobados: no puede volver a ' + nuevo + '.' };
+    if (prosp && ['aprobado', 'activo', 'finalizado'].indexOf(a) >= 0) return { ok: false, msg: 'Un proyecto ' + p.estado_proyecto + ' no vuelve a ' + nuevo + '.' };
+    return { ok: true };
+  }
+  var AVISO_ALERTAS = 'Los recordatorios que nacen con este cambio (facturación, IPC, renovación, reunión mensual) todavía se crean desde Administración del CRM actual: «Faltan recordatorios».';
+
   // ══ SEGUIMIENTO · tarjetas por cliente ══════════════════════
   function segPasa(p, fil) {
     var c = _canonProy(p.estado_proyecto);
@@ -115,7 +157,10 @@
     var h = '<div class="seg-card' + (p.detenido ? ' det' : '') + (rev ? ' rev' : '') + '">';
     h += '<div class="seg-h"><div class="u-f1m"><div class="seg-nom">' + esc(p.nombre || '—') + '</div>' +
       (p.owner ? '<div class="u-s10-mt">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="seg-hacc">' + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xm') : '') + ib('abrir', 'Abrir la ficha del proyecto', 'data-pm="ficha" data-id="' + pid + '"') + '</div></div>';
+      '<div class="seg-hacc">' + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xm') : '') +
+      (can === 'finalizado' || can === 'rechazado' ? '' : ib(p.detenido ? 'play' : 'pausa', p.detenido ? 'Reanudar el proyecto' : 'Detener el proyecto', 'data-pm="det-proy" data-id="' + pid + '"')) +
+      accionesProy(p).map(function (a) { return ib(a[2], a[1] + ' el proyecto', 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('') +
+      ib('abrir', 'Abrir la ficha del proyecto', 'data-pm="ficha" data-id="' + pid + '"') + '</div></div>';
     var pq = porQue(p, can); if (pq) h += '<div class="seg-porque">' + esc(pq) + '</div>';
     if (its.length) h += '<div class="seg-barra">' + its.map(function (it) {
       return '<i class="e-' + (it.detenido ? 'xm' : colorEstado(it.estado).cls) + (_canonSol(it.estado) === 'finalizada' ? ' pas' : '') + '" title="' + esc((it.titulo || '') + ' · ' + (it.estado || '')) + '"></i>';
@@ -133,6 +178,7 @@
         var mant = esMant(it), m = '', cls = it.detenido ? 'xm' : colorEstado(it.estado).cls;
         h += '<div class="seg-dev' + (it.detenido ? ' det' : '') + '"><i class="est-dot e-' + cls + '"></i>' +
           '<span class="seg-dev-t dev-tit" title="' + esc(it.titulo || '') + '">' + (mant ? ico('repetir') + ' ' : '') + esc(it.titulo || it.tipo || '—') + '</span>' +
+          (p.detenido || it.detenido ? '' : botonesDes(it, true)) +
           '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (it.detenido ? ' · detenido' : '') + '</span></div>';
         if (esGanado(it.estado)) {
           if (!mant) {
@@ -164,7 +210,7 @@
           return '<div class="seg-tar"><span class="u-f1m seg-ell' + (cerr(a) ? ' u-c-mt' : '') + '">' + (cerr(a) ? ico('check') + ' ' : '') + esc(a.nombre) + '</span>' +
             (a.est ? '<span class="seg-mono u-c-mt">' + a.est + ' h</span>' : '') + '</div>';
         }).join('');
-        return desp(p, 'mod:' + k, tit, '<div class="seg-tars">' + acts + '</div>');
+        return desp(p, 'mod:' + k, tit, '<div class="seg-tars">' + acts + '</div>', hecha ? '' : ib('check', 'Cerrar la etapa', 'data-pm="cerrar-mod" data-id="' + esc(ms[0].id) + '"'));
       }).join('');
       h += desp(p, 'mod', 'Módulos <span class="seg-mono">' + listas.length + '/' + og.length + '</span>', mh);
     }
@@ -348,14 +394,20 @@
     if (sin.length) q.push('esperando aprobación: ' + sin.join(', '));
     return q.length ? '· ' + q.join(' · ') : '';
   }
-  // La barra de estado, sólo para mirar (cambiar el estado desde acá es 5c)
+  // La barra de estado ES el control: se toca el paso. Lo que no se puede elegir, apagado.
   function riel(p) {
     var can = _canonProy(p.estado_proyecto), det = esProyDetenido(p) || can === 'rechazado', idx = CAMINO.indexOf(can);
-    return '<div class="riel"><div class="riel-h"><div class="riel-pasos">' + CAMINO.map(function (c, i) {
-      var lbl = nombreProy(c), hecho = !det && idx >= 0 && i < idx, aqui = !det && i === idx, cls = colorEstadoProy(lbl).cls;
-      return '<span class="riel-paso' + (aqui ? ' aqui' : '') + (hecho ? ' pas' : '') + (aqui ? '' : ' no') + '" title="' + esc(aqui ? 'El proyecto está ' + lbl : lbl) + '">' +
-        '<i class="e-' + (aqui || hecho ? cls : 'xm') + '"></i><span class="' + (aqui ? 't-' + cls : '') + '">' + esc(lbl) + '</span></span>';
-    }).join('') + '</div>' + (esProyDetenido(p) ? est('Detenido', 'xm') : '') + '</div></div>';
+    return '<div class="riel"><div class="riel-h">' + ib('info', 'Tocá un paso de la barra para cambiar el estado del proyecto. Los apagados no se pueden elegir desde acá.', 'type="button"') +
+      '<div class="riel-pasos">' + CAMINO.map(function (c, i) {
+        var lbl = nombreProy(c), hecho = !det && idx >= 0 && i < idx, aqui = !det && i === idx, cls = colorEstadoProy(lbl).cls;
+        var chk = puedeEstado(p, lbl), clic = chk.ok && !aqui;
+        return '<button type="button" class="riel-paso' + (aqui ? ' aqui' : '') + (hecho ? ' pas' : '') + (chk.ok || aqui ? '' : ' no') + '"' +
+          (clic ? ' data-pm="estado" data-id="' + esc(p.id) + '" data-est="' + c + '"' : ' disabled') +
+          ' title="' + esc(aqui ? 'El proyecto está ' + lbl : (chk.ok ? 'Marcar como ' + lbl : chk.msg)) + '">' +
+          '<i class="e-' + (aqui || hecho ? cls : 'xm') + '"></i><span class="' + (aqui ? 't-' + cls : '') + '">' + esc(lbl) + '</span></button>';
+      }).join('') + '</div>' + (esProyDetenido(p) ? est('Detenido', 'xm') : '') +
+      (can === 'finalizado' ? '' : ib(esProyDetenido(p) ? 'play' : 'pausa', esProyDetenido(p) ? 'Reanudar el proyecto' : 'Detener el proyecto: los estados no cambian, queda marcado', 'data-pm="det-proy" data-id="' + esc(p.id) + '"')) +
+      '</div></div>';
   }
   function fechasHTML(p) {
     var devs = (p.items || []).filter(function (it) { return !esMant(it); });
@@ -389,13 +441,13 @@
     if (!cie.firme && cie.faltan) h += '<div class="u-s10 u-c-wa u-mb10">' + ico('alerta') + ' ' + cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.</div>';
     var drv = p.carpeta || (P.emps[p.empresa] || {}).drive_interno || '';
     h += '<div class="sec u-mt10">Drive interno</div>' + (drv ? '<a class="btn bg xs" href="' + esc(drv) + '" target="_blank" rel="noopener">' + ico('carpeta') + ' Abrir carpeta</a>' : '<span class="u-s10-mt">Sin carpeta cargada.</span>') + '</div></details>';
-    // Contactos de la empresa; la estrella marca los de este proyecto (marcarlos es 5c)
+    // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
     h += '<details class="desp plano"><summary><span class="u-f1m">Contactos · ' + esc(p.empresa || '') + '</span>' +
       '<button class="btn bp xs" data-pm="contacto">' + ico('mas') + ' Contacto</button></summary><div>' +
       (F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
         var tel = String(c.telefono || '').replace(/[^0-9]/g, '');
-        return '<div class="u-row8 fe-linea' + (mio(c) ? ' t-xw' : '') + '"><span title="' + (mio(c) ? 'Contacto de este proyecto' : '') + '">' + (mio(c) ? '★' : '☆') + '</span>' +
+        return '<div class="u-row8 fe-linea"><button class="btn xs btn-ico' + (mio(c) ? ' t-xw' : '') + '" data-pm="estrella" data-id="' + esc(c.id) + '" data-tip="' + (mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto') + '" aria-label="' + (mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto') + '">' + (mio(c) ? '★' : '☆') + '</button>' +
           '<div class="u-f1m"><div class="u-fw6">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim() || '—') + '</div><div class="u-s10-mt">' + esc(c.puesto || c.area_trabajo || c.email || '') + '</div></div>' +
           (tel ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') +
           (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + ico('mail') + '</a>' : '') + '</div>';
@@ -449,7 +501,10 @@
       var cls = det ? 'xm' : colorEstado(it.estado).cls;
       var h = '<details class="des-card e-borde-' + (det ? 'xm' : vivo ? cls : 'xm') + (det || !vivo ? ' apagado' : '') + '"' + (P.fAb[it.id] !== undefined ? (P.fAb[it.id] ? ' open' : '') : ((lista.length === 1 || can === 'curso' || can === 'garantia') ? ' open' : '')) + ' data-des="' + esc(it.id) + '">' +
         '<summary class="des-h"><div class="u-row8"><div class="u-f1m"><div class="dev-tit">' + (rec ? ico('repetir') + ' ' : '') + esc(it.titulo || it.descripcion || '—') + '</div>' +
-        '<div class="dev-sub">' + esc(sub) + '</div></div><span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
+        '<div class="dev-sub">' + esc(sub) + '</div></div>' +
+        (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' : ib(it.detenido ? 'play' : 'pausa', it.detenido ? 'Reanudar este desarrollo' : 'Detener este desarrollo', 'data-pm="det-des" data-id="' + esc(it.id) + '"')) +
+        (det ? '' : botonesDes(it, false)) +
+        '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
       h += '<div class="seg-linea u-mt6">';
       if (rec) {
         if (cuota) h += '<span>Cuota <b class="m m-abono">' + fmt(cuota) + '/mes</b></span>';
@@ -467,7 +522,19 @@
       if (it.garantia_dias) h += '<span>' + it.garantia_dias + ' días de garantía</span>';
       h += '</div><div class="seg-linea u-s10-mt u-mt6">';
       if (rec) { var arr = mantArranca(p, it); h += arr ? '<span>Arranca <b>' + ff(arr) + '</b> — fin de obra + garantía</span>' : '<span class="u-c-wa">No se sabe cuándo arranca: falta vincularlo a un desarrollo o cargarle la fecha de fin</span>'; }
-      else h += '<span>Inicio <b>' + (ff(it.fecha_est) || '—') + '</b></span><span>Fin <b>' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</b></span>';
+      else if (can === 'garantia') {
+        // en garantía se corre el FIN: corre la garantía y el arranque del mantenimiento
+        h += '<span>Inicio <b>' + (ff(it.fecha_est) || '—') + '</b></span><span>Fin <b>' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</b></span>' +
+          '<button class="btn bg xs" data-pm="post-fin" data-id="' + esc(it.id) + '" data-d="7" title="Corre la garantía y el arranque del mantenimiento una semana">+1 sem.</button>' +
+          '<button class="btn bg xs" data-pm="post-fin" data-id="' + esc(it.id) + '" data-d="30" title="Corre la garantía y el arranque del mantenimiento un mes">+1 mes</button>';
+      } else if (desCerrado(it) || can === 'rechazada') {
+        h += '<span>Inicio <b>' + (ff(it.fecha_est) || '—') + '</b></span><span>Fin <b>' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</b></span>';
+      } else {
+        h += '<span>Inicio</span><input class="fc u-wauto" type="date" data-fini="' + esc(it.id) + '" value="' + esc(it.fecha_est ? String(it.fecha_est).slice(0, 10) : '') + '" aria-label="Inicio del desarrollo">' +
+          '<button class="btn bg xs" data-pm="post-ini" data-id="' + esc(it.id) + '" data-d="7" title="Corre el inicio una semana">+1 sem.</button>' +
+          '<button class="btn bg xs" data-pm="post-ini" data-id="' + esc(it.id) + '" data-d="30" title="Corre el inicio un mes">+1 mes</button>' +
+          (it.fecha_fin ? '<span>Fin <b>' + ff(it.fecha_fin) + '</b></span>' : '');
+      }
       h += '</div>';
       if (it.descripcion) h += '<div class="u-s10-mt u-mt6">' + esc(it.descripcion) + '</div>';
       h += '<details class="desp plano u-mt6"><summary class="u-s11">Módulos de trabajo</summary><div>' + modulosDe(it.id) + '</div></details>';
@@ -525,7 +592,7 @@
     h += '<div class="ficha-grid"><div class="card u-p0"><div class="ficha-cab">' +
       '<div class="u-row8">' + logo(p.empresa, 'emp-logo', 'emp-ini') + '<div class="u-f1m"><div class="u-s11-mt">' + esc(p.empresa) + '</div>' +
       '<div class="ficha-tit">' + esc(p.nombre) + '</div><div class="u-row8">' + est(e, colorEstadoProy(e).cls) + '<span class="u-s10-mt">' + esc(deDondeSale(p)) + '</span></div></div>' +
-      '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Acciones en el CRM actual</a></div>' + riel(p) + '</div>' +
+      '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Recotizar, renovar, editar, mejora y horas de soporte">' + ico('abrir') + ' Cotizar en el CRM actual</a></div>' + riel(p) + '</div>' +
       '<div class="u-p14"><div class="ptabs">' + tabs.map(function (t) { return '<button class="ptab' + (t[0] === P.fTab ? ' on' : '') + '" data-pm="ftab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
       (tabs.find(function (t) { return t[0] === P.fTab; }) || tabs[1])[2](p) + '</div></div>' + lateral(p) + '</div>';
     return h;
@@ -541,6 +608,36 @@
     if (P.fLista.indexOf(id) < 0) P.fLista.push(id);
     el.querySelector('.ptabs') && (el.innerHTML = '<div class="loading"><div class="spin"></div> Abriendo la ficha…</div>');
     await cargarFicha(id); pintar(el); window.scrollTo(0, 0);
+  }
+
+  // ── aprobar: qué entró, qué no y qué queda en espera (aprobarProyecto) ──
+  function abrirAprobar(p) {
+    var nuevas = (p.items || []).filter(function (it) { return _canonSol(it.estado || '') === 'nueva'; });
+    if (!nuevas.length) return say('Este proyecto no tiene desarrollos en Nuevo para aprobar.', 'Aprobar propuesta');
+    var m = document.getElementById('m-aprob');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-aprob';
+      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Aprobar propuesta</span>' +
+        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-aprob">' + ico('cerrar') + '</button></div>' +
+        '<div class="mb2"><div class="u-s11-mt u-mb10" id="ap-n"></div><div id="ap-list"></div></div>' +
+        '<div class="mf"><button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button></div></div>';
+      document.body.appendChild(m);
+    }
+    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Lo que marques como «Entró» pasa a Aprobado.';
+    document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
+      return '<div class="rowb u-row8"><div class="u-f1m"><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
+        '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
+        '<select class="fc u-wauto" data-ap="' + esc(it.id) + '" aria-label="Decisión"><option value="entro">Entró</option><option value="rechazado">No entró</option><option value="espera">En espera</option></select></div>';
+    }).join('');
+    return new Promise(function (res) {
+      document.getElementById('ap-ok').onclick = function () {
+        var dec = {}, n = 0;
+        document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) { dec[x.getAttribute('data-ap')] = x.value; if (x.value === 'entro') n++; });
+        if (!n) return say('Marcá al menos uno como «Entró».\n\nSi no entró nada, usá el paso Rechazado de la barra.', 'Aprobar propuesta');
+        closeM('m-aprob'); res(dec);
+      };
+      openM('m-aprob');
+    });
   }
 
   // ── pintar ───────────────────────────────────────────────────
@@ -579,7 +676,44 @@
       if (ev.target.id === 'seg-q') { P.seg.q = ev.target.value; repintarConFoco(el, 'seg-q'); }
       if (ev.target.id === 'pr-q') { P.pr.q = ev.target.value; repintarConFoco(el, 'pr-q'); }
     };
-    el.onchange = function (ev) { if (ev.target.id === 'pr-orden') { P.pr.orden = ev.target.value; pintar(el); } };
+    // Una acción en la base: si sale bien, aviso y releer; si no, el motivo
+    var hacer = async function (fn, args, okMsg, aviso) {
+      var r = await db().rpc(fn, args);
+      if (r.error) { toast(r.error.message, 'err'); return null; }
+      toast(typeof okMsg === 'function' ? okMsg(r.data) : (okMsg || (r.data && r.data.msg) || 'Listo'), 'ok');
+      if (aviso) toast(AVISO_ALERTAS, 'inf');
+      await refrescar();
+      return r.data;
+    };
+    var proy = function (id) { return P.proys.find(function (x) { return x.id === id; }); };
+    var itemDe = function (iid) { var it = null; P.proys.some(function (p) { return (it = (p.items || []).find(function (x) { return x.id === iid; })); }); return it; };
+    var cambiarEstado = async function (p, canon) {
+      switch (canon) {
+        case 'negociacion':
+          if (!(await ask('¿Enviar la propuesta?\n\nEl proyecto pasa a Negociación. Los desarrollos siguen en Nuevo.', 'Enviar propuesta'))) return;
+          return hacer('enviar_propuesta', { pid: p.id, fecha: null });
+        case 'aprobado':                         // aprobar no es un cambio de estado: es decidir qué entró
+          var dec = await abrirAprobar(p); if (!dec) return;
+          return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec }, null, true);
+        case 'finalizado':
+          var ab = (p.items || []).filter(function (it) { var c = _canonSol(it.estado || ''); return c === 'curso' || c === 'garantia' || c === 'aprobada'; });
+          var msg = ab.length ? '¿Finalizar el proyecto?\n\nQuedan ' + ab.length + ' desarrollo(s) sin cerrar:\n' +
+              ab.map(function (it) { return '· ' + (it.titulo || it.tipo || it.id) + ' — ' + (it.estado || ''); }).join('\n') + '\n\nSe cierran todos junto con el proyecto.'
+            : '¿Finalizar el proyecto?\n\nTodos los desarrollos ya están cerrados.';
+          if (!(await ask(msg, 'Finalizar proyecto'))) return;
+          return hacer('finalizar_proyecto', { pid: p.id });
+        case 'rechazado':
+          if (!(await ask('¿Rechazar el proyecto?\n\nTodos sus desarrollos pasan a Rechazado.', 'Rechazar proyecto', { peligro: true }))) return;
+          return hacer('rechazar_proyecto', { pid: p.id }, null, true);
+        case 'activo': return toast('«Activo» se calcula solo: arrancá un desarrollo desde su fila', 'inf');
+      }
+      return hacer('cambiar_estado_proyecto', { pid: p.id, estado: nombreProy(canon) }, 'Estado: ' + nombreProy(canon));
+    };
+    el.onchange = function (ev) {
+      var t = ev.target;
+      if (t.id === 'pr-orden') { P.pr.orden = t.value; return pintar(el); }
+      if (t.hasAttribute && t.hasAttribute('data-fini')) return hacer('fecha_desarrollo', { did: t.getAttribute('data-fini'), campo: 'fecha_ini', fecha: t.value || null }, 'Fecha del desarrollo guardada');
+    };
     // Comentario rápido: Enter guarda en el proyecto
     el.onkeydown = async function (ev) {
       var t = ev.target; if (ev.key !== 'Enter' || !t.hasAttribute || !t.hasAttribute('data-segnota')) return;
@@ -600,6 +734,36 @@
         return abrirFicha(el, L[k], P.prev);
       }
       if (a === 'ftab') { P.fTab = b.getAttribute('data-t'); return pintar(el); }
+      // ── acciones (5c) ──
+      if (a === 'estado') { ev.preventDefault(); return cambiarEstado(proy(id), b.getAttribute('data-est')); }
+      if (a === 'det-proy') {
+        ev.preventDefault();
+        var pd = proy(id), det = !pd.detenido;
+        return ask(det ? '¿Detener el proyecto? El estado no cambia: queda marcado y griseado.' : '¿Reanudar el proyecto?').then(function (ok) {
+          if (ok) hacer('detener_proyecto', { pid: id, detener: det });
+        });
+      }
+      if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id); return hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo detenido'); }
+      if (a === 'acc-des') {
+        ev.preventDefault();
+        var acc = b.getAttribute('data-acc');
+        var go = function () { hacer('accion_desarrollo', { did: id, accion: acc }, function (r) { return r.de + ' → ' + r.a; }, acc !== 'cerrar'); };
+        if (acc === 'rechazar') return ask('¿Rechazar este desarrollo? Se puede recotizar después.', 'Rechazar desarrollo', { peligro: true }).then(function (ok) { if (ok) go(); });
+        return go();
+      }
+      if (a === 'cerrar-mod') { ev.preventDefault(); return hacer('cerrar_modulo_horas', { hid: id, cerrar: true }, function (r) { return 'Módulo cerrado (' + r.n + ')'; }); }
+      if (a === 'post-ini' || a === 'post-fin') {
+        var it = itemDe(id), base = _pd(a === 'post-ini' ? it.fecha_est : (it.fecha_fin || it.fecha_cierre));
+        if (!base) return toast(a === 'post-ini' ? 'Cargá primero la fecha de inicio del desarrollo' : 'El desarrollo no tiene fecha de fin', 'err');
+        var nf = mISO(mCorrerDias(base, Number(b.getAttribute('data-d'))));
+        return hacer('fecha_desarrollo', { did: id, campo: a === 'post-ini' ? 'fecha_ini' : 'fecha_fin', fecha: nf },
+          a === 'post-ini' ? 'Inicio corrido al ' + ff(nf) : 'Garantía corrida al ' + ff(nf));
+      }
+      if (a === 'estrella') {
+        var pe = proy(P.f.id), l = crmLista(pe.contactos), k2 = l.indexOf(id);
+        if (k2 >= 0) l.splice(k2, 1); else l.push(id);
+        return hacer('contactos_proyecto', { pid: pe.id, lista: l.join(',') }, k2 >= 0 ? 'Sacado del proyecto' : 'Agregado al proyecto');
+      }
       if (a === 'contacto') { var pp = P.proys.find(function (x) { return x.id === P.f.id; }); return abrirFichaEmpresa(pp.empresa_id, { nuevoContacto: true, onSave: refrescar }); }
       if (a === 'segfil') { P.seg.fil = b.getAttribute('data-f'); return pintar(el); }
       if (a === 'segemp') {
