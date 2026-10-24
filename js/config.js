@@ -11,7 +11,8 @@ var CRM_CONFIG = {
   supabaseKey: 'sb_publishable_sHdrgf8l6HwnKgK38gWnFQ_fEEVgG4f',
   schema:      'crm_giwa',
   dominio:     'giwa-ia.com',
-  // El CRM actual (Apps Script detrás de crm.giwa-ia.com): ahí siguen las
-  // pantallas que todavía no pasaron a esta app.
-  crmViejo:    'https://crm.giwa-ia.com'
+  // El CRM actual (el Apps Script, con su envoltorio de login): ahí siguen
+  // las pantallas que todavía no pasaron a esta app. crm.giwa-ia.com es
+  // ahora esta app; el viejo quedó en la dirección de GitHub Pages de crm-giwa.
+  crmViejo:    'https://sechavarria-star.github.io/crm-giwa/'
 };
