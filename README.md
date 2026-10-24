@@ -42,9 +42,10 @@ Configuration → Redirect URLs. Entra quien esté activo en `crm_giwa.usuarios`
 
 | Módulo | Dónde funciona |
 |---|---|
-| Hoy | CRM actual |
-| Clientes | CRM actual |
-| Administración | CRM actual |
-| Proyectos (PM) | CRM actual |
+| Hoy | App nueva |
+| Clientes | App nueva |
+| Administración | App nueva |
+| Proyectos (PM) | App nueva (falta Cotizar, Agenda y Nuevo proyecto) |
+| Soporte | Módulo nuevo, en preparación (los tickets de su app) |
 | Cotizador | CRM actual |
 | Configuración | CRM actual |

@@ -14,7 +14,8 @@ var MODULOS = [
   { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true  },
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true  },
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true  },
-  { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },
+  { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
+  { id: 'cot',     nombre: 'Cotizador',      ico: 'lista',    listo: false },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: false }
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
@@ -54,6 +55,9 @@ async function mostrarVista() {
   }
 }
 function vistaPendiente(m) {
+  // nuevo:true = no existe en el CRM actual: no hay adónde mandarlo
+  if (m.nuevo) return '<div class="card"><div class="sec">' + esc(m.nombre.toUpperCase()) + '</div>' +
+    '<p>Módulo nuevo, todavía en preparación.</p></div>';
   return '<div class="card">' +
     '<div class="sec">' + esc(m.nombre.toUpperCase()) + '</div>' +
     '<p>Esta pantalla todavía funciona en el CRM actual. Pasa a esta app en la fase 3.</p>' +

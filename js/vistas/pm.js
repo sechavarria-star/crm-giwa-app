@@ -23,8 +23,8 @@
    desarrollo crean solos sus alertas de facturación y recordatorios.
 
    PENDIENTE: Cotizar —recotizar, renovar, editar, mejora, horas de
-   soporte— y Soporte siguen allá, igual que Agenda y Nuevo
-   proyecto. Análisis: v_analisis_clientes (= getAnalisisCliente). La vista Tareas es js/tablero-tareas.js.
+   soporte— sigue allá, igual que Agenda y Nuevo proyecto. La pestaña
+   Soporte (tickets) no se pasa: va a su propio módulo, Soporte. Análisis: v_analisis_clientes (= getAnalisisCliente). La vista Tareas es js/tablero-tareas.js.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'seg',
