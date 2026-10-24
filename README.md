@@ -48,4 +48,4 @@ Configuration → Redirect URLs. Entra quien esté activo en `crm_giwa.usuarios`
 | Proyectos (PM) | App nueva (falta Cotizar, Agenda y Nuevo proyecto) |
 | Soporte | Módulo nuevo, en preparación (los tickets de su app) |
 | Cotizador | CRM actual |
-| Configuración | CRM actual |
+| Configuración | App nueva (Telegram, Plantilla Doc, Mantenimiento y Diagnósticos siguen en el CRM actual) |

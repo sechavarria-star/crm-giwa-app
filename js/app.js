@@ -16,7 +16,7 @@ var MODULOS = [
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true  },
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
   { id: 'cot',     nombre: 'Cotizador',      ico: 'lista',    listo: false },
-  { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: false }
+  { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true  }
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
 var _recargarVista = null;
