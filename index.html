@@ -28,7 +28,6 @@
   <div id="app" hidden>
     <header id="nav-global" class="nav-g">
       <div class="nav-marca">GIWA <span class="u-c-vi">{IA}</span></div>
-      <nav id="nav-mods" class="nav-mods" aria-label="Módulos"></nav>
       <div class="nav-der">
         <span class="u-s11-mt" id="top-fecha"></span>
         <button class="nav-b btn-ico" id="btn-refresh" onclick="recargar()" data-tip="Actualizar datos" aria-label="Actualizar datos"><span data-ico="recargar"></span></button>
@@ -36,6 +35,11 @@
         <button class="nav-b btn-ico" onclick="salir()" data-tip="Cerrar sesión" aria-label="Cerrar sesión"><span data-ico="candado"></span></button>
       </div>
     </header>
+    <!-- Menú lateral: módulos y sus subpantallas (acordeón); se colapsa a íconos -->
+    <aside class="lat" aria-label="Menú">
+      <nav id="nav-mods" class="lat-nav" aria-label="Módulos"></nav>
+      <button class="lat-tog" id="lat-tog" onclick="alternarMenu()" data-tip="Colapsar el menú" aria-label="Colapsar el menú"><span data-ico="izquierda"></span><span class="lat-txt">Colapsar</span></button>
+    </aside>
     <main id="vista" class="vista"></main>
   </div>
 

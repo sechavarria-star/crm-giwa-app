@@ -193,19 +193,21 @@
   }
 
   // ── pintar ───────────────────────────────────────────────────
+  // Las subpantallas están en el menú lateral (marcarSub lo mantiene al día)
   function pintar(el) {
-    var cab = '<div class="page-h"><div><h2>Configuración</h2><div class="page-s">Listas, valor hora y tipos de gastos.</div></div></div>' +
-      '<div class="ptabs" role="tablist">' + SUBS.map(function (s) {
-        return '<button class="ptab' + (C.sub === s[0] ? ' on' : '') + '" data-cfg="sub" data-s="' + s[0] + '" role="tab">' + s[1] + '</button>';
-      }).join('') + '</div>';
+    if (_montado !== 'config') return;            // se terminó de leer con otro módulo en pantalla
+    marcarSub(C.sub);
+    var cab = '<div class="page-h"><div><h2>' + SUBS.find(function (s) { return s[0] === C.sub; })[1] + '</h2>' +
+      '<div class="page-s">Configuración: listas, valor hora y tipos de gastos.</div></div></div>';
     el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, otros: htmlOtros }[C.sub])();
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
   }
 
-  VISTAS.config = async function (el) {
-    el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando Configuración…</div>';
+  VISTAS.config = async function (el, op) {
     var refrescar = async function () { await cargar(); pintar(el); };
-    await refrescar();
+    var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) C.sub = s;
+    await abrirModulo(el, { id: 'config', texto: 'Cargando Configuración…', forzar: op && op.forzar, cargar: cargar,
+      cargado: function () { return !!C.vh; }, firma: function () { return JSON.stringify([C.cfg, C.vh, C.cont]); }, pintar: function () { pintar(el); } });
     var guardar = async function (fn, args, msg) {
       var r = await db().rpc(fn, args);
       if (r.error) { toast(r.error.message, 'err'); return null; }
@@ -232,7 +234,6 @@
     el.onclick = async function (ev) {
       var b = ev.target.closest('[data-cfg]'); if (!b) return;
       var a = b.getAttribute('data-cfg'), id = b.getAttribute('data-id'), t = b.getAttribute('data-t');
-      if (a === 'sub') { C.sub = b.getAttribute('data-s'); return pintar(el); }
       if (a === 'add') return agregar(Number(b.getAttribute('data-i')));
       if (a === 'listas') {
         var cambios = {};
@@ -276,4 +277,10 @@
       }
     };
   };
+  // Del menú lateral: otra subpantalla, sin releer
+  VISTAS.config.irA = function (s) {
+    if (!SUBS.some(function (x) { return x[0] === s; })) return;
+    C.sub = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0);
+  };
+  VISTAS.config.precargar = cargar;
 })();

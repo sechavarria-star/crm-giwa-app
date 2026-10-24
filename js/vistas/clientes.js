@@ -35,6 +35,7 @@
     var nProy = {}; r[4].data.forEach(function (p) { if (p.empresa_id) nProy[p.empresa_id] = (nProy[p.empresa_id] || 0) + 1; });
     D = { emps: r[0].data, cons: r[1].data, cli: cli, tiers: r[3].data, nProy: nProy };
   }
+  var PEST = ['cli', 'emp', 'con'];
 
   // ── ayudas ───────────────────────────────────────────────────
   function clienteDe(e) { return D.cli[e.id] || D.cli[e.nombre] || { estado: 'prospecto' }; }
@@ -160,31 +161,32 @@
   }
 
   // ── pintar ───────────────────────────────────────────────────
+  // Las pestañas están en el menú lateral (marcarSub lo mantiene al día)
   function pintar(el) {
+    if (_montado !== 'clientes' || !el.querySelector('#cli-cuerpo')) return;
+    marcarSub(pest);
+    set('cli-tit', { cli: 'Clientes', emp: 'Empresas', con: 'Contactos' }[pest]);
     var cuerpo = pest === 'emp' ? htmlEmpresas() : pest === 'con' ? htmlContactos() : htmlClientes();
     el.querySelector('#cli-cuerpo').innerHTML = cuerpo;
-    el.querySelectorAll('[data-pest]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-pest') === pest); });
     el.querySelector('#cli-exportar').hidden = pest !== 'cli';
     el.querySelector('#cli-nuevo').innerHTML = ico('mas') + (pest === 'con' ? ' Nuevo contacto' : ' Nueva empresa');
   }
 
-  VISTAS.clientes = async function (el) {
+  VISTAS.clientes = async function (el, op) {
+    var p = subPedida(); if (PEST.indexOf(p) >= 0) pest = p;
     el.innerHTML =
-      '<div class="page-h"><div><h2>Clientes</h2><div class="page-s">Empresas, su estado y sus contactos.</div></div>' +
+      '<div class="page-h"><div><h2 id="cli-tit">Clientes</h2><div class="page-s">Empresas, su estado y sus contactos.</div></div>' +
         '<div class="u-row8"><input class="fc" id="cli-q" placeholder="Buscar empresa o contacto…" aria-label="Buscar">' +
         '<button class="btn bg" id="cli-exportar">Exportar</button><button class="btn bp" id="cli-nuevo"></button></div></div>' +
-      '<div class="ptabs" role="tablist">' +
-        '<button class="ptab on" data-pest="cli" role="tab">Clientes</button>' +
-        '<button class="ptab" data-pest="emp" role="tab">Empresas</button>' +
-        '<button class="ptab" data-pest="con" role="tab">Contactos</button></div>' +
       '<div id="cli-cuerpo"><div class="u-s11-mt">Cargando…</div></div>';
     el.querySelector('#cli-q').value = busca;
-    await cargar();
-    pintar(el);
+    // con datos ya leídos pinta en el acto y relee por detrás
+    if (D && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(D); cargar().then(function () { if (JSON.stringify(D) !== antes) pintar(el); }).catch(function () {}); }
+    else { await cargar(); pintar(el); }
     // después de guardar en la ficha: releer y repintar, sin perder pestaña ni filtro
     var alGuardar = { onSave: async function () { await cargar(); pintar(el); } };
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-pest],[data-filtro],[data-ver],[data-ed],[data-con],#cli-exportar,#cli-nuevo');
+      var b = ev.target.closest('[data-filtro],[data-ver],[data-ed],[data-con],#cli-exportar,#cli-nuevo');
       if (!b) return;
       if (b.id === 'cli-exportar') return exportar();
       if (b.id === 'cli-nuevo') return pest === 'con' ? abrirContacto(null, alGuardar) : abrirFichaEmpresa('', alGuardar);
@@ -194,10 +196,12 @@
         var id = b.getAttribute('data-con');
         return abrirContacto(D.cons.find(function (c) { return c.id === id; }), alGuardar);
       }
-      if (b.hasAttribute('data-pest')) pest = b.getAttribute('data-pest');
       if (b.hasAttribute('data-filtro')) filtro = b.getAttribute('data-filtro');
       pintar(el);
     };
     el.querySelector('#cli-q').oninput = function () { busca = this.value.toLowerCase().trim(); pintar(el); };
   };
+  // Del menú lateral: otra pestaña, sin releer
+  VISTAS.clientes.irA = function (s) { if (PEST.indexOf(s) < 0) return; pest = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0); };
+  VISTAS.clientes.precargar = cargar;
 })();

@@ -10,8 +10,42 @@
 /* hidden manda siempre (.btn y otros definen su propio display y le ganaban) */
 [hidden] { display: none !important; }
 
-/* La barra es fixed (36px): la vista arranca debajo */
-.vista { padding: 52px 18px 24px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; min-width: 0; }
+/* La barra es fixed (36px) y el menú lateral también: la vista arranca debajo y a su derecha */
+.vista { padding: 52px 18px 24px; max-width: 1400px; margin: 0 auto 0 220px; box-sizing: border-box; min-width: 0; }
+
+/* Menú lateral (opción A): módulos en acordeón; el del módulo actual muestra sus subpantallas */
+.lat { position: fixed; top: 36px; left: 0; bottom: 0; width: 220px; box-sizing: border-box; background: var(--bg2); border-right: 1px solid var(--b);
+  display: flex; flex-direction: column; padding: 10px 8px; z-index: 250; }
+.lat-nav { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: none; }
+.lat-mod { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--r); color: var(--mt); font-size: 12.5px; text-decoration: none; white-space: nowrap; }
+.lat-mod:hover { background: var(--bg3); color: var(--tx); }
+.lat-mod.on { background: var(--blue-a); color: var(--tx); font-weight: 600; }
+.lat-mod.on > svg { color: var(--blue); }
+.lat-chev { margin-left: auto; display: inline-flex; opacity: .7; }
+.lat-chev svg { width: 13px; height: 13px; }
+.lat-subs { display: none; flex-direction: column; margin: 2px 0 6px 18px; padding-left: 10px; border-left: 1px solid var(--b); }
+.lat-subs.abierto { display: flex; }
+.lat-tit { display: none; }
+.lat-sub { padding: 6px 10px; border-radius: 6px; color: var(--mt); font-size: 12px; text-decoration: none; white-space: nowrap; }
+.lat-sub:hover { color: var(--tx); background: var(--bg3); }
+.lat-sub.on { color: var(--blue); font-weight: 600; }
+.lat-tog { display: flex; align-items: center; gap: 9px; margin-top: 8px; padding: 8px 10px; background: none; border: 0; border-top: 1px solid var(--b);
+  color: var(--mt); font-family: inherit; font-size: 11.5px; cursor: pointer; }
+.lat-tog:hover { color: var(--tx); }
+
+/* Colapsado: sólo íconos; las subpantallas salen flotando al pasar el mouse (o con el foco) */
+body.lat-cerrado .lat { width: 56px; }
+body.lat-cerrado .vista { margin-left: 56px; }
+body.lat-cerrado .lat-nav { overflow: visible; }
+body.lat-cerrado .lat-txt, body.lat-cerrado .lat-chev { display: none; }
+body.lat-cerrado .lat-mod { justify-content: center; padding: 9px 0; }
+body.lat-cerrado .lat-tog { justify-content: center; padding: 8px 0; }
+body.lat-cerrado .lat-tog svg { transform: rotate(180deg); }
+body.lat-cerrado .lat-grupo { position: relative; }
+body.lat-cerrado .lat-subs, body.lat-cerrado .lat-subs.abierto { display: none; position: absolute; left: 38px; top: 0; margin: 0; padding: 6px; min-width: 180px;
+  background: var(--bg3); border: 1px solid var(--b); border-radius: var(--r); box-shadow: 0 8px 24px rgba(0,0,0,.45); z-index: 260; }
+body.lat-cerrado .lat-grupo:hover .lat-subs, body.lat-cerrado .lat-grupo:focus-within .lat-subs { display: flex; }
+body.lat-cerrado .lat-tit { display: block; padding: 4px 10px 6px; font-weight: 600; font-size: 12px; color: var(--tx); }
 .vista p { line-height: 1.6; margin: 6px 0 14px; }
 
 /* Los módulos son enlaces (#/hoy, #/pm…): que se vean como los botones de siempre */
@@ -32,7 +66,17 @@ a.nav-b.on { pointer-events: none; }
 .t-xr { color: var(--rd); }
 
 @media (max-width: 720px) {
-  .vista { padding: 48px 12px 20px; }
+  .vista, body.lat-cerrado .vista { padding: 48px 12px 20px; margin-left: 56px; }
+  /* en el teléfono el menú va siempre colapsado */
+  .lat { width: 56px; }
+  .lat-nav { overflow: visible; }
+  .lat-txt, .lat-chev, .lat-tog { display: none; }
+  .lat-mod { justify-content: center; padding: 9px 0; }
+  .lat-grupo { position: relative; }
+  .lat-subs, .lat-subs.abierto { display: none; position: absolute; left: 38px; top: 0; margin: 0; padding: 6px; min-width: 170px;
+    background: var(--bg3); border: 1px solid var(--b); border-radius: var(--r); box-shadow: 0 8px 24px rgba(0,0,0,.45); z-index: 260; }
+  .lat-grupo:hover .lat-subs, .lat-grupo:focus-within .lat-subs { display: flex; }
+  .lat-tit { display: block; padding: 4px 10px 6px; font-weight: 600; font-size: 12px; color: var(--tx); }
   .nav-der #top-fecha { display: none; }
 }
 

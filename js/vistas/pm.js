@@ -53,6 +53,7 @@
       p.tareas = x.tareas || []; p.comentarios = x.comentarios || []; p.modulos = x.modulos || [];
       return p;
     });
+    P.ok = true;
   }
 
   // ── ayudas ───────────────────────────────────────────────────
@@ -662,11 +663,12 @@
   }
 
   // ── pintar ───────────────────────────────────────────────────
+  // Las subpantallas están en el menú lateral (marcarSub lo mantiene al día)
   function pintar(el) {
-    var cab = '<div class="page-h"><div><h2>Proyectos</h2><div class="page-s">Seguimiento y estado de cada proyecto.</div></div></div>' +
-      '<div class="ptabs" role="tablist">' + SUBS.map(function (s) {
-        return '<button class="ptab' + (P.sub === s[0] ? ' on' : '') + '" data-pm="sub" data-s="' + s[0] + '" role="tab">' + s[1] + '</button>';
-      }).join('') + '</div>';
+    if (_montado !== 'pm') return;                // se terminó de leer con otro módulo en pantalla
+    marcarSub(P.sub === 'ficha' ? P.prev : P.sub);
+    var cab = '<div class="page-h"><div><h2>' + (SUBS.find(function (s) { return s[0] === P.sub; }) || ['', 'Proyectos'])[1] + '</h2>' +
+      '<div class="page-s">Seguimiento y estado de cada proyecto.</div></div></div>';
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     if (P.sub === 'seg') el.innerHTML = cab + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + htmlProy();
@@ -684,10 +686,12 @@
     var n = document.getElementById(id); if (n) { n.focus(); n.setSelectionRange(pos, pos); }
   }
 
-  VISTAS.pm = async function (el) {
-    el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando proyectos…</div>';
-    var refrescar = async function () { await cargar(); if (P.sub === 'ficha' && P.f) await cargarFicha(P.f.id); pintar(el); };
-    await refrescar();
+  VISTAS.pm = async function (el, op) {
+    var leer = async function () { await cargar(); if (P.sub === 'ficha' && P.f) await cargarFicha(P.f.id); };
+    var refrescar = async function () { await leer(); pintar(el); };
+    var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) P.sub = s;
+    await abrirModulo(el, { id: 'pm', texto: 'Cargando proyectos…', forzar: op && op.forzar, cargar: leer,
+      cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f]); }, pintar: function () { pintar(el); } });
     if (!el._pmBound) {                          // una vez: #vista es el mismo para todos los módulos
       el._pmBound = true;
       el.addEventListener('toggle', function (ev) {
@@ -752,7 +756,6 @@
     el.onclick = function (ev) {
       var b = ev.target.closest('[data-pm]'); if (!b) return;
       var a = b.getAttribute('data-pm'), id = b.getAttribute('data-id');
-      if (a === 'sub') { P.sub = b.getAttribute('data-s'); return pintar(el); }
       if (a === 'ficha') return abrirFicha(el, id);
       if (a === 'volver') { P.sub = P.prev || 'seg'; return pintar(el); }
       if (a === 'nav') {
@@ -816,4 +819,10 @@
       }
     };
   };
+  // Del menú lateral: otra subpantalla, sin releer
+  VISTAS.pm.irA = function (s) {
+    if (!SUBS.some(function (x) { return x[0] === s; })) return;
+    P.sub = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0);
+  };
+  VISTAS.pm.precargar = cargar;
 })();

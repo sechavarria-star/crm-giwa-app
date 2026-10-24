@@ -1,53 +1,97 @@
 /* ══════════════════════════════════════════════════════════════════════
-   app.js · la cáscara: barra, rutas y arranque
+   app.js · la cáscara: barra, menú lateral, rutas y arranque
    ──────────────────────────────────────────────────────────────────────
-   Una sola página. Cambiar de módulo cambia el #hash y dibuja la vista en
-   #vista, sin recargar nada: por eso es instantáneo.
+   Una sola página. Cambiar de módulo cambia el #hash (#/pm, #/pm/proy) y
+   dibuja la vista en #vista, sin recargar nada.
 
-   Cada módulo se registra en MODULOS. Mientras no esté hecho (listo:false),
-   su vista dice que sigue en el CRM actual y ofrece abrirlo ahí.
+   Cada módulo se registra en MODULOS, con sus subpantallas en «subs» (van
+   en el menú lateral, que se abre en acordeón y se colapsa a íconos).
+   Mientras no esté hecho (listo:false), su vista dice que sigue en el CRM
+   actual y ofrece abrirlo ahí.
    Para pasar un módulo: escribir js/vistas/<id>.js que defina
-   VISTAS['<id>'] = async function(el) { … } y marcarlo listo:true.
+   VISTAS['<id>'] = async function(el) { … } y marcarlo listo:true. Si
+   tiene subpantallas, VISTAS['<id>'].irA(sub) cambia de una a otra sin
+   releer, y la vista llama marcarSub(sub) cada vez que pinta.
+
+   Velocidad: abrirModulo() muestra lo último que se leyó y lo actualiza
+   por detrás, y después de la primera pantalla se precargan los demás
+   módulos (VISTAS['<id>'].precargar). Volver a un módulo no espera a la base.
    ══════════════════════════════════════════════════════════════════════ */
 var MODULOS = [
   { id: 'hoy',      nombre: 'Hoy',            ico: 'casa',     listo: true  },
-  { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true  },
-  { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true  },
-  { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true  },
+  { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true,
+    subs: [['cli', 'Clientes'], ['emp', 'Empresas'], ['con', 'Contactos']] },
+  { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true,
+    subs: [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['tar', 'Tareas'], ['nuevo', 'Nuevo proyecto']] },
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
-  { id: 'cot',     nombre: 'Cotizador',      ico: 'lista',    listo: false },
-  { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true  }
+  { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },
+  { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
+    subs: [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
+  { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
+    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['otros', 'Más']] }
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
 var _recargarVista = null;
+var _montado = '';        // el módulo que está dibujado en #vista
 
+function _ruta() {
+  var p = location.hash.replace(/^#\/?/, '').split('/');
+  return { mod: p[0] || 'hoy', sub: p[1] || '' };
+}
 function _moduloActual() {
-  var id = (location.hash.replace(/^#\/?/, '').split('/')[0]) || 'hoy';
+  var id = _ruta().mod;
   return MODULOS.find(function(m){ return m.id === id; }) || MODULOS[0];
 }
+// La subpantalla que pide el #hash (las vistas la leen al entrar)
+function subPedida() { return _ruta().sub; }
+// La vista avisa en qué subpantalla quedó: el #hash y el menú la siguen, sin recargar
+function marcarSub(sub) {
+  var r = _ruta();
+  if ((sub || '') !== r.sub) history.replaceState(null, '', '#/' + r.mod + (sub ? '/' + sub : ''));
+  pintarBarra();
+}
 
-// ── la barra ────────────────────────────────────────────────────
+// ── la barra y el menú lateral ──────────────────────────────────
 function pintarBarra() {
-  var act = _moduloActual();
+  var act = _moduloActual(), sub = _ruta().sub;
   document.getElementById('nav-mods').innerHTML = MODULOS.map(function(m) {
-    var on = m.id === act.id;
-    return '<a class="nav-b' + (on ? ' on' : '') + '" href="#/' + m.id + '"' +
-           (on ? ' aria-current="page"' : '') + '>' + ico(m.ico) + ' ' + m.nombre + '</a>';
+    var on = m.id === act.id, subs = m.subs || [];
+    var h = '<div class="lat-grupo"><a class="lat-mod' + (on ? ' on' : '') + '" href="#/' + m.id + '"' + (on ? ' aria-current="page"' : '') + '>' +
+      ico(m.ico) + '<span class="lat-txt">' + m.nombre + '</span>' +
+      (subs.length ? '<span class="lat-chev">' + ico(on ? 'arriba' : 'abajo') + '</span>' : '') + '</a>';
+    // abierto el del módulo actual; colapsado, todos salen flotando al pasar el mouse
+    h += '<div class="lat-subs' + (on ? ' abierto' : '') + '"><div class="lat-tit">' + m.nombre + '</div>' +
+      subs.map(function(s, i) {
+        var son = on && (sub ? s[0] === sub : i === 0);
+        return '<a class="lat-sub' + (son ? ' on' : '') + '" href="#/' + m.id + '/' + s[0] + '"' + (son ? ' aria-current="page"' : '') + '>' + s[1] + '</a>';
+      }).join('') + '</div></div>';
+    return h;
   }).join('');
   set('top-fecha', new Date().toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' }));
   set('user-lbl-top', CRM_USUARIO ? CRM_USUARIO.nombre : '');
 }
+function _latCerrado(v) {
+  if (v !== undefined) { try { localStorage.setItem('lat_cerrado', v ? '1' : ''); } catch (e) {} }
+  var c = false; try { c = localStorage.getItem('lat_cerrado') === '1'; } catch (e) {}
+  document.body.classList.toggle('lat-cerrado', c);
+  var b = document.getElementById('lat-tog');
+  if (b) { b.setAttribute('aria-label', c ? 'Expandir el menú' : 'Colapsar el menú'); b.setAttribute('data-tip', c ? 'Expandir el menú' : 'Colapsar el menú'); }
+  return c;
+}
+function alternarMenu() { _latCerrado(!document.body.classList.contains('lat-cerrado')); }
 
 // ── las vistas ──────────────────────────────────────────────────
 async function mostrarVista() {
-  var m = _moduloActual();
+  var m = _moduloActual(), r = _ruta();
+  // mismo módulo, otra subpantalla: la cambia la vista, sin volver a leer
+  if (m.id === _montado && m.listo && VISTAS[m.id] && VISTAS[m.id].irA) { pintarBarra(); if (r.sub) VISTAS[m.id].irA(r.sub); return; }
+  _montado = m.id;
   pintarBarra();
   document.title = 'GIWA · ' + m.nombre;
   var el = document.getElementById('vista');
   _recargarVista = null;
   if (m.listo && VISTAS[m.id]) {
-    el.innerHTML = '<div class="u-s11-mt">Cargando…</div>';
-    _recargarVista = function(){ return VISTAS[m.id](el); };
+    _recargarVista = function(){ return VISTAS[m.id](el, { forzar: true }); };
     try { await VISTAS[m.id](el); }
     catch (e) { el.innerHTML = '<div class="card">No pude cargar ' + esc(m.nombre) + ': ' + esc(e.message || e) + '</div>'; }
   } else {
@@ -66,6 +110,30 @@ function vistaPendiente(m) {
   '</div>';
 }
 function recargar() { if (_recargarVista) _recargarVista(); }
+
+// Abre un módulo. Con datos ya leídos los pinta en el acto y los relee por
+// detrás: si cambió algo (firma distinta) y el módulo sigue en pantalla,
+// repinta. Sin datos (o con «forzar», el botón de actualizar), espera.
+//   o = { id, cargado(), cargar(), pintar(), firma(), texto, forzar }
+async function abrirModulo(el, o) {
+  if (o.cargado() && !o.forzar) {
+    o.pintar();
+    var antes = o.firma();
+    o.cargar().then(function () { if (_montado === o.id && o.firma() !== antes) o.pintar(); })
+      .catch(function (e) { toast('No pude actualizar: ' + (e.message || e), 'err'); });
+    return;
+  }
+  el.innerHTML = '<div class="loading"><div class="spin"></div> ' + (o.texto || 'Cargando…') + '</div>';
+  await o.cargar();
+  if (_montado === o.id) o.pintar();
+}
+// Después de la primera pantalla, los otros módulos leen sus datos sin pintar
+function _precargar() {
+  MODULOS.forEach(function (m) {
+    var v = VISTAS[m.id];
+    if (m.listo && v && v.precargar && m.id !== _montado) v.precargar().catch(function () {});
+  });
+}
 
 // ── el arranque ─────────────────────────────────────────────────
 function pantallaAcceso(titulo, texto, conBoton) {
@@ -91,7 +159,16 @@ async function arrancar() {
   }
   document.getElementById('acceso').hidden = true;
   document.getElementById('app').hidden = false;
+  _latCerrado();
+  // Un enlace al #hash en el que ya estamos no dispara hashchange (ej.: Seguimiento
+  // desde la ficha de un proyecto): esa subpantalla se pide directo a la vista
+  document.getElementById('nav-mods').addEventListener('click', function (ev) {
+    var a = ev.target.closest('a.lat-sub'), v = VISTAS[_montado];
+    if (!a || a.getAttribute('href') !== location.hash || !v || !v.irA) return;
+    ev.preventDefault(); v.irA(_ruta().sub);
+  });
   window.addEventListener('hashchange', mostrarVista);
-  mostrarVista();
+  await mostrarVista();
+  setTimeout(_precargar, 600);
 }
 document.addEventListener('DOMContentLoaded', arrancar);

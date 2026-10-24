@@ -396,11 +396,12 @@
   }
 
   // ── pintar ───────────────────────────────────────────────────
+  // Las subpantallas están en el menú lateral (marcarSub lo mantiene al día)
   function pintar(el) {
-    var cab = '<div class="page-h"><div><h2>Administración</h2><div class="page-s">Facturación, cobros y gastos.</div></div></div>' +
-      '<div class="ptabs" role="tablist">' + SUBS.map(function (s) {
-        return '<button class="ptab' + (A.sub === s[0] ? ' on' : '') + '" data-adm="sub" data-s="' + s[0] + '" role="tab">' + s[1] + '</button>';
-      }).join('') + '</div>';
+    if (_montado !== 'admin') return;             // se terminó de leer con otro módulo en pantalla
+    marcarSub(A.sub);
+    var cab = '<div class="page-h"><div><h2>' + (SUBS.find(function (s) { return s[0] === A.sub; }) || ['', 'Administración'])[1] + '</h2>' +
+      '<div class="page-s">Facturación, cobros y gastos.</div></div></div>';
     if (A.sub === 'fact') { el.innerHTML = cab + htmlFact(); return; }
     if (A.sub !== 'dash') {
       el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' + viejo() + ico('abrir') + ' Abrir el CRM actual</a></div>';
@@ -410,10 +411,13 @@
     el.innerHTML = cab + tablero(D) + faltan(D) + pendiente(D) + ajustes(D) + facturacion(D) + socio(D) + otros(D) + gastos(D);
   }
 
-  VISTAS.admin = async function (el) {
-    el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando Administración…</div>';
-    var refrescar = async function () { await cargar(); if (A.sub === 'fact') await cargarFact(); pintar(el); };
-    await refrescar();
+  VISTAS.admin = async function (el, op) {
+    var leer = async function () { await cargar(); if (A.sub === 'fact') await cargarFact(); };
+    var refrescar = async function () { await leer(); pintar(el); };
+    var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) A.sub = s;
+    await abrirModulo(el, { id: 'admin', texto: 'Cargando Administración…', forzar: op && op.forzar, cargar: leer,
+      cargado: function () { return !!A.d && (A.sub !== 'fact' || !!A.f); }, firma: function () { return JSON.stringify([A.d, A.f]); },
+      pintar: function () { pintar(el); } });
     var alerta = function (id) { return A.d.alertas.find(function (a) { return a.id === id; }); };
     if (!el._admToggle) {                      // una vez: #vista es el mismo para todos los módulos
       el._admToggle = true;
@@ -440,11 +444,6 @@
     el.onclick = async function (ev) {
       var b = ev.target.closest('[data-adm]'); if (!b) return;
       var a = b.getAttribute('data-adm'), id = b.getAttribute('data-id');
-      if (a === 'sub') {
-        A.sub = b.getAttribute('data-s');
-        if (A.sub === 'fact' && !A.f) { el.querySelector('.ptabs').insertAdjacentHTML('afterend', '<div class="loading"><div class="spin"></div></div>'); await cargarFact(); }
-        return pintar(el);
-      }
       if (a.indexOf('fa-') === 0) return accionFact(el, a, id);
       if (a === 'regla-nueva') return nuevaRegla({}, { onSave: refrescar });
       if (a === 'rec-ver') { A.recAbierto = !A.recAbierto; return pintar(el); }
@@ -489,4 +488,13 @@
       }
     };
   };
+  // Del menú lateral: otra subpantalla, sin releer (Facturación se lee la primera vez que se abre)
+  VISTAS.admin.irA = async function (s) {
+    if (!SUBS.some(function (x) { return x[0] === s; })) return;
+    var el = document.getElementById('vista');
+    A.sub = s;
+    if (s === 'fact' && !A.f) { el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando Facturación…</div>'; await cargarFact(); }
+    pintar(el); window.scrollTo(0, 0);
+  };
+  VISTAS.admin.precargar = cargar;
 })();

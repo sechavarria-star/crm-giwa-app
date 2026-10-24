@@ -32,6 +32,7 @@
     var dv = Number(r[4].data) || 30;
     H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
                 mens: r[2].data.length, saldos: r[3].data.length };
+    H.ok = true;
   }
 
   function yo() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').trim().toLowerCase(); }
@@ -54,6 +55,7 @@
   }
 
   function pintar(el) {
+    if (_montado !== 'hoy') return;               // se terminó de leer con otro módulo en pantalla
     var hoy = isoMas(0), sem = isoMas(7), me = yo();
     var abiertas = H.tareas.filter(function (t) {
       return !H.mias || String(t.assignees || '').indexOf(me) >= 0 || t.creator === me;
@@ -116,11 +118,11 @@
     toast('Pasada a mañana', 'ok');
   }
 
-  VISTAS.hoy = async function (el) {
-    el.innerHTML = '<div class="loading"><div class="spin"></div> Armando el día…</div>';
+  VISTAS.hoy = async function (el, op) {
     var refrescar = async function () { await cargar(); pintar(el); };
     var alGuardar = { onSave: refrescar };
-    await refrescar();
+    await abrirModulo(el, { id: 'hoy', texto: 'Armando el día…', forzar: op && op.forzar, cargar: cargar,
+      cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata]); }, pintar: function () { pintar(el); } });
     el.onclick = function (ev) {
       var b = ev.target.closest('[data-hoy]'); if (!b) return;
       var a = b.getAttribute('data-hoy'), t = buscar(b.getAttribute('data-id'));
@@ -137,4 +139,5 @@
       if (a === 'abrir') return verTarea(t.id, alGuardar);
     };
   };
+  VISTAS.hoy.precargar = cargar;
 })();
