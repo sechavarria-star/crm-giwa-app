@@ -45,7 +45,7 @@
           '<div class="fg"><label class="fl" for="ftv-pnota">Motivo</label><input class="fc" id="ftv-pnota" placeholder="Opcional"></div></div>' +
           '<div class="u-tr"><button class="btn bp sm" data-fta="posponer">Posponer</button></div></div>' +
         '<div class="ft-sep"><div class="sec">Comentarios</div>' +
-          '<select class="fc u-mb6" id="ftv-qk" aria-label="Comentario rápido" hidden></select>' +
+          '<div class="ft-pills u-mb6" id="ftv-qk" role="group" aria-label="Comentarios rápidos" hidden></div>' +
           '<textarea class="fc" id="ftv-txt" rows="2" placeholder="Escribí un comentario…" aria-label="Comentario"></textarea>' +
           '<div class="u-row8 u-mt6 u-mb12"><label class="u-row6" id="ftv-seg-l" hidden><input type="checkbox" id="ftv-seg"> <span id="ftv-seg-t"></span></label>' +
             '<button class="btn bp sm u-mla" data-fta="comentar">' + ico('chat') + ' Comentar</button></div>' +
@@ -105,7 +105,8 @@
     $('fta-alc').onchange = function () { reglaInicio(); };
     ['fta-ini', 'fta-meses', 'fta-frec', 'fta-d1', 'fta-d2'].forEach(function (id) { $(id).addEventListener('change', function () { if (id === 'fta-ini') T.iniTocado = true; reglaResumen(); }); });
     $('ftn-cli').onchange = function () { llenarProyectos(''); };
-    $('ftv-qk').onchange = function () { if (this.value) { $('ftv-txt').value = this.value; $('ftv-txt').focus(); this.value = ''; } };
+    // Comentario rápido: un clic carga el texto para editarlo (botones, no desplegable)
+    $('ftv-qk').onclick = function (e) { var b = e.target.closest('[data-qk]'); if (b) { $('ftv-txt').value = b.getAttribute('data-qk'); $('ftv-txt').focus(); } };
   });
 
   // ── lo que no cambia en la sesión: equipo, listas, clientes, proyectos ──
@@ -191,7 +192,7 @@
     $('ftv-to').innerHTML = '<option value="">— Elegí a quién —</option>' + B.users.filter(function (u) { return rs.length !== 1 || u.mail !== rs[0]; })
       .map(function (u) { return '<option value="' + esc(u.mail) + '">' + esc(u.name) + '</option>'; }).join('');
     $('ftv-qk').hidden = !B.notas.length;
-    $('ftv-qk').innerHTML = '<option value="">Comentario rápido…</option>' + B.notas.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+    $('ftv-qk').innerHTML = B.notas.map(function (x) { return '<button type="button" class="ft-pill" data-qk="' + esc(x) + '">' + esc(x) + '</button>'; }).join('');
     $('ftv-seg-l').hidden = !B.seguimiento; $('ftv-seg-t').textContent = B.seguimiento; $('ftv-seg').checked = false;
   }
 

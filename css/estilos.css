@@ -288,8 +288,12 @@ textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
 .mo.open{display:flex}
-.md{background:var(--sup-modal);border:1px solid var(--borde-luz);border-radius:var(--r);width:100%;max-width:880px;margin:auto}
-.md-sm{max-width:560px}
+/* Ancho de los modales (26/10/2026): base 3/4 de la pantalla con tope; cada modal
+   elige su tamaño en su propio HTML. md-sm = formularios cortos, no se estiran.
+   md-xl = los que necesitan más (Funcionalidades). En celular, casi pantalla completa. */
+.md{background:var(--sup-modal);border:1px solid var(--borde-luz);border-radius:var(--r);width:75vw;max-width:1200px;margin:auto}
+.md.md-sm{width:100%;max-width:560px}
+.md.md-xl{width:96vw;max-width:1240px}
 /* Un modal abierto encima de otro (openM le pone .n2): otra superficie, más profunda */
 .mo.n2 .md{background:var(--bg);border-color:var(--blue)}
 .mh{padding:13px 18px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:var(--r) var(--r) 0 0}
@@ -347,7 +351,7 @@ textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg
 [data-densidad="comodo"] .sb-foot  { padding:10px 14px }
 [data-densidad="comodo"] .content  { padding:14px 18px }
 [data-densidad="comodo"] .sw input { padding-left:26px }
-[data-densidad="comodo"] .md       { max-width:880px }
+/* .md comodo (880px) se sacó el 26/10/2026: pisaba a md-sm en PM y estiraba los formularios cortos */
 [data-densidad="comodo"] .avfill   { transition:.4s }
 
 /* Vinieron del Portal el 28/09/2026 con «Seguimiento de proyectos»: las
@@ -1345,6 +1349,22 @@ background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;
 [data-pag="cot"] .cn-rh{min-width:52px;text-align:right}
 [data-pag="cot"] .cn-rn{font-family:var(--mono);font-size:10.5px;color:var(--mt);padding:0 0 3px 10px}
 .mo.mo-c{align-items:center}
+/* Entregables de un proyecto (PM y Cotizador) */
+.ent-l{display:grid;gap:2px}
+.ent-f{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--b);font-size:12px}
+.ent-add{margin-top:8px}
+.ent-add>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px}
+.ent-form{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2fr) auto;gap:6px;margin-top:8px}
+@media (max-width:720px){.ent-form{grid-template-columns:minmax(0,1fr)}}
+.ft-rads{display:flex;flex-wrap:wrap;gap:6px 18px}
+.ft-rad{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
+/* _FichaTarea sin style= (26/10/2026) */
+.ft-scroll{max-height:76vh;overflow-y:auto}
+.ft-w150{max-width:150px}
+.ft-wauto{width:auto}
+.ft-wrap{flex-wrap:wrap}
+.ft-note-bar{display:flex;justify-content:space-between;align-items:center;margin:7px 0 12px}
+.ft-pills.ft-m0{margin:0}
 @media (max-width:720px){[data-pag="cot"] .cn-res{position:static}}
 
 [data-pag="cot"] .cn-dev{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
@@ -1414,7 +1434,6 @@ background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;
 [data-pag="cot"] .cn-hijas{margin:2px 0 6px}
 [data-pag="cot"] .cn-nota-w{position:relative}
 [data-pag="cot"] .cn-cnt{position:absolute;right:8px;bottom:4px;font-size:9.5px;color:var(--mt);font-family:var(--mono)}
-[data-pag="cot"] .md.cn-md-xl{max-width:1240px;width:96vw}
 [data-pag="cot"] .ce-dos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px}
 @media (max-width:720px){[data-pag="cot"] .ce-dos{grid-template-columns:minmax(0,1fr)}}
 /* ── COTIZADOR · EDITAR (22/10/2026) ── */
@@ -1444,6 +1463,7 @@ background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;
    contenido en vez de empujarlo. Grillas a una columna, tablas con su
    propio scroll: la página nunca se desplaza de costado. */
 @media (max-width:720px){
+  .md,.md.md-xl{width:100%}
   .sb ~ .main{margin-left:56px;width:calc(100% - 56px)}
   .content{padding:10px}
   .top{padding:0 10px;flex-wrap:wrap;gap:6px}

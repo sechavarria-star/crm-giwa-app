@@ -65,7 +65,12 @@ a.nav-b.on { pointer-events: none; }
 .e-xr { background: var(--rd); }
 .t-xr { color: var(--rd); }
 
+/* Modales: se centran en el área de trabajo, debajo de la barra y a la derecha del menú */
+body .mo { top: 36px; left: 220px; }
+body.lat-cerrado .mo { left: 56px; }
+
 @media (max-width: 720px) {
+  body .mo { left: 56px; }
   .vista, body.lat-cerrado .vista { padding: 48px 12px 20px; margin-left: 56px; }
   /* en el teléfono el menú va siempre colapsado */
   .lat { width: 56px; }
