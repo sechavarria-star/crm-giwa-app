@@ -15,6 +15,24 @@
 var _SB = null;
 var CRM_USUARIO = null;   // { mail, nombre, rol } del que está logueado
 
+// Si Supabase rechazó el ingreso, vuelve con el motivo en la URL
+// (#error=…&error_code=…&error_description=…). Se lee al cargar, antes de que
+// supabase-js limpie la dirección: sin esto la pantalla volvía al login sin
+// decir nada (pasó con Vicky el 26/10: las altas nuevas estaban cerradas).
+var CRM_ERROR_LOGIN = (function () {
+  var p = new URLSearchParams((location.hash.replace(/^#/, '') + '&' + location.search.replace(/^\?/, '')));
+  if (!p.get('error') && !p.get('error_code')) return null;
+  var codigo = p.get('error_code') || p.get('error') || '', det = p.get('error_description') || '';
+  var TXT = {
+    signup_disabled: 'Tu cuenta todavía no está creada en el CRM. Pedile a Administración que te dé de alta.',
+    user_banned: 'Tu cuenta está bloqueada en el CRM.',
+    access_denied: 'Google no autorizó el ingreso.'
+  };
+  if (/signups? not allowed/i.test(det)) codigo = 'signup_disabled';
+  history.replaceState(null, '', location.pathname);   // que no quede el error en la dirección
+  return (TXT[codigo] || 'No pudiste entrar.') + (det ? ' (' + det + ')' : '');
+})();
+
 function sb() {
   if (!_SB) _SB = supabase.createClient(CRM_CONFIG.supabaseUrl, CRM_CONFIG.supabaseKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }

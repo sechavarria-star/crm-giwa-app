@@ -17,7 +17,8 @@
    Acciones (5c), en la base: el estado del proyecto desde la barra o la
    tarjeta (enviar propuesta, aprobar, finalizar, rechazar), detener y
    reanudar, las del desarrollo (arrancar, deployar, finalizar, rechazar),
-   fechas, cerrar una etapa de módulos y marcar contactos.
+   fechas, cerrar una etapa de módulos, marcar contactos y editar el
+   proyecto mientras está en pipeline (editar_proyecto).
 
    Como en el Apps Script, arrancar / deployar / finalizar / rechazar un
    desarrollo crean solos sus alertas de facturación y recordatorios.
@@ -436,7 +437,11 @@
   }
   function tabInfo(p) {
     var F = P.f, dur = mDuracionMeses(p), cie = mCierre(p);
-    var h = '<details class="desp plano" open><summary><span class="u-f1m">Datos del proyecto</span></summary><div>' +
+    // Un proyecto Activo o Finalizado ya se cargó: se mira. Lo que sigue cambiando son los contactos.
+    var h = '<details class="desp plano" open><summary><span class="u-f1m">Datos del proyecto</span>' +
+      (mProyEditable(p) ? '<button class="btn bp xs" data-pm="editar-proy">' + ico('editar') + ' Editar proyecto</button>'
+                        : '<span class="u-s10-mt" title="El proyecto ya arrancó: los datos se cargaron al cotizar. Acá sólo se suman contactos.">Sólo lectura</span>') +
+      '</summary><div>' +
       '<div class="fg"><label class="fl">Descripción</label><div class="ficha-desc">' + esc(p.descripcion || '—') + '</div></div><div class="gauto u-mb10">' +
       [['Sponsor', p.sponsor], ['Owner', nombre(p.owner)], ['Probabilidad', (p.probabilidad || 0) + '%'],
        ['Duración', dur ? dur + ' mes' + (dur === 1 ? '' : 'es') : '—'], ['Fecha propuesta', ff(p.fecha_propuesta)],
@@ -632,6 +637,54 @@
     await cargarFicha(id); pintar(el); window.scrollTo(0, 0);
   }
 
+  // ── editar el proyecto (saveProyecto · crm_giwa.editar_proyecto) ──
+  // El estado sólo ofrece a los que puede pasar hoy (la misma guarda que la barra).
+  async function abrirEditarProy(p) {
+    var m = document.getElementById('m-eproy');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-eproy';
+      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Editar proyecto</span>' +
+        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-eproy">' + ico('cerrar') + '</button></div><div class="mb2">' +
+        '<div class="fg"><label class="fl" for="ep-nom">Nombre <span class="req">*</span></label><input class="fc" id="ep-nom"></div>' +
+        '<div class="fg"><label class="fl" for="ep-desc">Descripción</label><textarea class="fc" id="ep-desc" rows="3"></textarea></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ep-emp">Empresa</label><select class="fc" id="ep-emp"></select></div>' +
+          '<div class="fg"><label class="fl" for="ep-sp">Sponsor</label><select class="fc" id="ep-sp"></select></div></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ep-owner">Owner</label><select class="fc" id="ep-owner"></select></div>' +
+          '<div class="fg"><label class="fl" for="ep-est">Estado</label><select class="fc" id="ep-est"></select></div></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ep-prob">Probabilidad (%)</label><input class="fc u-tr" type="number" min="0" max="100" id="ep-prob"></div>' +
+          '<div class="fg"><label class="fl" for="ep-fecha">Fecha de propuesta</label><input class="fc" type="date" id="ep-fecha"></div></div>' +
+        '</div><div class="mf"><button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button></div></div>';
+      document.body.appendChild(m);
+    }
+    var $e = function (id) { return document.getElementById(id); };
+    var emps = await db().from('empresas').select('id,nombre').order('nombre');
+    if (emps.error) return toast(emps.error.message, 'err');
+    var sponsors = async function (eid, sel) {
+      var c = await db().from('contactos').select('id,nombre,apellido').eq('empresa_id', eid || '-').order('nombre');
+      $e('ep-sp').innerHTML = '<option value="">— Sponsor —</option>' + (c.data || []).map(function (x) {
+        return '<option value="' + esc(x.id) + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(((x.nombre || '') + ' ' + (x.apellido || '')).trim()) + '</option>'; }).join('');
+    };
+    $e('ep-nom').value = p.nombre || ''; $e('ep-desc').value = p.descripcion || '';
+    $e('ep-emp').innerHTML = '<option value="">—</option>' + emps.data.map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.id === p.empresa_id ? ' selected' : '') + '>' + esc(e.nombre) + '</option>'; }).join('');
+    $e('ep-emp').onchange = function () { sponsors(this.value, ''); };
+    await sponsors(p.empresa_id, p.sponsor_id);
+    $e('ep-owner').innerHTML = Object.keys(P.users).map(function (mail) { return '<option value="' + esc(mail) + '"' + (mail === p.owner ? ' selected' : '') + '>' + esc(P.users[mail]) + '</option>'; }).join('');
+    var act = p.estado_proyecto;
+    $e('ep-est').innerHTML = estadosProyecto().filter(function (o) { return o === act || puedeEstado(p, o).ok; })
+      .map(function (o) { return '<option' + (o === act ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+    $e('ep-prob').value = p.probabilidad || 50; $e('ep-fecha').value = p.fecha_propuesta ? String(p.fecha_propuesta).slice(0, 10) : '';
+    openM('m-eproy');
+    return new Promise(function (res) {
+      $e('ep-ok').onclick = function () {
+        if (!$e('ep-nom').value.trim()) return toast('Nombre obligatorio', 'err');
+        closeM('m-eproy');
+        res({ id: p.id, nombre: $e('ep-nom').value.trim(), descripcion: $e('ep-desc').value.trim(), empresa: $e('ep-emp').value,
+              sponsor: $e('ep-sp').value, owner: $e('ep-owner').value, estado: $e('ep-est').value,
+              probabilidad: $e('ep-prob').value, fecha_propuesta: $e('ep-fecha').value });
+      };
+    });
+  }
+
   // ── aprobar: qué entró, qué no y qué queda en espera (aprobarProyecto) ──
   function abrirAprobar(p) {
     var nuevas = (p.items || []).filter(function (it) { return _canonSol(it.estado || '') === 'nueva'; });
@@ -790,6 +843,10 @@
         var nf = mISO(mCorrerDias(base, Number(b.getAttribute('data-d'))));
         return hacer('fecha_desarrollo', { did: id, campo: a === 'post-ini' ? 'fecha_ini' : 'fecha_fin', fecha: nf },
           a === 'post-ini' ? 'Inicio corrido al ' + ff(nf) : 'Garantía corrida al ' + ff(nf));
+      }
+      if (a === 'editar-proy') {
+        ev.preventDefault();                       // el botón vive en el título de un desplegable
+        return abrirEditarProy(proy(P.f.id)).then(function (datos) { if (datos) hacer('editar_proyecto', { p: datos }, 'Proyecto guardado'); });
       }
       if (a === 'estrella') {
         var pe = proy(P.f.id), l = crmLista(pe.contactos), k2 = l.indexOf(id);

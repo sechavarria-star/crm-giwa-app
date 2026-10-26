@@ -151,6 +151,8 @@ async function arrancar() {
   try { r = await sesionDelEquipo(); }
   catch (e) { r = { ok: false, motivo: 'error', detalle: e.message || String(e) }; }
   if (!r.ok) {
+    if (r.motivo === 'sin-sesion' && CRM_ERROR_LOGIN)
+      return pantallaAcceso('No pudiste entrar', CRM_ERROR_LOGIN, true);
     if (r.motivo === 'sin-sesion')
       return pantallaAcceso('CRM interno', 'Exclusivo para el equipo de GIWA. Entrá con tu cuenta @' + CRM_CONFIG.dominio + '.', true);
     if (r.motivo === 'fuera-del-equipo')
