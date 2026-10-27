@@ -209,19 +209,22 @@
     fil.forEach(function (f) { var a = altPorItem[f.item]; f.vence = a ? a.fecha : ''; (a ? (a.enviada ? g.prox : g.toca) : g.sin).push(f); });
     var porVence = function (x, y) { return String(x.vence).localeCompare(String(y.vence)); };
     g.toca.sort(porVence); g.prox.sort(porVence);
-    var tabla = function (tit, arr) {
+    // Cada grupo (Toca facturar · Sin alerta · Próximas) es un desplegable con el mismo encabezado: flecha, título, cantidad y total
+    var tabla = function (k, tit, arr, abierto) {
       if (!arr.length) return '';
-      return '<div class="sec u-mt6">' + tit + ' · ' + fmt(suma(arr, 'monto')) + '</div><table class="tbl"><tbody>' + arr.map(function (f) {
+      var ab = A.abiertos[k] !== undefined ? A.abiertos[k] : abierto;
+      return '<details class="fact-g" data-sec="' + k + '"' + (ab ? ' open' : '') + '><summary><span class="adm-flecha">' + ico('derecha') + '</span>' +
+        '<span>' + tit + '</span><span class="cnt">' + arr.length + '</span><span class="m u-mla">' + fmt(suma(arr, 'monto')) + '</span></summary><table class="tbl"><tbody>' + arr.map(function (f) {
         return '<tr><td><b>' + esc(f.titulo || '—') + '</b><div class="u-s10-mt">' + esc(f.ctx.filter(Boolean).join(' · ')) + '</div></td>' +
           '<td class="u-td-mt-r">' + esc(f.det || '') + '</td>' +
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
           '<td class="u-tr">' + viejo() + ico('abrir') + ' Facturar</a></td></tr>';
-      }).join('') + '</tbody></table>';
+      }).join('') + '</tbody></table></details>';
     };
     var h = fil.length ? '' : '<div class="empty u-p10">Nada pendiente de facturar.</div>';
-    h += tabla('Toca facturar', g.toca) + tabla('Sin alerta (se crea en la próxima sincronización)', g.sin);
-    if (g.prox.length) h += '<details class="desp plano u-mt6"><summary class="u-s11-mt">Próximas · ' + g.prox.length + '</summary>' + tabla('Próximas', g.prox) + '</details>';
+    h += tabla('fg-toca', 'Toca facturar', g.toca, true) + tabla('fg-sin', 'Sin alerta (se crea en la próxima sincronización)', g.sin, true) +
+      tabla('fg-prox', 'Próximas', g.prox, false);
     // Una factura cargada sin desarrollo no tiene de dónde descontarse: por eso
     // algo ya facturado puede seguir apareciendo arriba.
     if (D.sinDes.length) {
@@ -231,7 +234,7 @@
             '<td class="u-c-mt">' + (x.nro ? 'FC ' + esc(x.nro) : esc(x.concepto || '—')) + '</td><td class="m m-pendiente u-tr">' + fmt(x.monto) + '</td></tr>';
         }).join('') + '</tbody></table></div>';
     }
-    return sec('fact', ico('plata') + ' Facturación', g.toca.length + g.sin.length, '<span class="m m-abono u-s11 u-mla">' + fmt(suma(g.toca.concat(g.sin), 'monto')) + '</span>', h);
+    return sec('fact', 'Facturación', g.toca.length + g.sin.length, '<span class="m m-abono u-s11 u-mla">' + fmt(suma(g.toca.concat(g.sin), 'monto')) + '</span>', h);
   }
 
   // ── 5 · para transferirle al socio ───────────────────────────
