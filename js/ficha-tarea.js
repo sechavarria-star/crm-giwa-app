@@ -100,6 +100,7 @@
       if (a === 'recordar') recordar();
       if (a === 'posponer') posponer();
       if (a === 'comentar') comentar();
+      if (a === 'cb-fact' || a === 'cb-pago') { closeM('m-ftv'); (a === 'cb-fact' ? abrirFactura : abrirPago)({ item_id: b.getAttribute('data-id') }, { onSave: T.onSave }); }
     });
     $('ftn-ok').onclick = guardarNueva;
     $('fta-ok').onclick = guardarRegla;
@@ -190,7 +191,12 @@
     if (!t.closed && al) {
       a += '<button class="btn bok sm" data-fta="procesar">' + ico('check') + ' Procesar</button>' +
            '<button class="btn bg sm" data-fta="caja" data-caja="ftv-pos">' + ico('reloj') + ' Posponer</button>';
-      if (/factur|ipc/i.test(t.title + ' ' + t.alert_type))
+      // Facturación: su propio modal, Facturar o Registrar pago (cobro sin factura) · 27/10/2026
+      var item0 = String(t.item_ids || t.desarrollo_id || '').split(',')[0].trim();
+      if (/factur/i.test(t.title + ' ' + t.alert_type))
+        a += '<button class="btn bp sm" data-fta="cb-fact" data-id="' + esc(item0) + '">' + ico('documento') + ' Facturar</button>' +
+             '<button class="btn bg sm" data-fta="cb-pago" data-id="' + esc(item0) + '">' + ico('plata') + ' Registrar pago</button>';
+      else if (/ipc/i.test(t.title + ' ' + t.alert_type))
         a += '<a class="btn bg sm" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Facturar o ajustar en el CRM actual</a>';
     } else if (!t.closed && rs.indexOf(yo()) >= 0) {
       a += '<button class="btn bok sm" data-fta="caja" data-caja="ftv-fin">' + ico('check') + ' Finalizar</button>' +

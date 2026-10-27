@@ -230,6 +230,11 @@ span.riel-paso { cursor: default; }
 .hoy-acc { display: inline-flex; gap: 2px; flex-shrink: 0; }
 .hoy-acc .btn-ico .ico { width: 15px; height: 15px; stroke-width: 2.2; }
 
+/* Nueva factura / Registrar pago (cobro.js) */
+.cb-fila { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--b-tenue); }
+.cb-fila .cb-monto { max-width: 170px; }
+.cb-total { font-size: 15px; padding-top: 7px; }
+
 /* Popup «Registrar depósito» */
 .dep-cli { font-weight: 600; }
 .dep-fila { display: flex; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b-tenue); }

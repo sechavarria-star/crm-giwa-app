@@ -221,7 +221,8 @@
           '<td class="u-td-mt-r">' + esc(f.det || '') + '</td>' +
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
-          '<td class="u-tr">' + viejoEn('fact', f.item) + ico('abrir') + ' Facturar</a></td></tr>';
+          '<td class="u-tr u-nw"><button class="btn bp xs" data-adm="cb-fact" data-id="' + esc(f.item) + '">' + ico('documento') + ' Facturar</button> ' +
+            '<button class="btn bg xs" data-adm="cb-pago" data-id="' + esc(f.item) + '">' + ico('plata') + ' Registrar pago</button></td></tr>';
       }).join('') + '</tbody></table></details>';
     };
     var h = fil.length ? '' : '<div class="empty u-p10">Nada pendiente de facturar.</div>';
@@ -365,7 +366,7 @@
         opt('sinfc', 'Cobros sin factura', F.dep) + opt('depositado', 'Depositados', F.dep) + '</select>' +
       '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Quién facturó: todos', F.own) +
         Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select>' +
-      viejo() + ico('mas') + ' Nueva facturación</a></div>';
+      '<button class="btn bp sm" data-adm="cb-fact">' + ico('mas') + ' Nueva factura</button><button class="btn bg sm" data-adm="cb-pago">' + ico('plata') + ' Registrar pago</button></div>';
     var list = filtrarFact(), pend = list.filter(sinDep);
     h += '<div class="g3 u-mb12">' +
       '<div class="kpi k-cobrado"><div class="kpi-lbl">Total cobrado ARS (neto)</div><div class="kpi-val">' + fmt(suma(list, 'monto')) + '</div><div class="kpi-sub">' + n(list.length, 'cobro') + '</div></div>' +
@@ -538,6 +539,39 @@
     openM('m-gasto');
   }
 
+  // ── IPC y TC (indices_ipc · actualizar_indices = bcra_ciclo) e Impuestos (v_monotributo) ──
+  async function cargarExtra(s) {
+    if (s === 'idx') {
+      var r = await db().from('indices_ipc').select('mes,ipc,tc,fuente').order('mes', { ascending: false }).limit(36);
+      if (r.error) throw new Error(r.error.message); A.idx = r.data;
+    } else {
+      var q = await db().from('v_monotributo').select('*').order('limite');
+      if (q.error) throw new Error(q.error.message); A.imp = q.data;
+    }
+  }
+  function htmlIdx() {
+    var L = A.idx || [];
+    return '<div class="u-row8 u-mb12"><button class="btn bp sm" data-adm="idx-bcra">' + ico('recargar') + ' Traer del BCRA</button>' +
+      '<span class="u-s11-mt">Agrega los meses que falten. Lo que corregiste a mano no se toca.</span></div>' +
+      (L.length ? '<div class="card u-p0 u-ovx"><table class="tbl"><thead><tr><th>Mes</th><th class="u-tr">IPC</th><th class="u-tr">TC</th><th>Fuente</th></tr></thead><tbody>' +
+        L.map(function (x) { return '<tr><td class="m">' + esc(String(x.mes || '').slice(0, 7)) + '</td><td class="m u-tr">' + (x.ipc != null ? String(x.ipc).replace('.', ',') + ' %' : '—') + '</td>' +
+          '<td class="m m-usd u-tr">' + (Number(x.tc) ? fmt(x.tc) : '—') + '</td><td class="u-s10-mt">' + esc(x.fuente || '') + '</td></tr>'; }).join('') + '</tbody></table></div>'
+        : '<div class="empty">Sin índices cargados.</div>');
+  }
+  function htmlImp() {
+    var L = A.imp || []; if (!L.length) return '<div class="empty">No hay categorías cargadas.</div>';
+    var f12 = Number(L[0].fact12) || 0, mia = L.find(function (x) { return x.mia; }), sug = L.find(function (x) { return x.sugerida; });
+    var lim = mia ? Number(mia.limite) || 0 : 0, pct = lim > 0 ? Math.min(100, Math.round(f12 * 100 / lim)) : 0, pasa = mia && f12 > lim;
+    var kpi = function (cls, l, val, sub) { return '<div class="kpi ' + cls + '"><div class="kpi-lbl">' + l + '</div><div class="kpi-val">' + val + '</div>' + (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>'; };
+    var h = '<div class="kpi-grid u-mb12">' + kpi('k-cobrado', 'Facturado 12 meses', fmt(f12), 'notas de crédito restadas') +
+      kpi(mia ? 'k-contratado' : 'k-neutro', 'Tu categoría', mia ? esc(mia.categoria) : '—', mia ? 'límite ' + fmt(lim) : '') +
+      kpi(pasa ? 'k-alerta' : 'k-cobrado', 'Estado', mia ? (pasa ? 'Te pasaste' : 'Dentro') : '—', mia ? pct + '% del límite' + (pasa && sug ? ' · corresponde ' + esc(sug.categoria) : '') : '') + '</div>';
+    if (!mia) h += '<div class="aviso aviso-wa u-mb12">Poné tu mail (' + esc(L[0].mail || '') + ') en la columna «Monotributo unificado» de tu categoría para activar la comparación.</div>';
+    return h + '<div class="card u-p0 u-ovx"><table class="tbl"><thead><tr><th>Categoría</th><th class="u-tr">Límite de facturación</th><th class="u-tr">Cuota (servicios)</th><th></th></tr></thead><tbody>' +
+      L.map(function (c) { return '<tr><td>' + esc(c.categoria) + '</td><td class="m u-tr">' + fmt(c.limite) + '</td><td class="m u-tr">' + (Number(c.mensual) ? fmt(c.mensual) : '—') + '</td>' +
+        '<td class="u-s10-mt">' + (c.mia ? 'tu categoría' : '') + (c.sugerida && !c.mia ? 'la que corresponde' : '') + (f12 <= Number(c.limite) ? '' : ' · te pasaste') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  }
+
   // ── pintar ───────────────────────────────────────────────────
   // Las subpantallas están en el menú lateral (marcarSub lo mantiene al día)
   function pintar(el) {
@@ -547,6 +581,8 @@
       '<div class="page-s">Facturación, cobros y gastos.</div></div></div>';
     if (A.sub === 'fact') { el.innerHTML = cab + htmlFact(); return; }
     if (A.sub === 'gastos') { el.innerHTML = cab + htmlGastos(A.d); return; }
+    if (A.sub === 'idx' && A.idx) { el.innerHTML = cab + htmlIdx(); return; }
+    if (A.sub === 'imp' && A.imp) { el.innerHTML = cab + htmlImp(); return; }
     if (A.sub !== 'dash') {
       el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' + viejo() + ico('abrir') + ' Abrir el CRM actual</a></div>';
       return;
@@ -556,7 +592,7 @@
   }
 
   VISTAS.admin = async function (el, op) {
-    var leer = async function () { await cargar(); if (A.sub === 'fact') await cargarFact(); };
+    var leer = async function () { await cargar(); if (A.sub === 'fact') await cargarFact(); if (A.sub === 'idx' || A.sub === 'imp') await cargarExtra(A.sub); };
     var refrescar = async function () { await leer(); pintar(el); };
     // Entrar a Administración (sin subpantalla) es el Dashboard: no está en el menú porque es la portada
     var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) A.sub = s; else A.sub = 'dash';
@@ -597,6 +633,12 @@
       var b = ev.target.closest('[data-adm]'); if (!b) return;
       var a = b.getAttribute('data-adm'), id = b.getAttribute('data-id');
       if (a.indexOf('fa-') === 0) return accionFact(el, a, id);
+      if (a === 'cb-fact') return abrirFactura({ item_id: id || '' }, { onSave: refrescar });
+      if (a === 'cb-pago') return abrirPago({ item_id: id || '' }, { onSave: refrescar });
+      if (a === 'idx-bcra') {
+        var rb = await db().rpc('actualizar_indices'); if (rb.error) return toast(rb.error.message, 'err');
+        toast(rb.data && rb.data.pedido ? 'Pedido al BCRA: los meses nuevos aparecen en unos minutos' : 'Índices al día', 'ok'); await cargarExtra('idx'); return pintar(el);
+      }
       if (a === 'gas-nuevo' || a === 'gas-edit' || a === 'gas-dup') return abrirGasto(a === 'gas-nuevo' ? null : id, a === 'gas-dup', refrescar);
       if (a === 'regla-nueva') return nuevaRegla({}, { onSave: refrescar });
       if (a === 'rec-ver') { A.recAbierto = !A.recAbierto; return pintar(el); }
@@ -641,6 +683,7 @@
     var el = document.getElementById('vista');
     A.sub = s;
     if (s === 'fact' && !A.f) { el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando Facturación…</div>'; await cargarFact(); }
+    if ((s === 'idx' || s === 'imp') && !A[s]) { el.innerHTML = '<div class="loading"><div class="spin"></div></div>'; await cargarExtra(s); }
     pintar(el); window.scrollTo(0, 0);
   };
   VISTAS.admin.precargar = cargar;
