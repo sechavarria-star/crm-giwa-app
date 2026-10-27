@@ -26,7 +26,7 @@ var MODULOS = [
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
   { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
-    subs: [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
+    subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
     subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']] }
 ];

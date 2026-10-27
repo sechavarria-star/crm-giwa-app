@@ -556,7 +556,8 @@
   VISTAS.admin = async function (el, op) {
     var leer = async function () { await cargar(); if (A.sub === 'fact') await cargarFact(); };
     var refrescar = async function () { await leer(); pintar(el); };
-    var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) A.sub = s;
+    // Entrar a Administración (sin subpantalla) es el Dashboard: no está en el menú porque es la portada
+    var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) A.sub = s; else A.sub = 'dash';
     await abrirModulo(el, { id: 'admin', texto: 'Cargando Administración…', forzar: op && op.forzar, cargar: leer,
       cargado: function () { return !!A.d && (A.sub !== 'fact' || !!A.f); }, firma: function () { return JSON.stringify([A.d, A.f]); },
       pintar: function () { pintar(el); } });
