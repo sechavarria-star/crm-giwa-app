@@ -33,6 +33,8 @@
         '<div class="ft-ctx" id="ftv-ctx"></div><div class="ft-meta" id="ftv-meta"></div>' +
         '<div class="ft-note-t u-mb12" id="ftv-desc"></div>' +
         '<div class="u-row6" id="ftv-acc"></div>' +
+        '<div class="ft-box" id="ftv-fin"><div class="fg"><label class="fl" for="ftv-fnota">Nota de cierre</label><textarea class="fc" id="ftv-fnota" rows="2" placeholder="Opcional"></textarea></div>' +
+          '<div class="u-tr u-mt6"><button class="btn bok sm" data-fta="finok">' + ico('check') + ' Finalizar</button></div></div>' +
         '<div class="ft-box" id="ftv-del"><div class="fg"><label class="fl" for="ftv-to">Delegar a</label><select class="fc" id="ftv-to"></select></div>' +
           '<textarea class="fc" id="ftv-dnota" rows="2" placeholder="Por qué se delega (opcional)"></textarea>' +
           '<div class="u-tr u-mt6"><button class="btn bp sm" data-fta="delegar">' + ico('flecha') + ' Delegar</button></div></div>' +
@@ -55,13 +57,14 @@
     '<div class="mo" id="m-ftn"><div class="md md-sm">' +
       '<div class="mh"><span class="mt2">Nueva tarea</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-ftn">' + ico('cerrar') + '</button></div>' +
       '<div class="mb2">' +
-        '<div class="g2"><div class="fg"><label class="fl" for="ftn-cli">Cliente</label><select class="fc" id="ftn-cli"></select></div>' +
-          '<div class="fg"><label class="fl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div></div>' +
-        '<div class="g3"><div class="fg"><label class="fl" for="ftn-prio">Prioridad</label><select class="fc" id="ftn-prio"></select></div>' +
-          '<div class="fg"><label class="fl" for="ftn-who">Para quién</label><select class="fc" id="ftn-who"></select></div>' +
-          '<div class="fg"><label class="fl" for="ftn-vence">Vence</label><input class="fc" type="date" id="ftn-vence"></div></div>' +
+        // Igual que _FichaTarea (26/10): Qué · Proyecto (o «Sólo cliente») · Para quién · Vence · Prioridad · detalle opcional
         '<div class="fg"><label class="fl" for="ftn-tit">Qué hay que hacer <span class="req">*</span></label><input class="fc" id="ftn-tit" list="ftn-rap"><datalist id="ftn-rap"></datalist></div>' +
-        '<div class="fg"><label class="fl" for="ftn-det">Detalle <span class="req">*</span></label><textarea class="fc" id="ftn-det" rows="2"></textarea></div>' +
+        '<div class="fg"><label class="fl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ftn-who">Para quién</label><select class="fc" id="ftn-who"></select></div>' +
+          '<div class="fg"><label class="fl" for="ftn-vence">Vence</label><input class="fc" type="date" id="ftn-vence"></div></div>' +
+        '<div class="fg"><span class="fl">Prioridad</span><div class="ft-rads" id="ftn-prio" role="radiogroup" aria-label="Prioridad"></div></div>' +
+        '<div class="fg" id="ftn-det-add"><a href="#" class="u-c-bl u-s11" data-fta="detalle">+ Agregar detalle</a></div>' +
+        '<div class="fg" id="ftn-det-fg" hidden><label class="fl" for="ftn-det">Detalle</label><textarea class="fc" id="ftn-det" rows="2"></textarea></div>' +
       '</div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-ftn">Cancelar</button><button class="btn bp" id="ftn-ok">Guardar</button></div>' +
     '</div></div>' +
@@ -89,7 +92,8 @@
     document.body.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-fta]'); if (!b) return;
       var a = b.getAttribute('data-fta');
-      if (a === 'finalizar') hecho(T.t, true);
+      if (a === 'finok') finalizar();
+      if (a === 'detalle') { ev.preventDefault(); $('ftn-det-add').hidden = true; $('ftn-det-fg').hidden = false; $('ftn-det').focus(); }
       if (a === 'procesar') hecho(T.t, true);
       if (a === 'caja') abrirCaja(b.getAttribute('data-caja'));
       if (a === 'delegar') delegar();
@@ -104,7 +108,6 @@
     $('fta-cli').onchange = function () { reglaCliente(); };
     $('fta-alc').onchange = function () { reglaInicio(); };
     ['fta-ini', 'fta-meses', 'fta-frec', 'fta-d1', 'fta-d2'].forEach(function (id) { $(id).addEventListener('change', function () { if (id === 'fta-ini') T.iniTocado = true; reglaResumen(); }); });
-    $('ftn-cli').onchange = function () { llenarProyectos(''); };
     // Comentario rápido: un clic carga el texto para editarlo (botones, no desplegable)
     $('ftv-qk').onclick = function (e) { var b = e.target.closest('[data-qk]'); if (b) { $('ftv-txt').value = b.getAttribute('data-qk'); $('ftv-txt').focus(); } };
   });
@@ -147,7 +150,7 @@
   // ── ver ──────────────────────────────────────────────────────
   window.verTarea = async function (id, opts) {
     opts = opts || {}; T.onSave = opts.onSave || null;
-    ['ftv-del', 'ftv-rec', 'ftv-pos'].forEach(function (x) { $(x).classList.remove('on'); });
+    CAJAS.forEach(function (x) { $(x).classList.remove('on'); });
     $('ftv-tit').textContent = 'Tarea · ' + id; $('ftv-ctx').textContent = ''; $('ftv-meta').innerHTML = '';
     $('ftv-acc').innerHTML = ''; $('ftv-desc').innerHTML = '<div class="loading"><div class="spin"></div></div>'; $('ftv-coms').innerHTML = '';
     $('ftv-txt').value = '';
@@ -181,8 +184,9 @@
       if (/factur|ipc/i.test(t.title + ' ' + t.alert_type))
         a += '<a class="btn bg sm" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Facturar o ajustar en el CRM actual</a>';
     } else if (!t.closed && rs.indexOf(yo()) >= 0) {
-      a += '<button class="btn bok sm" data-fta="finalizar">' + ico('check') + ' Finalizar</button>' +
+      a += '<button class="btn bok sm" data-fta="caja" data-caja="ftv-fin">' + ico('check') + ' Finalizar</button>' +
            '<button class="btn bg sm" data-fta="caja" data-caja="ftv-del">' + ico('flecha') + ' Delegar</button>' +
+           '<button class="btn bg sm" data-fta="caja" data-caja="ftv-pos">' + ico('reloj') + ' Posponer</button>' +
            (re ? '' : '<button class="btn bg sm" data-fta="caja" data-caja="ftv-rec">' + ico('campana') + (t.channels ? ' Cambiar recordatorio' : ' Crear recordatorio') + '</button>');
     } else if (!t.closed) {
       a += '<span class="ft-info u-m0">Solo ' + esc(rs.map(nombre).join(', ') || 'el responsable') + ' puede finalizarla o delegarla. Vos podés comentar.</span>';
@@ -196,9 +200,12 @@
     $('ftv-seg-l').hidden = !B.seguimiento; $('ftv-seg-t').textContent = B.seguimiento; $('ftv-seg').checked = false;
   }
 
+  // Un recuadro abierto por vez
+  var CAJAS = ['ftv-fin', 'ftv-del', 'ftv-rec', 'ftv-pos'];
   function abrirCaja(id) {
     var c = $(id), on = !c.classList.contains('on');
-    ['ftv-del', 'ftv-rec', 'ftv-pos'].forEach(function (x) { $(x).classList.remove('on'); });
+    CAJAS.forEach(function (x) { $(x).classList.remove('on'); });
+    if (on && id === 'ftv-fin') $('ftv-fnota').value = '';
     if (!on) return;
     if (id === 'ftv-rec') {
       $('ftv-rfecha').value = T.t.channels && T.t.due ? T.t.due : isoMas(1);
@@ -252,9 +259,19 @@
     var f = v('ftv-rfecha'); if (!f) return toast('Elegí la fecha del recordatorio.', 'err');
     hacer('recordatorio_tarea', { tid: T.t.id, fecha: f, telegram: $('ftv-rtg').checked }, 'Te recuerda el ' + ff(f), 'm-ftv');
   }
-  function posponer() {
-    var f = v('ftv-pfecha'); if (!f) return toast('Elegí la nueva fecha.', 'err');
-    hacer('posponer_alerta', { tid: T.t.id, fecha: f, nota: v('ftv-pnota') }, 'Pospuesta al ' + ff(f), 'm-ftv');
+  // Recordatorio → posponer_alerta (estado Pospuesta). Tarea → posponer_tarea (sólo la fecha) y el motivo va como comentario.
+  async function posponer() {
+    var f = v('ftv-pfecha'), n = v('ftv-pnota'); if (!f) return toast('Elegí la nueva fecha.', 'err');
+    if (esAlerta(T.t)) return hacer('posponer_alerta', { tid: T.t.id, fecha: f, nota: n }, 'Pospuesta al ' + ff(f), 'm-ftv');
+    try {
+      await rpc('posponer_tarea', { tid: T.t.id, fecha: f });
+      if (n) await rpc('comentar', { p: { tarea_id: T.t.id, texto: '↪ Pospuesta al ' + ff(f) + ': ' + n, estado: 'Normal' } });
+      toast('Pospuesta al ' + ff(f), 'ok'); closeM('m-ftv'); avisar(T.onSave);
+    } catch (e) { toast(e.message, 'err'); }
+  }
+  // Finalizar desde la ficha: con la nota de cierre opcional (desde las listas sigue el tilde con confirmación)
+  function finalizar() {
+    hacer('finalizar_tarea', { tid: T.t.id, nota: v('ftv-fnota') }, function (r) { return r.next ? 'Hecha · la próxima es el ' + ff(r.next) : 'Finalizada'; }, 'm-ftv');
   }
 
   // ── el tilde: finalizar una tarea o procesar un recordatorio ──
@@ -359,35 +376,36 @@
   }
 
   // ── nueva ────────────────────────────────────────────────────
+  // Proyecto: agrupado por cliente; «Sólo cliente · X» (cli:ID) es la tarea a nivel cliente
   function llenarProyectos(sel) {
-    var c = v('ftn-cli');
-    $('ftn-proy').innerHTML = '<option value="">— Sin proyecto (nivel cliente) —</option>' +
-      T.base.proyectos.filter(function (p) { return !c || p.empresa_id === c; })
-        .map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === sel ? ' selected' : '') + '>' + esc(p.nombre || p.id) + '</option>'; }).join('');
+    var B = T.base, op = function (val, txt) { return '<option value="' + esc(val) + '"' + (val === sel ? ' selected' : '') + '>' + esc(txt) + '</option>'; };
+    $('ftn-proy').innerHTML = '<option value="">— Sin proyecto ni cliente —</option>' + B.clientes.map(function (c) {
+      var ps = B.proyectos.filter(function (p) { return p.empresa_id === c.id; });
+      return '<optgroup label="' + esc(c.nombre) + '">' + op('cli:' + c.id, 'Sólo cliente · ' + c.nombre) +
+        ps.map(function (p) { return op(p.id, p.nombre || p.id); }).join('') + '</optgroup>';
+    }).join('');
   }
   window.nuevaTarea = async function (ctx, opts) {
     ctx = ctx || {}; T.onSave = (opts || {}).onSave || null;
     try {
       var B = await base();
-      var cid = ctx.clientId || (B.proyectos.find(function (p) { return p.id === ctx.projectId; }) || {}).empresa_id || '';
-      $('ftn-cli').innerHTML = '<option value="">— Cliente —</option>' + B.clientes.map(function (c) {
-        return '<option value="' + esc(c.id) + '"' + (c.id === cid ? ' selected' : '') + '>' + esc(c.nombre) + '</option>'; }).join('');
-      llenarProyectos(ctx.projectId || '');
-      $('ftn-prio').innerHTML = B.prio.map(function (p) { return '<option' + (p === 'Media' ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('');
+      llenarProyectos(ctx.projectId || (ctx.clientId ? 'cli:' + ctx.clientId : ''));
+      $('ftn-prio').innerHTML = B.prio.map(function (p) { return '<label class="ft-rad"><input type="radio" name="ftn-prio" value="' + esc(p) + '"' + (p === 'Media' ? ' checked' : '') + '> ' + esc(p) + '</label>'; }).join('');
       $('ftn-who').innerHTML = B.users.map(function (u) { return '<option value="' + esc(u.mail) + '"' + (u.mail === yo() ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('');
       $('ftn-vence').value = isoMas(7);
       $('ftn-rap').innerHTML = B.rapidas.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
-      $('ftn-tit').value = ''; $('ftn-det').value = '';
+      $('ftn-tit').value = ''; $('ftn-det').value = ''; $('ftn-det-add').hidden = false; $('ftn-det-fg').hidden = true;
       openM('m-ftn');
       setTimeout(function () { $('ftn-tit').focus(); }, 50);
     } catch (e) { toast('No se pudo abrir: ' + e.message, 'err'); }
   };
   async function guardarNueva() {
     if (!v('ftn-tit')) return toast('Falta «Qué hay que hacer».', 'err');
-    if (!v('ftn-det')) return toast('Falta el detalle.', 'err');
+    var pv = v('ftn-proy'), pj = T.base.proyectos.find(function (p) { return p.id === pv; }), pr = document.querySelector('#ftn-prio input:checked');
     var b = $('ftn-ok'); b.disabled = true;
-    await hacer('nueva_tarea', { p: { title: v('ftn-tit'), detail: v('ftn-det'), clientId: v('ftn-cli'), projectId: v('ftn-proy'),
-      priority: v('ftn-prio'), assignees: v('ftn-who'), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
+    await hacer('nueva_tarea', { p: { title: v('ftn-tit'), detail: v('ftn-det'),
+      clientId: pv.indexOf('cli:') === 0 ? pv.slice(4) : (pj ? pj.empresa_id : ''), projectId: pv.indexOf('cli:') === 0 ? '' : pv,
+      priority: pr ? pr.value : '', assignees: v('ftn-who'), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
     b.disabled = false;
   }
 })();
