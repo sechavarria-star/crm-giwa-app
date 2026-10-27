@@ -401,17 +401,27 @@
     return q.length ? '· ' + q.join(' · ') : '';
   }
   // La barra de estado ES el control: se toca el paso. Lo que no se puede elegir, apagado.
+  // ── Barra de estados · UNA para proyectos y desarrollos (27/10/2026) ──
+  // pasos: [{ lbl, cls, est: 'pas'|'aqui'|'fut', no, attrs, tit }]. Con attrs es un botón (proyecto:
+  // cambiar el estado, o disabled); sin attrs, sólo se mira (desarrollo). Finalizado: toda la barra más opaca.
+  function barraEstados(pasos, fin) {
+    return '<div class="riel-pasos' + (fin ? ' fin' : '') + '">' + pasos.map(function (s) {
+      var tag = s.attrs ? 'button' : 'span';
+      return '<' + tag + (s.attrs ? ' type="button"' : '') + ' class="riel-paso' + (s.est === 'aqui' ? ' aqui' : '') + (s.est === 'pas' ? ' pas' : '') + (s.no ? ' no' : '') + '"' +
+        (s.attrs || '') + ' title="' + esc(s.tit || s.lbl) + '"><i class="e-' + (s.est === 'fut' ? 'xm' : s.cls) + '"></i>' +
+        '<span class="' + (s.est === 'aqui' ? 't-' + s.cls : '') + '">' + esc(s.lbl) + '</span></' + tag + '>';
+    }).join('') + '</div>';
+  }
   function riel(p) {
     var can = _canonProy(p.estado_proyecto), det = esProyDetenido(p) || can === 'rechazado', idx = CAMINO.indexOf(can);
     return '<div class="riel"><div class="riel-h">' + ib('info', 'Tocá un paso de la barra para cambiar el estado del proyecto. Los apagados no se pueden elegir desde acá.', 'type="button"') +
-      '<div class="riel-pasos">' + CAMINO.map(function (c, i) {
-        var lbl = nombreProy(c), hecho = !det && idx >= 0 && i < idx, aqui = !det && i === idx, cls = colorEstadoProy(lbl).cls;
+      barraEstados(CAMINO.map(function (c, i) {
+        var lbl = nombreProy(c), hecho = !det && idx >= 0 && i < idx, aqui = !det && i === idx;
         var chk = puedeEstado(p, lbl), clic = chk.ok && !aqui;
-        return '<button type="button" class="riel-paso' + (aqui ? ' aqui' : '') + (hecho ? ' pas' : '') + (chk.ok || aqui ? '' : ' no') + '"' +
-          (clic ? ' data-pm="estado" data-id="' + esc(p.id) + '" data-est="' + c + '"' : ' disabled') +
-          ' title="' + esc(aqui ? 'El proyecto está ' + lbl : (chk.ok ? 'Marcar como ' + lbl : chk.msg)) + '">' +
-          '<i class="e-' + (aqui || hecho ? cls : 'xm') + '"></i><span class="' + (aqui ? 't-' + cls : '') + '">' + esc(lbl) + '</span></button>';
-      }).join('') + '</div>' + (esProyDetenido(p) ? est('Detenido', 'xm') : '') +
+        return { lbl: lbl, cls: colorEstadoProy(lbl).cls, est: aqui ? 'aqui' : hecho ? 'pas' : 'fut', no: !(chk.ok || aqui),
+                 attrs: clic ? ' data-pm="estado" data-id="' + esc(p.id) + '" data-est="' + c + '"' : ' disabled',
+                 tit: aqui ? 'El proyecto está ' + lbl : (chk.ok ? 'Marcar como ' + lbl : chk.msg) };
+      }), can === 'finalizado') + (esProyDetenido(p) ? est('Detenido', 'xm') : '') +
       (can === 'finalizado' ? '' : ib(esProyDetenido(p) ? 'play' : 'pausa', esProyDetenido(p) ? 'Reanudar el proyecto' : 'Detener el proyecto: los estados no cambian, queda marcado', 'data-pm="det-proy" data-id="' + esc(p.id) + '"')) +
       '</div></div>';
   }
@@ -478,10 +488,10 @@
     var can = _canonSol(estado || ''); if (can === 'rechazada') return '';
     var pasos = (EST_SPEC.desarrollo || []).filter(function (r) { return r.canon !== 'rechazada'; });
     var idx = det ? 1 : pasos.findIndex(function (r) { return r.canon === can; });
-    return '<div class="riel-des">' + pasos.map(function (r, i) {
-      var hecho = idx >= 0 && i < idx, aqui = i === idx, cls = det && aqui ? 'xm' : colorEstado(r.estado).cls;
-      return '<i class="' + (aqui || hecho ? 'e-' + cls : 'e-xm fut') + (hecho ? ' pas' : '') + '" title="' + esc(r.estado) + '"></i>';
-    }).join('') + '</div>';
+    // La misma barra que el proyecto; acá no se toca para cambiar el estado (sin attrs: no es un botón)
+    return '<div class="riel-des-w">' + barraEstados(pasos.map(function (r, i) {
+      return { lbl: r.estado, cls: det && i === idx ? 'xm' : colorEstado(r.estado).cls, est: i === idx ? 'aqui' : (idx >= 0 && i < idx ? 'pas' : 'fut') };
+    }), can === 'finalizada') + '</div>';
   }
   function modulosDe(itemId) {
     var ent = {}, tot = { est: 0, real: 0 };
@@ -588,9 +598,10 @@
       '</span> · con 24 <span class="m">' + fmt(c.a24) + '</span>' + (c.dif < 0 ? (c.mmr ? ' · lo que faltó son ' + c.meses + ' mes(es) de abono' : ' · sin abono que lo compense') : ' · cobrado igual o arriba de la referencia') + '</div>';
   }
   function lateral(p) {
+    // El mismo KPI de toda la app, en versión compacta (kpi-mini): mismo color por concepto (m-x → k-x)
     var caja = function (lbl, val, cls, sub, ars) {
-      return '<div class="lat-caja"><div class="sec">' + lbl + '</div><div class="m ' + cls + '">' + val + '</div>' +
-        (ars && _tc() > 0 ? '<div class="m m-usd lat-usd">' + fmt(ars / _tc(), 'USD') + '</div>' : '') + (sub ? '<div class="lat-sub">' + sub + '</div>' : '') + '</div>';
+      return '<div class="kpi kpi-mini ' + cls.replace(/^m-/, 'k-') + '"><div class="kpi-lbl">' + lbl + '</div><div class="kpi-val">' + val + '</div>' +
+        (ars && _tc() > 0 ? '<div class="m m-usd lat-usd">' + fmt(ars / _tc(), 'USD') + '</div>' : '') + (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
     };
     var tot = mTotal(p), cob = mCobradoDev(p), sal = mSaldo(p);
     var nDev = (p.items || []).filter(function (x) { return !esMant(x) && esGanado(x.estado); }).length, nDevT = (p.items || []).filter(function (x) { return !esMant(x); }).length;

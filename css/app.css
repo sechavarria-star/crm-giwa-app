@@ -129,24 +129,41 @@ button.hoy-go{background:none;border:0;padding:0;font-family:inherit}
    Sólo la Administración de la app nueva (.adm-desp, .fact-g): el .desp de _Estilos no cambia.
    Encabezado: [flecha] TÍTULO [cantidad] ··· total. Abierto: título blanco, contorno azul
    con brillo sutil y el contenido sobre el fondo de la app. Tamaños: los de siempre. */
-.adm-desp > summary { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; box-sizing: border-box; }
+.adm-desp > summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 13px; box-sizing: border-box; font-size: 13px; }
 .adm-desp > summary::after, .adm-desp[open] > summary::after { content: none; }
 .adm-flecha { display: inline-flex; align-items: center; color: var(--mt); transition: transform .15s ease; }
 .adm-flecha svg { width: 14px; height: 14px; }
 .adm-desp[open] > summary .adm-flecha, .fact-g[open] > summary .adm-flecha { transform: rotate(90deg); color: var(--blue); }
-.adm-tit { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--mt); }
+.adm-tit { font-weight: 400; color: var(--mt); }
 .adm-desp[open] .adm-tit { color: var(--tx); }
 .adm-total { margin-left: auto; display: inline-flex; align-items: center; }
 .adm-desp[open] { border-color: var(--blue); box-shadow: 0 0 14px var(--blue-a); }
 .adm-desp > .adm-cuerpo { background: var(--bg); }
 /* Grupos de Facturación: el mismo encabezado, un nivel más abajo y sin caja */
 .fact-g { margin-top: 8px; }
-.fact-g > summary { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; list-style: none; font-size: 11px; font-weight: 600;
-  letter-spacing: .04em; text-transform: uppercase; color: var(--mt); border-bottom: 1px solid var(--b-tenue); }
+.fact-g > summary { display: flex; align-items: center; gap: 8px; padding: 9px 0; cursor: pointer; list-style: none; font-size: 12.5px; font-weight: 400;
+  color: var(--mt); border-bottom: 1px solid var(--b-suave); }
 .fact-g > summary::-webkit-details-marker { display: none; }
 .fact-g > summary .adm-flecha svg { width: 12px; height: 12px; }
 .fact-g[open] > summary { color: var(--tx); }
 .fact-g > summary .m { font-size: 12px; }
+
+/* Escala de Hoy · Ahora (27/10/2026): encabezado 13 px peso 400; dentro, títulos 12,5 px y detalle
+   10,5 px; las tablas ya usan el formato de Gastos del mes (.tbl). El total del encabezado, 12 px. */
+.adm-desp .adm-total .m { font-size: 12px; }
+.adm-desp .adm-cuerpo b { font-weight: 500; }
+.adm-desp .adm-cuerpo .u-s10-mt { font-size: 10.5px; }
+
+/* Barra de estados: UNA para proyectos y desarrollos (pm.js · barraEstados) */
+.riel-pasos.fin { opacity: .55; }
+.riel-des-w { margin: 6px 0 2px; }
+span.riel-paso { cursor: default; }
+
+/* KPI compacto: el lateral de la ficha del proyecto (el mismo .kpi, con menos lugar) */
+.kpi.kpi-mini { padding: 8px 10px; border-top-width: 2px; }
+.kpi-mini .kpi-lbl { font-size: 9.5px; margin-bottom: 2px; }
+.kpi-mini .kpi-val { font-size: 12px; }
+.kpi-mini .kpi-sub, .kpi-mini .lat-usd { font-size: 10px; }
 
 /* Popup «Registrar depósito» */
 .dep-cli { font-weight: 600; }
