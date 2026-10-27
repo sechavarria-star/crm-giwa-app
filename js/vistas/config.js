@@ -39,7 +39,7 @@
   var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
   var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']];
-  var C = { sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '' };
+  var C = { sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '', tab: 'clientes', num: {} };
 
   async function cargar() {
     var r = await Promise.all([
@@ -56,6 +56,7 @@
       C.clave[li[0]] = k;
       _cfgLists[k] = String(C.cfg[k] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     });
+    NUMS.forEach(function (n) { C.num[n[0]] = C.cfg[n[0]] || ''; });
     C.vh = r[1].data;
     ['dificultad', 'especialidad', 'mercado'].forEach(function (t) { C.vhl[t] = (C.vh[t] || []).map(function (x) { return { k: x.k, v: Number(x.v) }; }); });
     C.cont = r[2].data;
@@ -63,23 +64,26 @@
   }
 
   // ── Listas ───────────────────────────────────────────────────
+  // En pestañas por tema, una tarjeta por lista (como Valor hora y márgenes).
+  // Lo que se agrega en una pestaña queda en _cfgLists: «Guardar» guarda todas.
+  var TABS = [['clientes', 'Clientes', [0, 1, 2, 3, 9, 10]], ['proyectos', 'Proyectos', [5, 6, 8, 12, 17]],
+              ['tareas', 'Tareas', [7, 11, 15, 16]], ['cobros', 'Cobros y gastos', [13, 14, 18]], ['equipo', 'Equipo', [4]]];
   function htmlListas() {
-    var h = '<div class="card u-mb12"><div class="sec">VALOR HORA DE SOPORTE</div><div class="g3">' +
-      '<div class="fg"><label class="fl">ARS por hora</label><input class="fc" type="number" id="cf-hs-ars" value="' + esc(C.cfg.valor_hora_soporte_ars || '') + '"></div>' +
-      '<div class="fg"><label class="fl">USD por hora</label><input class="fc" type="number" id="cf-hs-usd" value="' + esc(C.cfg.valor_hora_soporte_usd || '') + '"></div>' +
-      '<div class="fg"><label class="fl">&nbsp;</label><button class="btn bp" data-cfg="hs">' + ico('guardar') + ' Guardar valores</button></div></div>' +
-      '<div class="hint" id="cf-hs-hint">' + hsHint() + '</div></div>';
-    h += '<div class="card"><div class="hint u-mb12">Las listas permiten agregar y quitar valores. Los cambios afectan los selectores en todo el sistema.</div><div class="g2">';
-    LISTAS.forEach(function (li, i) {
-      var k = C.clave[li[0]], d = C.desc[k];
-      h += '<div><label class="fl">' + esc(li[0]) + '</label>' + (d ? '<div class="hint">' + esc(d) + '</div>' : '') +
-        '<div id="tags-' + esc(k) + '" class="tag-list"></div><div class="tag-add"><input class="fc" data-cfgadd="' + i + '" placeholder="Nuevo valor..." aria-label="Nuevo valor de ' + esc(li[0]) + '">' +
-        '<button class="btn bg sm" data-cfg="add" data-i="' + i + '">+</button></div></div>';
+    var tab = TABS.find(function (t) { return t[0] === C.tab; }) || TABS[0];
+    var h = '<div class="filtros" role="group" aria-label="Listas">' + TABS.map(function (t) {
+      return '<button class="ptab' + (t === tab ? ' on' : '') + '" data-cfg="tab" data-t="' + t[0] + '">' + t[1] + '</button>';
+    }).join('') + '</div><div class="gauto">';
+    tab[2].forEach(function (i) {
+      var li = LISTAS[i], k = C.clave[li[0]], d = C.desc[k];
+      h += '<div class="card"><div class="card-t">' + esc(li[0]) + '</div>' + (d ? '<div class="hint">' + esc(d) + '</div>' : '') +
+        '<div id="tags-' + esc(k) + '" class="tag-list"></div><div class="tag-add u-mt6"><input class="fc u-f1" data-cfgadd="' + i + '" placeholder="Nuevo valor..." aria-label="Nuevo valor de ' + esc(li[0]) + '">' +
+        '<button class="btn bp sm" data-cfg="add" data-i="' + i + '">+</button></div></div>';
     });
-    h += '</div><div class="g2 u-mt10">' + NUMS.map(function (n) {
-      return '<div class="fg"><label class="fl">' + n[1] + '</label><input class="fc" type="number" id="cf-' + n[0] + '" value="' + esc(C.cfg[n[0]] || '') + '"></div>';
-    }).join('') + '</div><button class="btn bp u-mt10" data-cfg="listas">' + ico('guardar') + ' Guardar configuración</button></div>';
-    return h;
+    if (tab[0] === 'cobros') h += '<div class="card"><div class="card-t">Valores por defecto</div>' + NUMS.map(function (n) {
+      return '<label class="fl u-mt6" for="cf-' + n[0] + '">' + n[1] + '</label><input class="fc" type="number" id="cf-' + n[0] + '" value="' + esc(C.num[n[0]]) + '">';
+    }).join('') + '</div>';
+    return h + '</div><div class="u-row8 u-mt10"><button class="btn bp" data-cfg="listas">' + ico('guardar') + ' Guardar</button>' +
+      '<span class="hint">Los cambios afectan los selectores en todo el sistema.</span></div>';
   }
   function hsHint() {
     var ars = Number((document.getElementById('cf-hs-ars') || {}).value || C.cfg.valor_hora_soporte_ars) || 0;
@@ -98,6 +102,11 @@
                especialidad: ['Multiplicador por especialidad', 'Ajusta el valor hora, no las horas. La hora especializada en datos e IA se paga más que la de desarrollo general.', 0.05] };
   function htmlVh() {
     var p = C.vh, h = '<div class="gauto">';
+    h += '<div class="card"><div class="card-t">Valor hora de soporte</div><div class="hint">Lo que se cobra cada hora de soporte.</div>' +
+      '<label class="fl" for="cf-hs-ars">ARS por hora</label><input class="fc" type="number" id="cf-hs-ars" value="' + esc(C.cfg.valor_hora_soporte_ars || '') + '">' +
+      '<label class="fl u-mt10" for="cf-hs-usd">USD por hora</label><input class="fc" type="number" id="cf-hs-usd" value="' + esc(C.cfg.valor_hora_soporte_usd || '') + '">' +
+      '<div class="hint u-mt10" id="cf-hs-hint">' + hsHint() + '</div>' +
+      '<button class="btn bg sm u-mt10" data-cfg="hs">' + ico('guardar') + ' Guardar valor de soporte</button></div>';
     h += '<div class="card"><div class="card-t">Márgenes</div><div class="hint">El valor de mercado sale del catálogo. Sobre ese se calcula el resto.</div>' +
       '<label class="fl">Margen de venta (% sobre el valor de mercado)</label><input class="fc" id="vh-mv" type="number" step="1" min="1" value="' + p.margen_venta + '">' +
       '<label class="fl u-mt10">Margen de horas (cuánto baja tu costo interno respecto de la venta, %)</label><input class="fc" id="vh-mh" type="number" step="1" min="1" max="99" value="' + p.margen_horas + '">' +
@@ -245,6 +254,7 @@
     };
     el.oninput = function (ev) {
       var t = ev.target;
+      if (t.id && t.id.indexOf('cf-') === 0 && t.id.slice(3) in C.num) C.num[t.id.slice(3)] = t.value;
       if (t.id === 'cf-hs-ars') document.getElementById('cf-hs-hint').innerHTML = hsHint();
       if (t.id === 'vh-mv' || t.id === 'vh-mh') { document.getElementById('vh-ej').innerHTML = vhEjemplo(); document.getElementById('vh-l-mercado').innerHTML = vhLista('mercado'); }
       if (t.id === 'cf-q') { C.q = t.value; var pos = t.selectionStart; pintar(el); var q = document.getElementById('cf-q'); q.focus(); q.setSelectionRange(pos, pos); }
@@ -265,11 +275,12 @@
       var b = ev.target.closest('[data-cfg]'); if (!b) return;
       var a = b.getAttribute('data-cfg'), id = b.getAttribute('data-id'), t = b.getAttribute('data-t');
       if (a === 'add') return agregar(Number(b.getAttribute('data-i')));
+      if (a === 'tab') { C.tab = t; return pintar(el); }
       if (a === 'listas') {
         var cambios = {};
         // sólo lo que cambió: no crear en CotConfig claves vacías que no existían
         LISTAS.forEach(function (li) { var k = C.clave[li[0]], v = (_cfgLists[k] || []).join(','); if (v !== String(C.cfg[k] || '')) cambios[k] = v; });
-        NUMS.forEach(function (n) { var v = document.getElementById('cf-' + n[0]).value.trim(); if (v !== String(C.cfg[n[0]] || '')) cambios[n[0]] = v; });
+        NUMS.forEach(function (n) { var v = String(C.num[n[0]]).trim(); if (v !== String(C.cfg[n[0]] || '')) cambios[n[0]] = v; });
         if (!Object.keys(cambios).length) return toast('No hay cambios para guardar', 'inf');
         return guardar('guardar_config', { cambios: cambios }, 'Configuración guardada');
       }

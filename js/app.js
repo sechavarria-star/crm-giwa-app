@@ -28,6 +28,8 @@ var MODULOS = [
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
     subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
   { id: 'fin',      nombre: 'Estado financiero', ico: 'porcentaje', listo: true },
+  { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
+    subs: [['meta', 'Simulador Costos Meta']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
     subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']] }
 ];

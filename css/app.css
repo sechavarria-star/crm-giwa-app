@@ -241,3 +241,32 @@ span.riel-paso { cursor: default; }
 .dep-imp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 16px; }
 .dep-imp > div { background: var(--bg3); border-radius: var(--r); padding: 10px 12px; }
 .dep-imp b { font-size: 14px; }
+
+/* ── Herramientas · Simulador Costos Meta (27/10/2026) ───────────── */
+.sim-rango { width: 100%; accent-color: var(--blue); margin-top: 6px; }
+.sim-pills { flex-wrap: wrap; margin-top: 4px; }
+.sim-mix .fc { width: 72px; margin-left: auto; text-align: right; font-family: var(--mono); }
+.sim-mix td { padding-top: 4px; padding-bottom: 4px; }
+.sim-fila { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--b); font-size: 12px; }
+.sim-fila > span:last-child { text-align: right; white-space: nowrap; }
+.sim-fila.sim-kpi > span:last-child { color: var(--blue); }
+.sim-fila.sim-tot { font-weight: 600; }
+.sim-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+.sim-paso { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--b); }
+.sim-paso:last-of-type { border-bottom: 0; }
+.sim-chat { height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bg2); border-radius: var(--r); }
+.sim-msg { max-width: 80%; padding: 8px 11px; border-radius: var(--r); font-size: 12px; line-height: 1.45; }
+.sim-msg.sim-u { align-self: flex-end; background: var(--blue-a); }
+.sim-msg.sim-a { align-self: flex-start; background: var(--card); border: 1px solid var(--b); }
+.sim-hora { margin-top: 3px; font-size: 10px; color: var(--mt); text-align: right; }
+.sim-conf { margin-top: 6px; padding: 8px 10px; border-left: 2px solid var(--ok); background: var(--ok-a); font-size: 11px; }
+.sim-gl { stroke: var(--b); stroke-width: 1; }
+.sim-gt { fill: var(--mt); font-size: 10px; font-family: var(--mono); }
+.sim-gp { fill: none; stroke: var(--blue); stroke-width: 2; }
+.sim-ga { fill: var(--blue-a); stroke: none; }
+.sim-gc { fill: var(--blue); }
+@media print {
+  .nav-g, .lat, [data-sim="imprimir"] { display: none !important; }
+  .vista { margin: 0 !important; padding: 0 !important; }
+}
+.u-mb0 { margin-bottom: 0 !important; }
