@@ -221,6 +221,15 @@ span.riel-paso { cursor: default; }
 .fin-ley i.fin-sn { background: var(--ok); height: 3px; }
 .fin-st { fill: var(--mt); font-size: 9px; text-anchor: middle; font-family: var(--mono); }
 
+/* Ficha de tarea con el formato original (27/10): rótulos en mayúsculas y botones de elección */
+.ft-lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--mt); }
+#m-ftn .ft-pills, #m-ftv .ft-pills { flex-wrap: wrap; }
+.ft-pill .ico { width: 13px; height: 13px; }
+
+/* Hoy: las acciones rápidas de cada tarea, juntas a la derecha */
+.hoy-acc { display: inline-flex; gap: 2px; flex-shrink: 0; }
+.hoy-acc .btn-ico .ico { width: 15px; height: 15px; stroke-width: 2.2; }
+
 /* Popup «Registrar depósito» */
 .dep-cli { font-weight: 600; }
 .dep-fila { display: flex; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b-tenue); }

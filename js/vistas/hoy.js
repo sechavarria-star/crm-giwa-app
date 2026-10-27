@@ -43,14 +43,17 @@
     var due = t.overdue ? 'vencida ' + corto(t.due) : t.due === hoy ? 'hoy' : corto(t.due);
     var barra = t.overdue ? 'rd' : t.is_alert ? 'wa' : t.due === hoy ? 'bl' : '';
     var id = esc(t.id);
+    var acc = function (a, icon, tip, cls) { return '<button class="btn bg xs btn-ico' + (cls || '') + '" data-hoy="' + a + '" data-id="' + id + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icon) + '</button>'; };
+    var mia = !t.is_alert && String(t.assignees || '').toLowerCase().split(',').map(function (x) { return x.trim(); }).indexOf(yo()) >= 0;
     return '<div class="hoy-row"><span class="hoy-bar ' + barra + '"></span>' +
-      '<button class="td-chk" data-hoy="hecho" data-id="' + id + '" data-tip="' + (t.is_alert ? 'Procesar' : 'Finalizar') + '" aria-label="' + (t.is_alert ? 'Procesar' : 'Finalizar') + '"></button>' +
       '<div class="hoy-main"><div class="hoy-t" title="' + esc(t.title) + '">' + esc(t.title) + '</div>' +
         (sub ? '<div class="hoy-t2">' + esc(sub) + '</div>' : '') + '</div>' +
       (t.is_alert ? '<span class="est"><span class="est-dot e-xw"></span><span class="t-xw">alerta</span></span>' : '') +
       '<span class="hoy-due m' + (t.overdue ? ' late' : t.due === hoy ? ' today' : '') + '">' + esc(due) + '</span>' +
-      '<button class="btn bg xs btn-ico" data-hoy="posponer" data-id="' + id + '" data-tip="Pasar a mañana" aria-label="Pasar a mañana">' + ico('calendario') + '</button>' +
-      '<button class="btn bg xs btn-ico" data-hoy="abrir" data-id="' + id + '" data-tip="Ver, comentar, delegar" aria-label="Abrir tarea">' + ico('abrir') + '</button>' +
+      // Acciones rápidas, a la derecha: comentar · delegar · posponer · finalizar (o procesar) · abrir
+      '<span class="hoy-acc">' + acc('comentar', 'chat', 'Comentar') + (mia ? acc('delegar', 'personas', 'Delegar') : '') +
+        acc('posponer', 'calendario', 'Pasar a mañana') + acc('hecho', 'check', t.is_alert ? 'Procesar' : 'Finalizar', ' h-ok') +
+        acc('abrir', 'abrir', 'Abrir la tarea') + '</span>' +
     '</div>';
   }
 
@@ -137,6 +140,7 @@
       if (a === 'hecho') return tareaHecha(t, alGuardar);
       if (a === 'posponer') return posponer(el, t);
       if (a === 'abrir') return verTarea(t.id, alGuardar);
+      if (a === 'comentar' || a === 'delegar') return verTarea(t.id, Object.assign({}, alGuardar, { ir: a }));
     };
   };
   VISTAS.hoy.precargar = cargar;

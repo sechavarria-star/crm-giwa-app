@@ -35,7 +35,7 @@
         '<div class="u-row6" id="ftv-acc"></div>' +
         '<div class="ft-box" id="ftv-fin"><div class="fg"><label class="fl" for="ftv-fnota">Nota de cierre</label><textarea class="fc" id="ftv-fnota" rows="2" placeholder="Opcional"></textarea></div>' +
           '<div class="u-tr u-mt6"><button class="btn bok sm" data-fta="finok">' + ico('check') + ' Finalizar</button></div></div>' +
-        '<div class="ft-box" id="ftv-del"><div class="fg"><label class="fl" for="ftv-to">Delegar a</label><select class="fc" id="ftv-to"></select></div>' +
+        '<div class="ft-box" id="ftv-del"><div class="fg"><span class="fl ft-lbl">Delegar a</span><div class="ft-pills" id="ftv-to" role="radiogroup" aria-label="Delegar a"></div></div>' +
           '<textarea class="fc" id="ftv-dnota" rows="2" placeholder="Por qué se delega (opcional)"></textarea>' +
           '<div class="u-tr u-mt6"><button class="btn bp sm" data-fta="delegar">' + ico('flecha') + ' Delegar</button></div></div>' +
         '<div class="ft-box" id="ftv-rec"><div class="u-row6"><button class="btn bg sm" data-fta="rq" data-n="1">+1 día</button>' +
@@ -58,13 +58,13 @@
       '<div class="mh"><span class="mt2">Nueva tarea</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-ftn">' + ico('cerrar') + '</button></div>' +
       '<div class="mb2">' +
         // Igual que _FichaTarea (26/10): Qué · Proyecto (o «Sólo cliente») · Para quién · Vence · Prioridad · detalle opcional
-        '<div class="fg"><label class="fl" for="ftn-tit">Qué hay que hacer <span class="req">*</span></label><input class="fc" id="ftn-tit" list="ftn-rap"><datalist id="ftn-rap"></datalist></div>' +
-        '<div class="fg"><label class="fl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div>' +
-        '<div class="g2"><div class="fg"><label class="fl" for="ftn-who">Para quién</label><select class="fc" id="ftn-who"></select></div>' +
-          '<div class="fg"><label class="fl" for="ftn-vence">Vence</label><input class="fc" type="date" id="ftn-vence"></div></div>' +
-        '<div class="fg"><span class="fl">Prioridad</span><div class="ft-rads" id="ftn-prio" role="radiogroup" aria-label="Prioridad"></div></div>' +
-        '<div class="fg" id="ftn-det-add"><a href="#" class="u-c-bl u-s11" data-fta="detalle">+ Agregar detalle</a></div>' +
-        '<div class="fg" id="ftn-det-fg" hidden><label class="fl" for="ftn-det">Detalle</label><textarea class="fc" id="ftn-det" rows="2"></textarea></div>' +
+        // Formato de la ficha original (27/10): rótulos en mayúsculas, prioridad con banderitas, personas y tareas rápidas en botones
+        '<div class="fg"><label class="fl ft-lbl" for="ftn-tit">Qué hay que hacer <span class="req">*</span></label><div class="ft-pills u-mb6" id="ftn-rap"></div><input class="fc" id="ftn-tit"></div>' +
+        '<div class="fg"><label class="fl ft-lbl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div>' +
+        '<div class="g2"><div class="fg"><span class="fl ft-lbl">Para quién</span><div class="ft-pills" id="ftn-who" role="radiogroup" aria-label="Para quién"></div></div>' +
+          '<div class="fg"><label class="fl ft-lbl" for="ftn-vence">Vence</label><input class="fc" type="date" id="ftn-vence"></div></div>' +
+        '<div class="fg"><span class="fl ft-lbl">Prioridad</span><div class="ft-pills" id="ftn-prio" role="radiogroup" aria-label="Prioridad"></div></div>' +
+        '<div class="fg"><label class="fl ft-lbl" for="ftn-det">Detalle</label><textarea class="fc" id="ftn-det" rows="3" placeholder="Opcional"></textarea></div>' +
       '</div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-ftn">Cancelar</button><button class="btn bp" id="ftn-ok">Guardar</button></div>' +
     '</div></div>' +
@@ -93,7 +93,6 @@
       var b = ev.target.closest('[data-fta]'); if (!b) return;
       var a = b.getAttribute('data-fta');
       if (a === 'finok') finalizar();
-      if (a === 'detalle') { ev.preventDefault(); $('ftn-det-add').hidden = true; $('ftn-det-fg').hidden = false; $('ftn-det').focus(); }
       if (a === 'procesar') hecho(T.t, true);
       if (a === 'caja') abrirCaja(b.getAttribute('data-caja'));
       if (a === 'delegar') delegar();
@@ -110,6 +109,12 @@
     ['fta-ini', 'fta-meses', 'fta-frec', 'fta-d1', 'fta-d2'].forEach(function (id) { $(id).addEventListener('change', function () { if (id === 'fta-ini') T.iniTocado = true; reglaResumen(); }); });
     // Comentario rápido: un clic carga el texto para editarlo (botones, no desplegable)
     $('ftv-qk').onclick = function (e) { var b = e.target.closest('[data-qk]'); if (b) { $('ftv-txt').value = b.getAttribute('data-qk'); $('ftv-txt').focus(); } };
+    // Botones de una sola elección (prioridad, para quién, delegar a) y tareas rápidas
+    ['ftn-who', 'ftn-prio', 'ftv-to'].forEach(function (id) {
+      $(id).addEventListener('click', function (e) { var b = e.target.closest('.ft-pill'); if (!b) return;
+        this.querySelectorAll('.ft-pill').forEach(function (x) { x.classList.toggle('on', x === b); }); });
+    });
+    $('ftn-rap').onclick = function (e) { var b = e.target.closest('[data-rap]'); if (b) { $('ftn-tit').value = b.getAttribute('data-rap'); $('ftn-tit').focus(); } };
   });
 
   // ── lo que no cambia en la sesión: equipo, listas, clientes, proyectos ──
@@ -129,8 +134,9 @@
       prio: lista(cfg.Tarea_Prioridad).length ? lista(cfg.Tarea_Prioridad) : ['Alta', 'Media', 'Baja'],
       rapidas: lista(cfg.Tarea_Rapida),
       seguimiento: lista(cfg.Comentario_Estado).filter(function (s) { return /seguim/i.test(s); })[0] || '',
-      // Los comentarios rápidos llevan comas adentro («Lo llamé, no contestó»): se separan con ;
-      notas: lista(cfg.Comentario_Rapido, ';'),
+      // Los comentarios rápidos llevan comas adentro («Lo llamé, no contestó»): se separan con ; o, si no hay,
+      // con la coma pegada a la palabra siguiente («…no contestó,Me dijo…»)
+      notas: lista(cfg.Comentario_Rapido, /;/.test(cfg.Comentario_Rapido || '') ? ';' : /,(?=\S)/),
       tiposAlerta: lista(cfg.Tarea_AlertaTipo), frecuencias: lista(cfg.Tarea_Frecuencia),
       clientes: r[2].data, proyectos: r[3].data
     };
@@ -141,6 +147,7 @@
     var m = String(mail || '').trim().toLowerCase(), u = ((T.base && T.base.users) || []).find(function (x) { return x.mail === m; });
     return u ? u.name : m.split('@')[0];
   }
+  function elegido(id) { var b = $(id) && $(id).querySelector('.ft-pill.on'); return b ? b.getAttribute('data-v') : ''; }
   function yo() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').trim().toLowerCase(); }
   function esAlerta(t) { return /administr/i.test(t.type || ''); }
   function esReunion(t) { return /reuni/i.test(t.type || ''); }
@@ -160,6 +167,8 @@
       if (r[1].error) throw new Error(r[1].error.message);
       var t = r[1].data; if (!t) { $('ftv-desc').innerHTML = '<div class="empty">No encontré la tarea.</div>'; return; }
       T.t = t; pintar(t); comentarios(t.id);
+      if (opts.ir === 'delegar' && $('ftv-acc').querySelector('[data-caja=ftv-del]')) abrirCaja('ftv-del');
+      if (opts.ir === 'comentar') setTimeout(function () { $('ftv-txt').focus(); }, 50);
     } catch (e) { $('ftv-desc').innerHTML = '<div class="empty">No se pudo abrir: ' + esc(e.message) + '</div>'; }
   };
 
@@ -193,8 +202,8 @@
     }
     $('ftv-acc').innerHTML = a;
     // delegar a UNO, nunca al mismo
-    $('ftv-to').innerHTML = '<option value="">— Elegí a quién —</option>' + B.users.filter(function (u) { return rs.length !== 1 || u.mail !== rs[0]; })
-      .map(function (u) { return '<option value="' + esc(u.mail) + '">' + esc(u.name) + '</option>'; }).join('');
+    var gente = B.users.filter(function (u) { return rs.length !== 1 || u.mail !== rs[0]; });
+    $('ftv-to').innerHTML = gente.map(function (u) { return '<button type="button" class="ft-pill" data-v="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('');
     $('ftv-qk').hidden = !B.notas.length;
     $('ftv-qk').innerHTML = B.notas.map(function (x) { return '<button type="button" class="ft-pill" data-qk="' + esc(x) + '">' + esc(x) + '</button>'; }).join('');
     $('ftv-seg-l').hidden = !B.seguimiento; $('ftv-seg-t').textContent = B.seguimiento; $('ftv-seg').checked = false;
@@ -252,7 +261,7 @@
     if (res) { $('ftv-txt').value = ''; $('ftv-seg').checked = false; comentarios(T.t.id); }
   }
   function delegar() {
-    var a = v('ftv-to'); if (!a) return toast('Elegí a quién se la delegás.', 'err');
+    var a = elegido('ftv-to'); if (!a) return toast('Elegí a quién se la delegás.', 'err');
     hacer('delegar_tarea', { tid: T.t.id, a: a, nota: v('ftv-dnota') }, function (r) { return 'Delegada → ' + r.id; }, 'm-ftv');
   }
   function recordar() {
@@ -390,22 +399,24 @@
     try {
       var B = await base();
       llenarProyectos(ctx.projectId || (ctx.clientId ? 'cli:' + ctx.clientId : ''));
-      $('ftn-prio').innerHTML = B.prio.map(function (p) { return '<label class="ft-rad"><input type="radio" name="ftn-prio" value="' + esc(p) + '"' + (p === 'Media' ? ' checked' : '') + '> ' + esc(p) + '</label>'; }).join('');
-      $('ftn-who').innerHTML = B.users.map(function (u) { return '<option value="' + esc(u.mail) + '"' + (u.mail === yo() ? ' selected' : '') + '>' + esc(u.name) + '</option>'; }).join('');
+      var tono = function (p) { return /alta/i.test(p) ? 't-rd' : /media/i.test(p) ? 't-yl' : 't-mt'; };
+      $('ftn-prio').innerHTML = B.prio.map(function (p) { return '<button type="button" class="ft-pill ' + tono(p) + (p === 'Media' ? ' on' : '') + '" data-v="' + esc(p) + '">' + ico('bandera') + ' ' + esc(p) + '</button>'; }).join('');
+      $('ftn-who').innerHTML = B.users.map(function (u) { return '<button type="button" class="ft-pill' + (u.mail === yo() ? ' on' : '') + '" data-v="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('');
       $('ftn-vence').value = isoMas(7);
-      $('ftn-rap').innerHTML = B.rapidas.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
-      $('ftn-tit').value = ''; $('ftn-det').value = ''; $('ftn-det-add').hidden = false; $('ftn-det-fg').hidden = true;
+      $('ftn-rap').hidden = !B.rapidas.length;
+      $('ftn-rap').innerHTML = B.rapidas.map(function (x) { return '<button type="button" class="ft-pill" data-rap="' + esc(x) + '">' + esc(x) + '</button>'; }).join('');
+      $('ftn-tit').value = ''; $('ftn-det').value = '';
       openM('m-ftn');
       setTimeout(function () { $('ftn-tit').focus(); }, 50);
     } catch (e) { toast('No se pudo abrir: ' + e.message, 'err'); }
   };
   async function guardarNueva() {
     if (!v('ftn-tit')) return toast('Falta «Qué hay que hacer».', 'err');
-    var pv = v('ftn-proy'), pj = T.base.proyectos.find(function (p) { return p.id === pv; }), pr = document.querySelector('#ftn-prio input:checked');
+    var pv = v('ftn-proy'), pj = T.base.proyectos.find(function (p) { return p.id === pv; }), pr = elegido('ftn-prio');
     var b = $('ftn-ok'); b.disabled = true;
     await hacer('nueva_tarea', { p: { title: v('ftn-tit'), detail: v('ftn-det'),
       clientId: pv.indexOf('cli:') === 0 ? pv.slice(4) : (pj ? pj.empresa_id : ''), projectId: pv.indexOf('cli:') === 0 ? '' : pv,
-      priority: pr ? pr.value : '', assignees: v('ftn-who'), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
+      priority: pr, assignees: elegido('ftn-who'), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
     b.disabled = false;
   }
 })();
