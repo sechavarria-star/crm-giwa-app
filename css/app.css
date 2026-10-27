@@ -124,3 +124,34 @@ button.hoy-go{background:none;border:0;padding:0;font-family:inherit}
 /* Tablero de tareas · la columna principal no se sale del ancho; sin lateral (Actividades), una sola columna */
 .td-main{min-width:0}
 .td.td-solo{grid-template-columns:minmax(0,1fr)}
+
+/* ── Administración · desplegables, cuerpo y acciones (27/10/2026) ──
+   Sólo la Administración de la app nueva (.adm-desp): el .desp de _Estilos no cambia.
+   Encabezado: [flecha] TÍTULO [cantidad] ··· total, centrado y con la misma altura. */
+.adm-desp { background: var(--bg2); border-color: var(--b); }
+.adm-desp > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 18px; box-sizing: border-box; }
+.adm-desp > summary::after { content: none; }
+.adm-desp .adm-flecha { display: inline-flex; align-items: center; color: var(--mt); transition: transform .15s ease; }
+.adm-desp .adm-flecha svg { width: 16px; height: 16px; }
+.adm-desp[open] .adm-flecha { transform: rotate(90deg); color: var(--blue); }
+.adm-desp .adm-tit { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--tx); }
+.adm-desp > summary .cnt { font-size: 11px; color: var(--mt); }
+.adm-desp .adm-total { margin-left: auto; display: inline-flex; align-items: center; }
+.adm-desp .adm-total .m { font-size: 15px; }
+.adm-desp[open] > summary { background: var(--sup-modal); border-bottom: 1px solid var(--borde-luz); }
+.adm-desp > .adm-cuerpo { background: var(--bg); padding: 16px 18px; }
+.adm-desp > .adm-cuerpo > * { max-width: 1200px; }
+.adm-desp .tbl th { font-size: 11px; }
+.adm-desp .tbl td { font-size: 12.5px; padding-top: 9px; padding-bottom: 9px; }
+/* Acciones legibles: las chicas crecen; la principal es la azul (bp) */
+.adm-desp .btn.xs, .adm-desp .btn.sm { font-size: 12.5px; padding: 7px 14px; min-height: 32px; }
+.adm-desp .btn.btn-ico { padding: 7px 9px; }
+.adm-desp .pc-barra { gap: 14px; padding: 12px 14px; }
+.adm-desp .pc-barra .u-s11 { font-size: 12.5px; }
+
+/* Popup «Registrar depósito» */
+.dep-cli { font-size: 14px; font-weight: 600; }
+.dep-fila { display: flex; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b-tenue); font-size: 12.5px; }
+.dep-imp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 16px; }
+.dep-imp > div { background: var(--bg3); border-radius: var(--r); padding: 10px 12px; }
+.dep-imp b { font-size: 17px; }

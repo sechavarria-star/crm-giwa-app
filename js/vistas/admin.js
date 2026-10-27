@@ -53,8 +53,9 @@
   function viejo() { return '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">'; }
   // Sección plegable con el conteo y el total en el título; recuerda si estaba abierta
   function sec(k, tit, cnt, extra, cuerpo) {
-    return '<details class="desp" data-sec="' + esc(k) + '"' + (A.abiertos[k] ? ' open' : '') + '><summary class="u-row8">' +
-      '<span>' + tit + '</span><span class="cnt">' + cnt + '</span>' + (extra || '') + '</summary><div>' + cuerpo + '</div></details>';
+    return '<details class="desp adm-desp" data-sec="' + esc(k) + '"' + (A.abiertos[k] ? ' open' : '') + '><summary>' +
+      '<span class="adm-flecha">' + ico('derecha') + '</span><span class="adm-tit">' + tit + '</span><span class="cnt">' + cnt + '</span>' +
+      (extra ? '<span class="adm-total">' + extra + '</span>' : '') + '</summary><div class="adm-cuerpo">' + cuerpo + '</div></details>';
   }
   function diasHasta(iso) { var d = _pd(iso), h = _pd(isoMas(0)); return d ? Math.round((d - h) / 864e5) : null; }
 
@@ -101,8 +102,8 @@
     var por = {}, orden = [];
     D.cobros.forEach(function (c) { var k = c.empresa || '— sin empresa —'; if (!por[k]) { por[k] = []; orden.push(k); } por[k].push(c); });
     orden.sort();
-    var h = '<div class="card u-p0 u-ovx" id="pc-wrap"><table class="tbl"><tbody>' +
-      '<tr><td colspan="5"><label class="u-s11 u-fw6"><input type="checkbox" data-pc="todas"> Seleccionar todas</label></td></tr>';
+    // Un cliente por depósito: se eligen varias facturas de la misma empresa (27/10/2026)
+    var h = '<div class="card u-p0 u-ovx" id="pc-wrap"><table class="tbl"><tbody>';
     orden.forEach(function (emp, ei) {
       var arr = por[emp];
       h += '<tr class="pc-emp-f"><td colspan="3"><label class="u-fw6"><input type="checkbox" data-pc="emp" data-e="' + ei + '"> ' + esc(emp) + '</label> <span class="u-s10-mt">' + arr.length + ' FC</span></td>' +
@@ -121,9 +122,7 @@
       '<span class="u-s11" id="pc-n">Ninguna seleccionada</span>' +
       '<span class="u-s11">Total <b class="m m-pendiente" id="pc-tot">' + fmt(0) + '</b></span>' +
       '<span class="u-s11">' + pct + '% <b class="m m-neutro" id="pc-mitad" data-pct="' + pct + '">' + fmt(0) + '</b></span>' +
-      '<input type="date" id="pc-fecha" class="fc u-wauto u-mla" value="' + isoMas(0) + '" aria-label="Fecha">' +
-      '<button class="btn bp xs" data-adm="pc-reg" data-campo="fecha_deposito" disabled>Depósito</button>' +
-      '<button class="btn bp xs" data-adm="pc-reg" data-campo="fecha_transf" disabled>Transferencia</button></div></div>';
+      '<button class="btn bp u-mla" data-adm="pc-reg" disabled>' + ico('check') + ' Registrar depósito</button></div></div>';
     return sec('cob', 'Pendiente de cobrar', D.cobros.length, '<span class="m m-pendiente u-s11 u-mla">' + fmt(tot) + '</span>', h);
   }
   function pcBarra() {
@@ -137,8 +136,42 @@
       var fs = document.querySelectorAll('#pc-wrap [data-pc=fc][data-e="' + e.getAttribute('data-e') + '"]');
       e.checked = fs.length > 0 && Array.prototype.every.call(fs, function (x) { return x.checked; });
     });
-    var all = document.querySelector('#pc-wrap [data-pc=todas]'), fcs = document.querySelectorAll('#pc-wrap [data-pc=fc]');
-    if (all) all.checked = fcs.length > 0 && sel.length === fcs.length;
+  }
+  // ── Depósito: un popup para el depósito del cliente y, si ya se hizo, la transferencia al socio ──
+  // registrar_deposito: deposito_fecha y cobrado una sola vez; transf_fecha (= socio, como v_reparto_socio) sólo si viene.
+  function abrirDeposito(alGuardar) {
+    var ids = Array.prototype.map.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-id'); });
+    var fcs = A.d.cobros.filter(function (c) { return ids.indexOf(c.id) >= 0; }); if (!fcs.length) return;
+    var pct = A.d.rep.length ? Number(A.d.rep[0].pct) || 50 : 50;
+    var tot = suma(fcs, 'monto'), soc = fcs.reduce(function (a, c) { return a + Math.round((Number(c.monto) || 0) * pct / 100); }, 0);
+    var m = document.getElementById('m-dep');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-dep';
+      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Registrar depósito</span>' +
+        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-dep">' + ico('cerrar') + '</button></div><div class="mb2" id="dep-cuerpo"></div>' +
+        '<div class="mf"><button class="btn bg" data-cerrar="m-dep">Cancelar</button><button class="btn bp" id="dep-ok">' + ico('check') + ' Confirmar</button></div></div>';
+      document.body.appendChild(m);
+    }
+    document.getElementById('dep-cuerpo').innerHTML =
+      '<div class="fg"><span class="fl">Cliente</span><div class="dep-cli">' + esc(fcs[0].empresa || '—') + '</div></div>' +
+      '<div class="fg"><span class="fl">Facturas</span>' + fcs.map(function (c) {
+        return '<div class="dep-fila"><span class="u-f1m">' + (c.nro ? 'FC <span class="m">' + esc(c.nro) + '</span>' : 'Sin comprobante') +
+          (c.concepto ? ' · <span class="u-c-mt">' + esc(c.concepto) + '</span>' : '') + '</span><span class="m">' + fmt(c.monto) + '</span></div>'; }).join('') + '</div>' +
+      '<div class="dep-imp"><div><span class="fl">Recibo del cliente</span><b class="m m-cobrado">' + fmt(tot) + '</b></div>' +
+        '<div><span class="fl">Le toca al socio (' + pct + '%)</span><b class="m m-pendiente">' + fmt(soc) + '</b></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="dep-f">Fecha del depósito del cliente <span class="req">*</span></label><input class="fc" type="date" id="dep-f" value="' + isoMas(0) + '"></div>' +
+        '<div class="fg"><label class="fl" for="dep-s">Fecha de transferencia al socio</label><input class="fc" type="date" id="dep-s"></div></div>' +
+      '<div class="ft-info">Si todavía no le transferiste, dejá la fecha vacía: queda en «Para transferirle a tu socio».</div>';
+    var ok = document.getElementById('dep-ok'); ok.disabled = false;
+    ok.onclick = async function () {
+      var f = document.getElementById('dep-f').value, fs = document.getElementById('dep-s').value;
+      if (!f) return toast('Falta la fecha del depósito', 'err');
+      ok.disabled = true;                          // un clic = un registro
+      var r = await db().rpc('registrar_deposito', { ids: ids, fecha_deposito: f, fecha_socio: fs || null });
+      if (r.error) { ok.disabled = false; return toast(r.error.message, 'err'); }
+      closeM('m-dep'); toast(r.data.msg, 'ok'); alGuardar();
+    };
+    openM('m-dep');
   }
 
   // ── 3 · qué ajustar este mes ─────────────────────────────────
@@ -548,8 +581,10 @@
       if (t.id === 'gf-cat' || t.id === 'gf-pag' || t.id === 'gf-rec') { A.gf[t.id.slice(3)] = t.value; return pintar(el); }
       if (t.id === 'fa-emp' || t.id === 'fa-dep' || t.id === 'fa-own') { A.ff[t.id.slice(3)] = t.value; return pintar(el); }
       var pc = t.getAttribute && t.getAttribute('data-pc');
-      if (pc === 'todas') document.querySelectorAll('#pc-wrap [data-pc=fc], #pc-wrap [data-pc=emp]').forEach(function (x) { x.checked = t.checked; });
-      if (pc === 'emp') document.querySelectorAll('#pc-wrap [data-pc=fc][data-e="' + t.getAttribute('data-e') + '"]').forEach(function (x) { x.checked = t.checked; });
+      // Un solo cliente: tildar otra empresa no se suma a la selección
+      var otra = t.checked && pc && Array.prototype.some.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-e') !== t.getAttribute('data-e'); });
+      if (otra) { t.checked = false; toast('Elegí facturas de un solo cliente', 'err'); }
+      else if (pc === 'emp') document.querySelectorAll('#pc-wrap [data-pc=fc][data-e="' + t.getAttribute('data-e') + '"]').forEach(function (x) { x.checked = t.checked; });
       if (pc) pcBarra();
     };
     el.onclick = async function (ev) {
@@ -571,14 +606,7 @@
         if (rr.error) return toast(rr.error.message, 'err');
         toast(rr.data.msg, 'ok'); A.recAbierto = false; return refrescar();
       }
-      if (a === 'pc-reg') {
-        var ids = Array.prototype.map.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-id'); });
-        var f = (document.getElementById('pc-fecha') || {}).value;
-        if (!ids.length) return; if (!f) return toast('Elegí la fecha', 'err');
-        var r = await db().rpc('marcar_fecha_cobros', { ids: ids, campo: b.getAttribute('data-campo'), fecha: f });
-        if (r.error) return toast(r.error.message, 'err');
-        toast(n(r.data.marcados, 'registrada'), 'ok'); return refrescar();
-      }
+      if (a === 'pc-reg') return abrirDeposito(refrescar);
       if (a === 'socio' || a === 'socio-todo') {
         var p = A.d.rep.filter(function (c) { return !c.hecho; });
         var lista = a === 'socio' ? [id] : p.map(function (c) { return c.id; });
