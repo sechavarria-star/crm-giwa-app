@@ -65,6 +65,9 @@ a.nav-b.on { pointer-events: none; }
 .e-xr { background: var(--rd); }
 .t-xr { color: var(--rd); }
 
+/* Ficha del desarrollo: las hijas de una pregunta madre, corridas */
+.fd-hija { padding-left: 18px; }
+
 /* Modales: se centran en el área de trabajo, debajo de la barra y a la derecha del menú */
 body .mo { top: 36px; left: 220px; }
 body.lat-cerrado .mo { left: 56px; }

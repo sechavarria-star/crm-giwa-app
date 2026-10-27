@@ -513,6 +513,7 @@
         '<summary class="des-h"><div class="u-row8"><div class="u-f1m"><div class="dev-tit">' + (rec ? ico('repetir') + ' ' : '') + esc(it.titulo || it.descripcion || '—') + '</div>' +
         '<div class="dev-sub">' + esc(sub) + '</div></div>' +
         (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' : ib(it.detenido ? 'play' : 'pausa', it.detenido ? 'Reanudar este desarrollo' : 'Detener este desarrollo', 'data-pm="det-des" data-id="' + esc(it.id) + '"')) +
+        ib('editar', 'Ver o editar el desarrollo', 'data-pm="edit-des" data-id="' + esc(it.id) + '"') +
         (det ? '' : botonesDes(it, false)) +
         '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
       h += '<div class="seg-linea u-mt6">';
@@ -825,6 +826,7 @@
           if (ok) hacer('detener_proyecto', { pid: id, detener: det });
         });
       }
+      if (a === 'edit-des') { ev.preventDefault(); return abrirDesarrollo(id, { onSave: refrescar }); }
       if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id); return hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo detenido'); }
       if (a === 'acc-des') {
         ev.preventDefault();
