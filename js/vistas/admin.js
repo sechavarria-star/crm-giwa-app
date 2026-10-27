@@ -51,6 +51,8 @@
   function suma(arr, k) { return arr.reduce(function (a, x) { return a + (Number(x[k]) || 0); }, 0); }
   function n(x, s, p) { return x + ' ' + (x === 1 ? s : (p || s + 's')); }
   function viejo() { return '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">'; }
+  // El CRM actual abierto en Administración sobre un desarrollo: fact = facturarlo, aj = ajustarlo por IPC (27/10/2026)
+  function viejoEn(que, id) { return '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '?page=admin&' + que + '=' + encodeURIComponent(id || '') + '" target="_blank" rel="noopener">'; }
   // Sección plegable con el conteo y el total en el título; recuerda si estaba abierta
   function sec(k, tit, cnt, extra, cuerpo) {
     return '<details class="desp adm-desp" data-sec="' + esc(k) + '"' + (A.abiertos[k] ? ' open' : '') + '><summary>' +
@@ -189,7 +191,7 @@
               (a.pct != null ? '+' + String(a.pct).replace('.', ',') + ' %' : '—') + '</td>' +
             '<td class="m m-neutro u-tr">' + fmt(a.cuota_actual) + '</td>' +
             '<td class="m m-abono u-tr">' + (a.cuota_sugerida ? fmt(a.cuota_sugerida) : '—') + '</td>' +
-            '<td class="u-tr">' + viejo() + ico('abrir') + ' Ajustar</a></td></tr>';
+            '<td class="u-tr">' + viejoEn('aj', a.item_id) + ico('abrir') + ' Ajustar</a></td></tr>';
         }).join('') + '</tbody></table></div>';
     }
     h += '<div class="ft-info u-mt8">' + (D.ultimoIpc ? 'IPC acumulado desde el último ajuste de cada desarrollo. Último mes cargado: ' + esc(String(D.ultimoIpc).slice(0, 7)) + '.'
@@ -219,7 +221,7 @@
           '<td class="u-td-mt-r">' + esc(f.det || '') + '</td>' +
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
-          '<td class="u-tr">' + viejo() + ico('abrir') + ' Facturar</a></td></tr>';
+          '<td class="u-tr">' + viejoEn('fact', f.item) + ico('abrir') + ' Facturar</a></td></tr>';
       }).join('') + '</tbody></table></details>';
     };
     var h = fil.length ? '' : '<div class="empty u-p10">Nada pendiente de facturar.</div>';
