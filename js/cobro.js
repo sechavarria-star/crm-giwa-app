@@ -17,7 +17,7 @@
   function v(id) { return String(($(id) || {}).value || '').trim(); }
 
   var HTML =
-    '<div class="mo" id="m-cobro"><div class="md">' +
+    '<div class="mo" id="m-cobro"><div class="md md-sm">' +
       '<div class="mh"><span class="mt2" id="cb-tit">Nueva factura</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-cobro">' + ico('cerrar') + '</button></div>' +
       '<div class="mb2">' +
         '<div class="fg"><label class="fl ft-lbl" for="cb-emp">Cliente <span class="req">*</span></label><select class="fc" id="cb-emp"></select></div>' +
