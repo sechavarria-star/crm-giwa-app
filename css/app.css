@@ -192,6 +192,35 @@ span.riel-paso { cursor: default; }
 .kpi-mini .kpi-val { font-size: 11px; white-space: nowrap; overflow-wrap: normal; }   /* el $ no se separa del número */
 .kpi-mini .kpi-sub, .kpi-mini .lat-usd { font-size: 10px; }
 
+/* Estado financiero (vistas/fin.js): gráficos SVG propios, sin librería */
+.chev.on .ico { transform: rotate(90deg); }
+.fin-cli { cursor: pointer; }
+.fin-cli:hover td { background: color-mix(in srgb, var(--blue) 6%, transparent); }
+.fin-pro td { color: var(--mt); font-size: 11.5px; }
+.fin-pro td:first-child { padding-left: 28px; }
+.fin-tot td { font-weight: 500; border-top: 1px solid var(--b); }
+.fin-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .fin-dos { grid-template-columns: minmax(0, 1fr); } }
+.fin-sim { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.fin-esc { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--b-tenue); font-size: 12px; cursor: pointer; }
+.fin-esc:hover { background: color-mix(in srgb, var(--blue) 6%, transparent); }
+.fin-esc-e { min-width: 120px; font-weight: 500; }
+.fin-barras { display: flex; flex-direction: column; gap: 8px; max-width: 900px; }
+.fin-bf { display: grid; grid-template-columns: 160px minmax(0, 1fr) 120px 120px; gap: 10px; align-items: center; font-size: 12px; }
+.fin-bn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fin-bb { display: flex; flex-direction: column; gap: 3px; }
+.fin-bb i { display: block; height: 7px; border-radius: 3px; }
+.fin-c { background: var(--blue); }
+.fin-k { background: var(--ok); }
+.fin-ley { display: flex; gap: 14px; font-size: 10.5px; color: var(--mt); margin-top: 6px; }
+.fin-ley i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
+.fin-svg { width: 100%; height: auto; display: block; }
+.fin-sd, .fin-ley i.fin-sd { fill: var(--blue); background: var(--blue); }
+.fin-sm, .fin-ley i.fin-sm { fill: var(--violet); background: var(--violet); }
+.fin-sn { fill: none; stroke: var(--ok); stroke-width: 2; }
+.fin-ley i.fin-sn { background: var(--ok); height: 3px; }
+.fin-st { fill: var(--mt); font-size: 9px; text-anchor: middle; font-family: var(--mono); }
+
 /* Popup «Registrar depósito» */
 .dep-cli { font-weight: 600; }
 .dep-fila { display: flex; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b-tenue); }
