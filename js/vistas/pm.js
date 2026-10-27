@@ -61,7 +61,10 @@
   function nombre(m) { var e = String(m || '').trim().toLowerCase(); return P.users[e] || (e.indexOf('@') >= 0 ? e.split('@')[0] : String(m || '')); }
   function yo() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').trim().toLowerCase(); }
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
-  function est(txt, cls) { return '<span class="est t-' + cls + '"><i class="est-dot e-' + cls + '"></i>' + esc(txt || '—') + '</span>'; }
+  // Finalizado (verde) lleva además el tilde: así no se confunde con Activo/En curso (turquesa), sin tocar los colores
+  function est(txt, cls) { return '<span class="est t-' + cls + '"><i class="est-dot e-' + cls + '"></i>' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(txt || '—') + '</span>'; }
+  // El chevron de todos los desplegables: el mismo ícono de línea, gira al abrir (app.css · .chev)
+  function chev() { return '<span class="chev">' + ico('derecha') + '</span>'; }
   // botón-ícono; el color del hover dice el resultado (check verde, cerrar gris)
   function ib(icon, tit, attrs, cls) {
     var hv = icon === 'check' ? ' h-ok' : (icon === 'cerrar' ? ' h-mt' : '');
@@ -153,7 +156,7 @@
   }
   function desp(p, k, tit, cuerpo, der) {
     var key = p.id + ':' + k;
-    return '<details class="desp plano" data-segdesp="' + esc(key) + '"' + (P.seg.abierto[key] ? ' open' : '') + '><summary><span class="u-f1m">' + tit + '</span>' + (der || '') + '</summary><div>' + cuerpo + '</div></details>';
+    return '<details class="desp plano" data-segdesp="' + esc(key) + '"' + (P.seg.abierto[key] ? ' open' : '') + '><summary>' + chev() + '<span class="u-f1m">' + tit + '</span>' + (der || '') + '</summary><div>' + cuerpo + '</div></details>';
   }
   function segCard(p) {
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e), ec = colorEstadoProy(e);
@@ -184,7 +187,7 @@
         h += '<div class="seg-dev' + (it.detenido ? ' det' : '') + '"><i class="est-dot e-' + cls + '"></i>' +
           '<span class="seg-dev-t dev-tit" title="' + esc(it.titulo || '') + '">' + (mant ? ico('repetir') + ' ' : '') + esc(it.titulo || it.tipo || '—') + '</span>' +
           (p.detenido || it.detenido ? '' : botonesDes(it, true)) +
-          '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (it.detenido ? ' · detenido' : '') + '</span></div>';
+          '<span class="dev-est t-' + cls + '">' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(it.estado || '—') + (it.detenido ? ' · detenido' : '') + '</span></div>';
         if (esGanado(it.estado)) {
           if (!mant) {
             var tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
@@ -259,8 +262,9 @@
     var cerrados = {}; try { cerrados = JSON.parse(localStorage.getItem('seg_cerr') || '{}') || {}; } catch (e) { cerrados = {}; }
     orden.forEach(function (emp, ei) {
       var ps = grupos[emp], cerr = !!cerrados[emp], carr = ps.length > CARRUSEL;
-      h += '<div class="seg-grp' + (cerr ? ' cerr' : '') + '"><div class="seg-grp-h">' +
-        ib(cerr ? 'abajo' : 'arriba', cerr ? 'Mostrar los proyectos' : 'Ocultar los proyectos', 'data-pm="segemp" data-emp="' + esc(emp) + '"', 'seg-chev') +
+      // Todo el encabezado abre y cierra (antes sólo la flechita); las flechas del carrusel siguen con lo suyo
+      h += '<div class="seg-grp' + (cerr ? ' cerr' : '') + '"><div class="seg-grp-h" data-pm="segemp" data-emp="' + esc(emp) + '" title="' +
+        (cerr ? 'Mostrar los proyectos' : 'Ocultar los proyectos') + '">' + chev() +
         logo(emp, 'seg-logo', 'seg-logo seg-logo-l') + '<span class="seg-grp-n">' + esc(emp) + '</span>' +
         '<span class="u-s10-mt">' + ps.length + ' proy.</span><span class="u-f1"></span>' +
         (carr && !cerr ? ib('izquierda', 'Anterior', 'data-pm="scr" data-dir="-1" data-g="' + ei + '"') + ib('derecha', 'Siguiente', 'data-pm="scr" data-dir="1" data-g="' + ei + '"') : '') + '</div>';
@@ -448,7 +452,7 @@
   function tabInfo(p) {
     var F = P.f, dur = mDuracionMeses(p), cie = mCierre(p);
     // Un proyecto Activo o Finalizado ya se cargó: se mira. Lo que sigue cambiando son los contactos.
-    var h = '<details class="desp plano" open><summary><span class="u-f1m">Datos del proyecto</span>' +
+    var h = '<details class="desp plano" open><summary>' + chev() + '<span class="u-f1m">Datos del proyecto</span>' +
       (mProyEditable(p) ? '<button class="btn bp xs" data-pm="editar-proy">' + ico('editar') + ' Editar proyecto</button>'
                         : '<span class="u-s10-mt" title="El proyecto ya arrancó: los datos se cargaron al cotizar. Acá sólo se suman contactos.">Sólo lectura</span>') +
       '</summary><div>' +
@@ -463,7 +467,7 @@
     h += '<div class="sec u-mt10">Drive interno</div>' + (drv ? '<a class="btn bg xs" href="' + esc(drv) + '" target="_blank" rel="noopener">' + ico('carpeta') + ' Abrir carpeta</a>' : '<span class="u-s10-mt">Sin carpeta cargada.</span>') + '</div></details>';
     // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
-    h += '<details class="desp plano"><summary><span class="u-f1m">Contactos · ' + esc(p.empresa || '') + '</span>' +
+    h += '<details class="desp plano"><summary>' + chev() + '<span class="u-f1m">Contactos · ' + esc(p.empresa || '') + '</span>' +
       '<button class="btn bp xs" data-pm="contacto">' + ico('mas') + ' Contacto</button></summary><div>' +
       (F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
         var tel = String(c.telefono || '').replace(/[^0-9]/g, '');
@@ -472,7 +476,7 @@
           (tel ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') +
           (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + ico('mail') + '</a>' : '') + '</div>';
       }).join('') : '<div class="u-s11-mt">Sin contactos cargados.</div>') + '</div></details>';
-    h += '<details class="desp plano"><summary><span class="u-f1m">Cronograma</span></summary><div>' + fechasHTML(p) + '</div></details>';
+    h += '<details class="desp plano"><summary>' + chev() + '<span class="u-f1m">Cronograma</span></summary><div>' + fechasHTML(p) + '</div></details>';
     return h;
   }
   function mantArranca(p, m) {
@@ -525,7 +529,7 @@
         (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' : ib(it.detenido ? 'play' : 'pausa', it.detenido ? 'Reanudar este desarrollo' : 'Detener este desarrollo', 'data-pm="det-des" data-id="' + esc(it.id) + '"')) +
         ib('editar', 'Ver o editar el desarrollo', 'data-pm="edit-des" data-id="' + esc(it.id) + '"') +
         (det ? '' : botonesDes(it, false)) +
-        '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
+        '<span class="dev-est t-' + cls + '">' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
       h += '<div class="seg-linea u-mt6">';
       if (rec) {
         if (cuota) h += '<span>Cuota <b class="m m-abono">' + fmt(cuota) + '/mes</b></span>';
@@ -558,7 +562,7 @@
       }
       h += '</div>';
       if (it.descripcion) h += '<div class="u-s10-mt u-mt6">' + esc(it.descripcion) + '</div>';
-      h += '<details class="desp plano u-mt6"><summary class="u-s11">Módulos de trabajo</summary><div>' + modulosDe(it.id) + '</div></details>';
+      h += '<details class="desp plano u-mt6"><summary class="u-s11">' + chev() + 'Módulos de trabajo</summary><div>' + modulosDe(it.id) + '</div></details>';
       return h + '</div></details>';
     }).join('');
   }

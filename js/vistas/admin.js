@@ -56,7 +56,7 @@
   // Sección plegable con el conteo y el total en el título; recuerda si estaba abierta
   function sec(k, tit, cnt, extra, cuerpo) {
     return '<details class="desp adm-desp" data-sec="' + esc(k) + '"' + (A.abiertos[k] ? ' open' : '') + '><summary>' +
-      '<span class="adm-flecha">' + ico('derecha') + '</span><span class="adm-tit">' + tit + '</span><span class="cnt">' + cnt + '</span>' +
+      '<span class="chev">' + ico('derecha') + '</span><span class="adm-tit">' + tit + '</span><span class="cnt">' + cnt + '</span>' +
       (extra ? '<span class="adm-total">' + extra + '</span>' : '') + '</summary><div class="adm-cuerpo">' + cuerpo + '</div></details>';
   }
   function diasHasta(iso) { var d = _pd(iso), h = _pd(isoMas(0)); return d ? Math.round((d - h) / 864e5) : null; }
@@ -215,7 +215,7 @@
     var tabla = function (k, tit, arr, abierto) {
       if (!arr.length) return '';
       var ab = A.abiertos[k] !== undefined ? A.abiertos[k] : abierto;
-      return '<details class="fact-g" data-sec="' + k + '"' + (ab ? ' open' : '') + '><summary><span class="adm-flecha">' + ico('derecha') + '</span>' +
+      return '<details class="fact-g" data-sec="' + k + '"' + (ab ? ' open' : '') + '><summary><span class="chev">' + ico('derecha') + '</span>' +
         '<span>' + tit + '</span><span class="cnt">' + arr.length + '</span><span class="m u-mla">' + fmt(suma(arr, 'monto')) + '</span></summary><table class="tbl"><tbody>' + arr.map(function (f) {
         return '<tr><td><b>' + esc(f.titulo || '—') + '</b><div class="u-s10-mt">' + esc(f.ctx.filter(Boolean).join(' · ')) + '</div></td>' +
           '<td class="u-td-mt-r">' + esc(f.det || '') + '</td>' +

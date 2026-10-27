@@ -125,34 +125,61 @@ button.hoy-go{background:none;border:0;padding:0;font-family:inherit}
 .td-main{min-width:0}
 .td.td-solo{grid-template-columns:minmax(0,1fr)}
 
-/* ── Administración · desplegables (27/10/2026, simplificado) ──
-   Sólo la Administración de la app nueva (.adm-desp, .fact-g): el .desp de _Estilos no cambia.
-   Encabezado: [flecha] TÍTULO [cantidad] ··· total. Abierto: título blanco, contorno azul
-   con brillo sutil y el contenido sobre el fondo de la app. Tamaños: los de siempre. */
-.adm-desp > summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 13px; box-sizing: border-box; font-size: 13px; }
+/* ── Desplegables con el estilo de Seguimiento (27/10/2026) ──
+   Un chevron (.chev, ícono «derecha» de línea) que gira y se pone azul al abrir. Encabezado
+   discreto: sin caja, línea sutil, hover visible y, abierto, un azul translúcido muy suave.
+   Lo usan los grupos de Seguimiento, las secciones de su tarjeta y de la ficha, y Administración. */
+.chev { display: inline-flex; align-items: center; color: var(--mt); transition: transform .15s ease, color .15s ease; flex-shrink: 0; }
+.chev .ico { width: 14px; height: 14px; stroke-width: 2.2; }
+details[open] > summary > .chev, .seg-grp:not(.cerr) > .seg-grp-h > .chev { transform: rotate(90deg); color: var(--blue); }
+.desp > summary:has(> .chev)::after, .desp[open] > summary:has(> .chev)::after { content: none; }
+
+/* Grupo de clientes (Seguimiento): todo el encabezado abre y cierra */
+.seg-grp-h { min-height: 40px; padding: 4px 8px; border-radius: var(--r); transition: background .15s ease; }
+.seg-grp-h:hover { background: color-mix(in srgb, var(--blue) 8%, transparent); }
+.seg-grp:not(.cerr) > .seg-grp-h { background: color-mix(in srgb, var(--blue) 5%, transparent); }
+
+/* Administración con el mismo criterio (sin el recuadro ni el contorno azul) */
+.adm-desp { background: none; border: 0; border-radius: 0; margin-bottom: 6px; }
+.adm-desp > summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 8px; box-sizing: border-box;
+  border-bottom: 1px solid var(--b-suave); border-radius: var(--r) var(--r) 0 0; transition: background .15s ease; }
 .adm-desp > summary::after, .adm-desp[open] > summary::after { content: none; }
-.adm-flecha { display: inline-flex; align-items: center; color: var(--mt); transition: transform .15s ease; }
-.adm-flecha svg { width: 14px; height: 14px; }
-.adm-desp[open] > summary .adm-flecha, .fact-g[open] > summary .adm-flecha { transform: rotate(90deg); color: var(--blue); }
-.adm-tit { font-weight: 400; color: var(--mt); }
-.adm-desp[open] .adm-tit { color: var(--tx); }
+.adm-desp > summary:hover { background: color-mix(in srgb, var(--blue) 8%, transparent); color: var(--tx); }
+.adm-desp[open] > summary { background: color-mix(in srgb, var(--blue) 5%, transparent); border-bottom: 1px solid var(--b-suave); }
+.adm-tit { font-size: 11.5px; font-weight: 400; letter-spacing: .04em; text-transform: uppercase; color: var(--tx); }
 .adm-total { margin-left: auto; display: inline-flex; align-items: center; }
-.adm-desp[open] { border-color: var(--blue); box-shadow: 0 0 14px var(--blue-a); }
-.adm-desp > .adm-cuerpo { background: var(--bg); }
-/* Grupos de Facturación: el mismo encabezado, un nivel más abajo y sin caja */
+.adm-desp .adm-total .m { font-size: 12px; }
+.adm-desp > .adm-cuerpo { background: none; padding: 10px 8px 14px; }
+.adm-desp .adm-cuerpo b { font-weight: 500; }
+.adm-desp .adm-cuerpo .u-s10-mt { font-size: 10.5px; }
+/* Grupos de Facturación: el mismo encabezado, un nivel más abajo */
 .fact-g { margin-top: 8px; }
-.fact-g > summary { display: flex; align-items: center; gap: 8px; padding: 9px 0; cursor: pointer; list-style: none; font-size: 12.5px; font-weight: 400;
-  color: var(--mt); border-bottom: 1px solid var(--b-suave); }
+.fact-g > summary { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 6px; cursor: pointer; list-style: none; font-size: 12px;
+  color: var(--mt); border-bottom: 1px solid var(--b-tenue); border-radius: var(--r) var(--r) 0 0; }
 .fact-g > summary::-webkit-details-marker { display: none; }
-.fact-g > summary .adm-flecha svg { width: 12px; height: 12px; }
+.fact-g > summary:hover { background: color-mix(in srgb, var(--blue) 8%, transparent); }
 .fact-g[open] > summary { color: var(--tx); }
 .fact-g > summary .m { font-size: 12px; }
 
-/* Escala de Hoy · Ahora (27/10/2026): encabezado 13 px peso 400; dentro, títulos 12,5 px y detalle
-   10,5 px; las tablas ya usan el formato de Gastos del mes (.tbl). El total del encabezado, 12 px. */
-.adm-desp .adm-total .m { font-size: 12px; }
-.adm-desp .adm-cuerpo b { font-weight: 500; }
-.adm-desp .adm-cuerpo .u-s10-mt { font-size: 10.5px; }
+/* Íconos de acción más visibles (Seguimiento, ficha y Administración): 16 px, trazo más firme,
+   más contraste; el hover sigue en azul (o verde en finalizar/aprobar) y el tooltip no cambia */
+.seg-card .btn-ico, .seg-grp-h .btn-ico, .ficha-grid .btn-ico, .adm-desp .btn-ico { color: var(--tx); opacity: .78; }
+.seg-card .btn-ico:hover, .seg-grp-h .btn-ico:hover, .ficha-grid .btn-ico:hover, .adm-desp .btn-ico:hover { opacity: 1; }
+.seg-card .btn-ico .ico, .seg-grp-h .btn-ico .ico, .ficha-grid .btn-ico .ico, .adm-desp .btn-ico .ico { width: 16px; height: 16px; stroke-width: 2.2; }
+
+/* Finalizado lleva el tilde al lado del nombre (Activo y Finalizado no se confunden; colores intactos) */
+.est .ico, .dev-est .ico { width: 11px; height: 11px; stroke-width: 2.6; vertical-align: -1px; }
+
+/* Secciones de la tarjeta de Seguimiento (Desarrollos, Módulos, Tareas, Comentarios): rótulo claro */
+.seg-card .seg-sec, .seg-card .desp.plano > summary { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--mt); }
+.seg-card .seg-sec { padding-top: 10px; margin-top: 2px; }
+.seg-card .desp.plano { margin-top: 4px; }
+
+/* Filtros de Seguimiento: en su fila, debajo del buscador, con el elegido bien marcado */
+.seg-bar .filtros { flex-basis: 100%; gap: 2px; margin: 4px 0 0; border-bottom: 1px solid var(--b); }
+.seg-bar .ptab { font-size: 12px; color: var(--mt); padding: 8px 12px; }
+.seg-bar .ptab.on { color: var(--tx); border-bottom-color: var(--blue); }
+.seg-bar .ptab .m { color: inherit; margin-left: 4px; }
 
 /* Barra de estados: UNA para proyectos y desarrollos (pm.js · barraEstados) */
 .riel-pasos.fin { opacity: .55; }
