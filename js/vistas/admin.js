@@ -1,9 +1,9 @@
 /* ══════════════════════════════════════════════════════════════════════
    vistas/admin.js · Administración
    ──────────────────────────────────────────────────────────────────────
-   Reemplaza Admin_Index.html + _ResumenAdm.html. Dashboard y Facturación;
-   las otras vistas (Gastos, IPC y TC, Impuestos, Tipos) abren el CRM
-   actual hasta que pasen.
+   Reemplaza Admin_Index.html + _ResumenAdm.html. Dashboard, Facturación y
+   Gastos (27/10: guardar_gasto · borrar_gasto · v_prorrateo_gastos); las otras
+   vistas (IPC y TC, Impuestos, Tipos) abren el CRM actual hasta que pasen.
 
    Dashboard: cada número sale de una vista de la base, validada contra
    getResumenAdmin. Acá no se suma plata: sólo se agrupa y se muestra (los
@@ -19,7 +19,8 @@
    la ventana de ajuste IPC y Renovar.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' }, recAbierto: false };
+  var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' }, recAbierto: false,
+            gf: { cat: '', pag: '', rec: '', q: '' } };
   var SUBS = [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']];
 
   async function cargar() {
@@ -34,13 +35,16 @@
       db().from('v_gastos_plata').select('*'),
       db().from('indices_ipc').select('mes').not('ipc', 'is', null).order('mes', { ascending: false }).limit(1),
       db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 }),
-      db().from('v_recordatorios_faltan').select('*').order('o').order('ord')
+      db().from('v_recordatorios_faltan').select('*').order('o').order('ord'),
+      db().from('v_prorrateo_gastos').select('*').maybeSingle(),
+      db().from('usuarios').select('mail,nombre').eq('es_giwa', true).eq('activo', true).order('orden')
     ];
     var r = await Promise.all(q);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     A.d = { cobros: r[0].data, mens: r[1].data, saldos: r[2].data, sinDes: r[3].data, aj: r[4].data,
             rep: r[5].data, alertas: r[6].data, gastos: r[7].data,
-            ultimoIpc: (r[8].data[0] || {}).mes || '', diasVenc: Number(r[9].data) || 30, faltan: r[10].data };
+            ultimoIpc: (r[8].data[0] || {}).mes || '', diasVenc: Number(r[9].data) || 30, faltan: r[10].data,
+            pro: r[11].data || {}, users: r[12].data };
   }
 
   // ── ayudas ───────────────────────────────────────────────────
@@ -395,6 +399,107 @@
     await cargarFact(); pintar(el);
   }
 
+  // ── Gastos (getGastos · getProrrateo · saveGasto · deleteGasto) ──
+  // Un renglón por mes pagado: «por mes» = los renglones del último mes cargado, sin impuestos.
+  function nomUsr(mail) { var u = (A.d.users || []).find(function (x) { return x.mail === mail; }); return u ? u.nombre : (mail || '—').split('@')[0]; }
+  function htmlGastos(D) {
+    var G = D.gastos, P = D.pro || {}, mesTxt = String(P.mes || '').split('-').reverse().join('/');
+    var kpi = function (cls, lbl, val) { return '<div class="kpi ' + cls + '"><div class="kpi-lbl">' + lbl + '</div><div class="kpi-val">' + val + '</div></div>'; };
+    var h = '<div class="kpi-grid u-mb12">' + kpi('k-pendiente', 'Compartido ' + esc(mesTxt), fmt(P.compartido || 0)) +
+      kpi('k-contratado', 'Proyectos activos', '<span class="m">' + (P.proyectos_activos || 0) + '</span>') + kpi('k-abono', 'Prorrateo / proyecto', fmt(P.por_proyecto || 0)) + '</div>';
+    var delMes = G.filter(function (g) { return g.mes_key === P.mes && !g.es_impuesto; }), porTipo = {}, socio = { diego: 0, vs: 0 };
+    delMes.forEach(function (g) {
+      var c = g.categoria || '—', m = Number(g.monto_ars) || 0, k = String(g.pagador || '').toLowerCase();
+      porTipo[c] = (porTipo[c] || 0) + m;
+      if (k.indexOf('d.camps') >= 0) socio.diego += m; else if (k.indexOf('v.gagey') >= 0 || k.indexOf('s.echavarria') >= 0) socio.vs += m;
+    });
+    var tipos = Object.keys(porTipo).sort(function (a, b) { return porTipo[b] - porTipo[a]; });
+    if (tipos.length) h += '<div class="sec">Gasto de ' + esc(mesTxt) + ' por tipo <span class="sec-sub">· sin impuestos</span></div><div class="kpi-grid u-mb12">' +
+      tipos.map(function (c) { return kpi('k-pendiente', esc(c), fmt(porTipo[c])); }).join('') + '</div>' +
+      '<div class="sec">Por socio · por mes <span class="sec-sub">(sin Monotributo)</span></div><div class="kpi-grid u-mb12">' +
+      kpi('k-pendiente', 'Diego', fmt(socio.diego)) + kpi('k-pendiente', 'Vicky + Sebas', fmt(socio.vs)) + '</div>';
+    var F = A.gf, cats = {}, pags = {};
+    G.forEach(function (g) { cats[g.categoria || '—'] = 1; if (g.pagador) pags[g.pagador] = 1; });
+    var op = function (v, t, sel) { return '<option value="' + esc(v) + '"' + (v === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; };
+    h += '<div class="u-row8 u-mb10"><select class="fc u-wauto" id="gf-cat" aria-label="Categoría">' + op('', 'Todas las categorías', F.cat) + Object.keys(cats).sort().map(function (c) { return op(c, c, F.cat); }).join('') + '</select>' +
+      '<select class="fc u-wauto" id="gf-pag" aria-label="Pagador">' + op('', 'Todos los pagadores', F.pag) + Object.keys(pags).sort().map(function (p) { return op(p, nomUsr(p), F.pag); }).join('') + '</select>' +
+      '<select class="fc u-wauto" id="gf-rec" aria-label="Frecuencia">' + op('', 'Toda frecuencia', F.rec) + op('si', 'Solo recurrentes', F.rec) + op('no', 'Solo únicos', F.rec) + '</select>' +
+      '<input class="fc u-f1" id="gf-q" placeholder="Buscar descripción…" value="' + esc(F.q) + '" aria-label="Buscar">' +
+      '<button class="btn bp sm" data-adm="gas-nuevo">' + ico('mas') + ' Nuevo gasto</button></div>';
+    var L = G.filter(function (g) {
+      var rec = !/[uú]nic/i.test(g.recurrencia || '');
+      if (F.cat && (g.categoria || '—') !== F.cat) return false;
+      if (F.pag && g.pagador !== F.pag) return false;
+      if (F.rec === 'si' && !rec) return false; if (F.rec === 'no' && rec) return false;
+      if (F.q && ((g.descripcion || '') + ' ' + (g.categoria || '') + ' ' + nomUsr(g.pagador)).toLowerCase().indexOf(F.q.toLowerCase()) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); });
+    if (!L.length) return h + '<div class="empty">' + (G.length ? 'Nada coincide con el filtro.' : 'Sin gastos cargados. Agregá el primero.') + '</div>';
+    return h + '<div class="card u-p0 u-ov"><table class="tbl"><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th class="u-tr">ARS</th><th class="u-tr">USD</th>' +
+      '<th>Frecuencia</th><th>Pagador</th><th>Prorratea</th><th></th></tr></thead><tbody>' + L.map(function (g) {
+        return '<tr><td class="m">' + esc(ff(g.fecha)) + '</td><td>' + esc(g.categoria || '—') + '</td><td>' + esc(g.descripcion || '') + '</td>' +
+          '<td class="u-tr">' + fmt(g.monto_ars || 0) + '</td><td class="u-tr m m-usd">' + (Number(g.monto_usd) ? fmt(g.monto_usd, 'USD') : '') + '</td>' +
+          '<td>' + esc(g.recurrencia || '') + '</td><td>' + esc(nomUsr(g.pagador)) + '</td><td>' + (g.prorratear ? 'Sí' : 'No') + '</td>' +
+          '<td class="u-nw"><button class="btn bg xs btn-ico" data-tip="Editar" aria-label="Editar" data-adm="gas-edit" data-id="' + esc(g.id) + '">' + ico('editar') + '</button>' +
+          '<button class="btn bg xs btn-ico" data-tip="Duplicar" aria-label="Duplicar" data-adm="gas-dup" data-id="' + esc(g.id) + '">' + ico('repetir') + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  async function abrirGasto(id, dup, alGuardar) {
+    var g = id ? (A.d.gastos.find(function (x) { return x.id === id; }) || {}) : {};
+    var m = document.getElementById('m-gasto');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-gasto';
+      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2" id="ga-t">Nuevo gasto</span>' +
+        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-gasto">' + ico('cerrar') + '</button></div><div class="mb2">' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ga-fecha">Fecha</label><input class="fc" type="date" id="ga-fecha"></div>' +
+          '<div class="fg"><label class="fl" for="ga-cat">Categoría</label><select class="fc" id="ga-cat"></select></div></div>' +
+        '<div class="fg"><label class="fl" for="ga-desc">Descripción <span class="req">*</span></label><input class="fc" id="ga-desc"></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ga-mon">Moneda</label><select class="fc" id="ga-mon"><option>ARS</option><option>USD</option></select></div>' +
+          '<div class="fg"><label class="fl" for="ga-monto">Monto</label><input class="fc u-tr" type="number" min="0" id="ga-monto"></div></div>' +
+        '<div class="ft-info u-mb6">La otra moneda se calcula sola, al TC del día del gasto.</div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ga-pag">Pagador (socio)</label><select class="fc" id="ga-pag"></select></div>' +
+          '<div class="fg"><label class="fl" for="ga-frec">Frecuencia</label><select class="fc" id="ga-frec"><option>Mensual</option><option>Anual</option><option>Único</option></select></div></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ga-pro">Prorratear a proyectos</label><select class="fc" id="ga-pro"><option value="si">Sí</option><option value="no">No</option></select></div>' +
+          '<div class="fg"><label class="fl" for="ga-con">Contratación</label><select class="fc" id="ga-con"></select></div></div>' +
+        '</div><div class="mf"><button class="btn bg u-c-rd" id="ga-del">' + ico('borrar') + ' Eliminar</button><span class="u-f1"></span>' +
+        '<button class="btn bg" data-cerrar="m-gasto">Cancelar</button><button class="btn bp" id="ga-ok">Guardar</button></div></div>';
+      document.body.appendChild(m);
+    }
+    var $g = function (x) { return document.getElementById(x); };
+    var cfg = await db().from('cot_config').select('valor').eq('clave', 'categorias_gasto').maybeSingle();
+    var cats = String((cfg.data && cfg.data.valor) || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!cats.length) cats = ['Infraestructura', 'Suscripción', 'Socios', 'Sueldos', 'Servicios', 'Impuestos', 'Otro'];
+    if (g.categoria && cats.indexOf(g.categoria) < 0) cats.push(g.categoria);
+    $g('ga-cat').innerHTML = cats.map(function (c) { return '<option' + (c === g.categoria ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
+    var con = await db().from('contrataciones').select('id,producto').order('producto');
+    $g('ga-con').innerHTML = '<option value="">— Ninguna —</option>' + (con.data || []).map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (c.id === g.contratacion_id ? ' selected' : '') + '>' + esc(c.producto || c.id) + '</option>'; }).join('');
+    $g('ga-pag').innerHTML = '<option value="">— Socio —</option>' + (A.d.users || []).map(function (u) { return '<option value="' + esc(u.mail) + '"' + (u.mail === g.pagador ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('');
+    var usd = String(g.moneda || '').toUpperCase().indexOf('USD') >= 0;
+    $g('ga-t').textContent = !id ? 'Nuevo gasto' : dup ? 'Duplicar gasto' : 'Editar gasto';
+    $g('ga-fecha').value = g.fecha && !dup ? String(g.fecha).slice(0, 10) : isoMas(0);
+    $g('ga-desc').value = g.descripcion || ''; $g('ga-mon').value = usd ? 'USD' : 'ARS';
+    $g('ga-monto').value = (usd ? g.monto_usd : g.monto_ars) || '';
+    $g('ga-frec').value = /anual/i.test(g.recurrencia || '') ? 'Anual' : /[uú]nic/i.test(g.recurrencia || '') ? 'Único' : 'Mensual';
+    $g('ga-pro').value = g.prorratear === false ? 'no' : 'si';
+    $g('ga-del').hidden = !id || dup;
+    $g('ga-ok').onclick = async function () {
+      if (!$g('ga-desc').value.trim()) return toast('Descripción obligatoria', 'err');
+      var r = await db().rpc('guardar_gasto', { p: { id: id && !dup ? id : null, fecha: $g('ga-fecha').value, categoria: $g('ga-cat').value,
+        descripcion: $g('ga-desc').value.trim(), moneda: $g('ga-mon').value, monto: Number($g('ga-monto').value) || 0, pagador: $g('ga-pag').value,
+        frecuencia: $g('ga-frec').value, prorratear: $g('ga-pro').value === 'si', contratacion: $g('ga-con').value } });
+      if (r.error) return toast(r.error.message, 'err');
+      closeM('m-gasto'); toast('Guardado', 'ok'); alGuardar();
+    };
+    $g('ga-del').onclick = async function () {
+      if (!(await ask('¿Eliminar este gasto?', '¿Borro el gasto?', { peligro: true }))) return;
+      var r = await db().rpc('borrar_gasto', { gid: id });
+      if (r.error) return toast(r.error.message, 'err');
+      closeM('m-gasto'); toast('Eliminado', 'ok'); alGuardar();
+    };
+    openM('m-gasto');
+  }
+
   // ── pintar ───────────────────────────────────────────────────
   // Las subpantallas están en el menú lateral (marcarSub lo mantiene al día)
   function pintar(el) {
@@ -403,6 +508,7 @@
     var cab = '<div class="page-h"><div><h2>' + (SUBS.find(function (s) { return s[0] === A.sub; }) || ['', 'Administración'])[1] + '</h2>' +
       '<div class="page-s">Facturación, cobros y gastos.</div></div></div>';
     if (A.sub === 'fact') { el.innerHTML = cab + htmlFact(); return; }
+    if (A.sub === 'gastos') { el.innerHTML = cab + htmlGastos(A.d); return; }
     if (A.sub !== 'dash') {
       el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' + viejo() + ico('abrir') + ' Abrir el CRM actual</a></div>';
       return;
@@ -427,6 +533,10 @@
     }
     // la búsqueda repinta sólo la lista, para no perder el foco del campo
     el.oninput = function (ev) {
+      if (ev.target.id === 'gf-q') {
+        A.gf.q = ev.target.value; var p0 = ev.target.selectionStart; pintar(el);
+        var q0 = document.getElementById('gf-q'); q0.focus(); q0.setSelectionRange(p0, p0); return;
+      }
       if (ev.target.id !== 'fa-q') return;
       A.ff.q = ev.target.value.toLowerCase().trim();
       var pos = ev.target.selectionStart; pintar(el);
@@ -435,6 +545,7 @@
     el.onchange = function (ev) {
       var t = ev.target;
       if (t.id === 'adm-gmes') { A.gastosMes = t.value; return pintar(el); }
+      if (t.id === 'gf-cat' || t.id === 'gf-pag' || t.id === 'gf-rec') { A.gf[t.id.slice(3)] = t.value; return pintar(el); }
       if (t.id === 'fa-emp' || t.id === 'fa-dep' || t.id === 'fa-own') { A.ff[t.id.slice(3)] = t.value; return pintar(el); }
       var pc = t.getAttribute && t.getAttribute('data-pc');
       if (pc === 'todas') document.querySelectorAll('#pc-wrap [data-pc=fc], #pc-wrap [data-pc=emp]').forEach(function (x) { x.checked = t.checked; });
@@ -445,6 +556,7 @@
       var b = ev.target.closest('[data-adm]'); if (!b) return;
       var a = b.getAttribute('data-adm'), id = b.getAttribute('data-id');
       if (a.indexOf('fa-') === 0) return accionFact(el, a, id);
+      if (a === 'gas-nuevo' || a === 'gas-edit' || a === 'gas-dup') return abrirGasto(a === 'gas-nuevo' ? null : id, a === 'gas-dup', refrescar);
       if (a === 'regla-nueva') return nuevaRegla({}, { onSave: refrescar });
       if (a === 'rec-ver') { A.recAbierto = !A.recAbierto; return pintar(el); }
       if (a === 'rec-crear') {

@@ -28,7 +28,7 @@ var MODULOS = [
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
     subs: [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
-    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['otros', 'Más']] }
+    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']] }
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
 var _recargarVista = null;

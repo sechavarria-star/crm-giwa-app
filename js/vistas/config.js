@@ -38,7 +38,7 @@
   var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %']];
   var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
-  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['otros', 'Más']];
+  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']];
   var C = { sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '' };
 
   async function cargar() {
@@ -187,9 +187,38 @@
   }
 
   function htmlOtros() {
-    return '<div class="card"><p>Estas herramientas siguen en el CRM actual: <b>Telegram</b> (el token es un secreto y los avisos los manda el Apps Script), ' +
+    return '<div class="card"><p>Estas herramientas siguen en el CRM actual: ' +
       '<b>Plantilla Doc</b> (la usa el documento de propuesta del Cotizador), <b>Mantenimiento de datos</b> y <b>Diagnósticos</b> (reparan la planilla).</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
+  }
+
+  // ── Telegram (telegram_estado · guardar_token_telegram · probar_telegram) ──
+  // El token se guarda en la base y no vuelve nunca al navegador. El resumen
+  // diario de las 8 lo manda la base (pg_cron), no el navegador.
+  function htmlTelegram() { return '<div class="card" id="tg-c"><div class="loading"><div class="spin"></div></div></div>'; }
+  async function tgPintar() {
+    var c = document.getElementById('tg-c'); if (!c) return;
+    var r = await db().rpc('telegram_estado');
+    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
+    var e = r.data, bot = e.bot ? '<span class="u-c-ok">' + ico('check') + ' Conectado a ' + esc(e.bot) + '</span>'
+      : e.bot_error ? '<span class="u-c-rd">El token no funciona: ' + esc(e.bot_error) + '</span>'
+      : e.configurado ? '<span class="u-c-wa">Token guardado, verificando…</span>' : '<span class="u-c-wa">Falta el token del bot</span>';
+    c.innerHTML =
+      '<div class="fg"><span class="fl">Bot</span><div>' + bot + '</div></div>' +
+      '<div class="fg"><label class="fl" for="tg-tk">' + (e.configurado ? 'Cambiar el token' : 'Token del bot') + '</label>' +
+        '<div class="u-row6"><input class="fc u-f1" id="tg-tk" type="password" autocomplete="off" placeholder="123456789:AA…">' +
+        '<button class="btn bp sm" data-cfg="tg-token">Guardar</button></div>' +
+        '<div class="ft-info">Sólo Administración. Se guarda en la base y no se vuelve a mostrar.</div></div>' +
+      '<div class="fg"><span class="fl">Quién recibe</span>' + (e.usuarios || []).map(function (u) {
+        return '<div class="u-row6 u-mt4"><span class="u-f1">' + esc(u.name) + '</span>' +
+          (u.conChat ? '<span class="u-c-ok u-s11">Con chat</span>' : '<span class="u-c-wa u-s11">Sin chat: cargá su Usuario_Telegram</span>') + '</div>';
+      }).join('') + '</div>' +
+      '<div class="fg"><span class="fl">Resumen diario (8:00)</span><div>' +
+        (e.ultimo_resumen ? 'Último envío: <span class="m">' + esc(ff(new Date(e.ultimo_resumen))) + '</span>' : 'Todavía no se envió ninguno.') + '</div></div>' +
+      ((e.errores || []).length ? '<div class="fg"><span class="fl">Errores recientes</span>' + e.errores.map(function (x) {
+        return '<div class="u-s11 u-c-rd u-mt4">' + esc(x.tipo) + (x.destino ? ' · ' + esc(x.destino) : '') + ': ' + esc(x.msg) + '</div>'; }).join('') + '</div>' : '') +
+      '<div class="u-row6 u-mt10"><button class="btn bg sm" data-cfg="tg-probar">' + ico('chat') + ' Mandarme una prueba</button>' +
+        '<button class="btn bg sm" data-cfg="tg-ref">' + ico('recargar') + ' Actualizar</button></div>';
   }
 
   // ── pintar ───────────────────────────────────────────────────
@@ -199,7 +228,8 @@
     marcarSub(C.sub);
     var cab = '<div class="page-h"><div><h2>' + SUBS.find(function (s) { return s[0] === C.sub; })[1] + '</h2>' +
       '<div class="page-s">Configuración: listas, valor hora y tipos de gastos.</div></div></div>';
-    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, otros: htmlOtros }[C.sub])();
+    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, telegram: htmlTelegram, otros: htmlOtros }[C.sub])();
+    if (C.sub === 'telegram') tgPintar();
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
   }
 
@@ -269,6 +299,19 @@
         var g = function (i) { return Number(document.getElementById(i).value) || 0; };
         return guardar('guardar_params_cotizacion', { p: { margen_venta: g('vh-mv'), margen_horas: g('vh-mh'), horas_mes: g('vh-hm'),
           dificultad_txt: vhTexto('dificultad'), especialidad_txt: vhTexto('especialidad'), mercado_txt: vhTexto('mercado') } });
+      }
+      if (a === 'tg-ref') return tgPintar();
+      if (a === 'tg-token') {
+        var tk = document.getElementById('tg-tk').value.trim(); if (!tk) return toast('Pegá el token del bot', 'err');
+        var rt = await db().rpc('guardar_token_telegram', { token: tk });
+        if (rt.error) return toast(rt.error.message, 'err');
+        toast(rt.data.msg, 'ok'); document.getElementById('tg-tk').value = '';
+        return setTimeout(tgPintar, 3000);       // getMe va por pg_net: la respuesta tarda un momento
+      }
+      if (a === 'tg-probar') {
+        var rp = await db().rpc('probar_telegram');
+        if (rp.error) return toast(rp.error.message, 'err');
+        toast(rp.data.msg, 'ok'); return setTimeout(tgPintar, 4000);
       }
       if (a === 'cont') return abrirCont(id, refrescar);
       if (a === 'cont-del') {
