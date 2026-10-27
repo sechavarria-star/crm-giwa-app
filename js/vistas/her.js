@@ -196,9 +196,9 @@
   // ── pestaña 2 · Probalo en vivo ──────────────────────────────
   function htmlVivo() {
     var D = DEMOS[S.sector];
-    return '<div class="sim-dos"><div class="card"><div class="u-row8"><div class="u-f1"><div class="card-t" id="sm-cli-v">' + esc(S.cli) + '</div><div class="hint">Asistente IA · En línea</div></div>' +
-        '<div class="filtros u-mb0" role="group" aria-label="Conversación">' + ['A', 'B'].map(function (m) {
-          return '<button class="ptab' + (m === S.modo ? ' on' : '') + '" data-sim="modo" data-k="' + m + '">' + esc(D[m][0]) + '</button>'; }).join('') + '</div></div>' +
+    return '<div class="sim-dos"><div class="card"><div class="card-t" id="sm-cli-v">' + esc(S.cli) + '</div><div class="hint">Asistente IA · En línea</div>' +
+        '<div class="filtros u-mt10 u-mb0" role="group" aria-label="Conversación">' + ['A', 'B'].map(function (m) {
+          return '<button class="ptab' + (m === S.modo ? ' on' : '') + '" data-sim="modo" data-k="' + m + '">' + esc(D[m][0]) + '</button>'; }).join('') + '</div>' +
         '<div class="sim-chat u-mt10" id="sm-chat"></div>' +
         '<div class="u-row8 u-mt10"><button class="btn bp sm" data-sim="paso">Siguiente paso</button><button class="btn bg sm" data-sim="reini">' + ico('recargar') + ' Reiniciar</button>' +
         '<span class="u-s11 u-c-mt u-mla" id="sm-cuenta"></span></div></div>' +
