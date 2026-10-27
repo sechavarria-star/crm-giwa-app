@@ -84,7 +84,7 @@ function alternarMenu() { _latCerrado(!document.body.classList.contains('lat-cer
 async function mostrarVista() {
   var m = _moduloActual(), r = _ruta();
   // mismo módulo, otra subpantalla: la cambia la vista, sin volver a leer
-  if (m.id === _montado && m.listo && VISTAS[m.id] && VISTAS[m.id].irA) { pintarBarra(); if (r.sub) VISTAS[m.id].irA(r.sub); return; }
+  if (m.id === _montado && m.listo && VISTAS[m.id] && VISTAS[m.id].irA) { pintarBarra(); VISTAS[m.id].irA(r.sub); return; }   // sin sub: cada vista decide (Administración vuelve al Dashboard)
   _montado = m.id;
   pintarBarra();
   document.title = 'GIWA · ' + m.nombre;

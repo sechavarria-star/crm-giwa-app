@@ -634,6 +634,7 @@
   };
   // Del menú lateral: otra subpantalla, sin releer (Facturación se lee la primera vez que se abre)
   VISTAS.admin.irA = async function (s) {
+    if (!s) s = 'dash';                         // tocar «Administración» = el Dashboard
     if (!SUBS.some(function (x) { return x[0] === s; })) return;
     var el = document.getElementById('vista');
     A.sub = s;
