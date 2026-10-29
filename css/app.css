@@ -307,3 +307,6 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 
 /* Filtros (.ptab): salían en Arial 13px, la letra por defecto del botón. Misma letra que la app (29/10/2026) */
 .ptab { font-family: inherit; font-size: 12px; }
+
+/* Nuevo proyecto · Carga rápida (29/10/2026) */
+.nv-card { max-width: 720px; }

@@ -659,6 +659,65 @@
       (tabs.find(function (t) { return t[0] === P.fTab; }) || tabs[1])[2](p) + '</div></div>' + lateral(p) + '</div>';
     return h;
   }
+  // ══ NUEVO PROYECTO · Carga rápida (= «Carga rápida» del Cotizador, 29/10/2026) ══
+  // Empresa, sponsor, desarrollo y plata. Guarda alta_proyecto_rapido (= altaCotizacion
+  // con rapido): el proyecto como Prospecto, su desarrollo y, si hay, su mantenimiento.
+  // El Cotizador completo (funcionalidades, horas, costos) sigue en el CRM actual.
+  var NV = { moneda: 'ARS' };
+  function htmlNuevo() {
+    var mon = function (m) { return '<button type="button" class="ptab' + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
+    return '<div class="card nv-card"><div class="card-t">Carga rápida</div><div class="hint">Cliente, desarrollo y plata. Se guarda como Prospecto y se abre su ficha.</div>' +
+      '<div class="g2 u-mt10"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
+        '<div class="fg"><label class="fl" for="nv-sp">Sponsor</label><select class="fc" id="nv-sp"><option value="">Elegí la empresa</option></select></div></div>' +
+      '<div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="nv-tipo">Desarrollo <span class="req">*</span></label><select class="fc" id="nv-tipo"></select></div>' +
+        '<div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el tipo"></div></div>' +
+      '<div class="g2"><div class="fg"><span class="fl">Moneda</span><div class="filtros u-mb0" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</div></div>' +
+        '<div class="fg"><label class="fl" for="nv-monto">Monto <span class="req">*</span> <span class="u-s10-mt m" id="nv-eq"></span></label><input class="fc u-tr m" type="number" min="0" step="0.01" id="nv-monto"></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div>' +
+        '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" step="0.01" id="nv-mm"></div></div>' +
+      '<div class="u-c-rd u-s11" id="nv-err"></div>' +
+      '<div class="u-row8 u-mt10"><button class="btn bp" data-pm="nv-ok">' + ico('guardar') + ' Guardar</button>' +
+        '<a class="btn bg sm u-mla" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Funcionalidades, horas y costos">' + ico('abrir') + ' Cotizador completo en el CRM actual</a></div></div>';
+  }
+  async function nvCargar() {
+    var r = await Promise.all([
+      db().from('empresas').select('id,nombre').order('nombre'),
+      db().from('tipos_desarrollo').select('id,nombre').order('orden'),
+      db().from('modelos_pago').select('id,nombre').order('orden')
+    ]);
+    var err = r.find(function (x) { return x.error; }); if (err) return toast(err.error.message, 'err');
+    var o = function (L, ph) { return '<option value="">' + ph + '</option>' + L.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>'; }).join(''); };
+    var $n = function (id) { return document.getElementById(id); };
+    if (!$n('nv-emp')) return;
+    $n('nv-emp').innerHTML = o(r[0].data, 'Elegí la empresa');
+    $n('nv-tipo').innerHTML = o(r[1].data.filter(function (t) { return !/mantenimiento/i.test(t.nombre); }), 'Tipo');
+    $n('nv-fp').innerHTML = o(r[2].data, 'Elegí');
+    $n('nv-emp').onchange = async function () {
+      var c = await db().from('contactos').select('id,nombre,apellido').eq('empresa_id', this.value || '-').order('nombre');
+      $n('nv-sp').innerHTML = '<option value="">' + (this.value ? 'Sponsor' : 'Elegí la empresa') + '</option>' + (c.data || []).map(function (x) {
+        return '<option value="' + esc(x.id) + '">' + esc(((x.nombre || '') + ' ' + (x.apellido || '')).trim()) + '</option>'; }).join('');
+    };
+    $n('nv-monto').oninput = nvEq;
+  }
+  function nvEq() {
+    var tc = window.TC || 0, n = Number((document.getElementById('nv-monto') || {}).value) || 0;
+    set('nv-eq', n && tc ? '= ' + (NV.moneda === 'USD' ? fmt(n * tc) : fmt(n / tc, 'USD')) : '');
+  }
+  async function nvGuardar(el) {
+    var v = function (id) { return String(document.getElementById(id).value || '').trim(); };
+    var falta = [!v('nv-emp') && 'la empresa', !v('nv-nom') && 'el título del proyecto', !v('nv-tipo') && 'el tipo de desarrollo',
+                 !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago'].filter(Boolean);
+    if (falta.length) return set('nv-err', 'Falta ' + falta.join(', ') + '.');
+    var b = el.querySelector('[data-pm="nv-ok"]'); b.disabled = true;
+    var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'),
+      titulo: v('nv-tit'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
+    b.disabled = false;
+    if (r.error) return set('nv-err', esc(r.error.message));
+    toast(r.data.pid + ' cargado como Prospecto', 'ok');
+    await cargar(); P.sub = 'proy'; abrirFicha(el, r.data.pid);
+  }
+
   async function abrirFicha(el, id, desde) {
     var desdeLista = !desde;                      // con «desde» viene de las flechitas: la lista ya está
     P.prev = desde || P.sub; P.sub = 'ficha';
@@ -763,6 +822,7 @@
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     if (P.sub === 'seg') el.innerHTML = cab + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + htmlProy();
+    else if (P.sub === 'nuevo') { el.innerHTML = cab + htmlNuevo(); nvCargar(); }
     else el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
   }
@@ -844,6 +904,8 @@
       var b = ev.target.closest('[data-pm]'); if (!b) return;
       var a = b.getAttribute('data-pm'), id = b.getAttribute('data-id');
       if (a === 'ficha') return abrirFicha(el, id);
+      if (a === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); el.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
+      if (a === 'nv-ok') return nvGuardar(el);
       if (a === 'volver') { P.sub = P.prev || 'seg'; return pintar(el); }
       if (a === 'nav') {
         var L = P.fLista, k = (L.indexOf(P.f.id) + Number(b.getAttribute('data-dir')) + L.length) % L.length;
