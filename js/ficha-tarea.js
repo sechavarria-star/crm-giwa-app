@@ -271,7 +271,7 @@
   }
   function delegar() {
     var a = elegido('ftv-to'); if (!a) return toast('Elegí a quién se la delegás.', 'err');
-    hacer('delegar_tarea', { tid: T.t.id, a: a, nota: v('ftv-dnota') }, function (r) { return r.id === r.from ? 'Recordatorio delegado' : 'Delegada → ' + r.id; }, 'm-ftv');
+    hacer('delegar_tarea', { tid: T.t.id, a: a, nota: v('ftv-dnota') }, 'Delegada', 'm-ftv');   // misma fila, otro responsable (29/10/2026)
   }
   function recordar() {
     var f = v('ftv-rfecha'); if (!f) return toast('Elegí la fecha del recordatorio.', 'err');

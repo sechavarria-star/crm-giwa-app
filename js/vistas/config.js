@@ -248,9 +248,9 @@
     var L = r.data;
     c.innerHTML = '<div class="card u-mb12"><div class="u-row8"><div class="card-t u-f1">Alertas</div>' +
         '<button class="btn bg sm" data-cfg="dg-ref">' + ico('recargar') + ' Revisar de nuevo</button>' +
-        '<button class="btn bp sm" data-cfg="dg-sinc">' + ico('repetir') + ' Rehacer alertas de facturación</button></div>' +
+        '<button class="btn bp sm" data-cfg="dg-sinc">' + ico('repetir') + ' Crear recordatorios</button></div>' +
         '<div class="hint">Busca alertas duplicadas, abiertas de algo que ya no se factura, sin responsable, y desarrollos con algo para facturar que no tienen alerta. ' +
-        '«Rehacer» crea las que faltan y cierra las que ya no tienen nada para facturar.</div>' +
+        '«Crear recordatorios» crea los que faltan (nunca duplica) y cierra los que ya no tienen nada para facturar.</div>' +
         (L.length ? '<div class="u-ovx u-mt10"><table class="tbl"><thead><tr><th>Problema</th><th>Alerta</th><th>Desarrollo</th><th>Detalle</th><th></th></tr></thead><tbody>' + L.map(function (x) {
           return '<tr><td class="' + (x.problema === 'Falta la alerta' ? 'u-c-wa' : 'u-c-rd') + '">' + esc(x.problema) + '</td><td>' + (x.id ? '<span class="m">' + esc(x.id) + '</span> · ' : '') + esc(x.titulo || '') + '</td>' +
             '<td class="m">' + esc(x.item || '—') + '</td><td class="u-s11-mt">' + esc(x.detalle || '') + '</td>' +
@@ -400,9 +400,12 @@
       if (a === 'dg-ref') return diagPintar();
       if (a === 'dg-ver') return verTarea(id, { onSave: diagPintar });
       if (a === 'dg-sinc') {
+        // crear sólo desde «Crear recordatorios» (no duplica: la base no deja dos abiertas); después cerrar lo que sobra
+        var rc = await db().rpc('crear_recordatorios', { ventanas: {}, solo_item: null });
+        if (rc.error) return toast(rc.error.message, 'err');
         var rs = await db().rpc('sincronizar_alertas_facturacion');
         if (rs.error) return toast(rs.error.message, 'err');
-        toast('Listo: ' + rs.data.creadas + ' creada(s), ' + rs.data.cerradas + ' cerrada(s)', 'ok'); return diagPintar();
+        toast('Listo: ' + rc.data.creadas + ' creada(s), ' + rs.data.cerradas + ' cerrada(s)', 'ok'); return diagPintar();
       }
       if (a === 'cont') return abrirCont(id, refrescar);
       if (a === 'cont-del') {
