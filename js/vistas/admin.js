@@ -561,7 +561,7 @@
   function htmlImp() {
     var L = A.imp || []; if (!L.length) return '<div class="empty">No hay categorías cargadas.</div>';
     var f12 = Number(L[0].fact12) || 0, mia = L.find(function (x) { return x.mia; }), sug = L.find(function (x) { return x.sugerida; });
-    var lim = mia ? Number(mia.limite) || 0 : 0, pct = lim > 0 ? Math.min(100, Math.round(f12 * 100 / lim)) : 0, pasa = mia && f12 > lim;
+    var lim = mia ? Number(mia.limite) || 0 : 0, pct = lim > 0 ? Math.round(f12 * 100 / lim) : 0, pasa = mia && f12 > lim;
     var kpi = function (cls, l, val, sub) { return '<div class="kpi ' + cls + '"><div class="kpi-lbl">' + l + '</div><div class="kpi-val">' + val + '</div>' + (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>'; };
     var h = '<div class="kpi-grid u-mb12">' + kpi('k-cobrado', 'Facturado 12 meses', fmt(f12), 'notas de crédito restadas') +
       kpi(mia ? 'k-contratado' : 'k-neutro', 'Tu categoría', mia ? esc(mia.categoria) : '—', mia ? 'límite ' + fmt(lim) : '') +
@@ -597,7 +597,7 @@
     // Entrar a Administración (sin subpantalla) es el Dashboard: no está en el menú porque es la portada
     var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) A.sub = s; else A.sub = 'dash';
     await abrirModulo(el, { id: 'admin', texto: 'Cargando Administración…', forzar: op && op.forzar, cargar: leer,
-      cargado: function () { return !!A.d && (A.sub !== 'fact' || !!A.f); }, firma: function () { return JSON.stringify([A.d, A.f]); },
+      cargado: function () { return !!A.d && (A.sub !== 'fact' || !!A.f) && ((A.sub !== 'idx' && A.sub !== 'imp') || !!A[A.sub]); }, firma: function () { return JSON.stringify([A.d, A.f]); },
       pintar: function () { pintar(el); } });
     var alerta = function (id) { return A.d.alertas.find(function (a) { return a.id === id; }); };
     if (!el._admToggle) {                      // una vez: #vista es el mismo para todos los módulos
