@@ -115,25 +115,46 @@
     }).join('') + '</div>';
   }
 
-  // Agenda alfabética: letra, nombre, empresa, puesto, mail y WhatsApp
+  // Contactos: tabla ordenable (por defecto, apellido A→Z). Clic en la fila = verlo;
+  // desde ahí se edita. Si le falta mail o teléfono, la fila ofrece «+ Mail» / «+ Teléfono».
+  var CON = { ord: 'apellido', asc: true };
+  var CON_COL = [['apellido', 'Apellido'], ['nombre', 'Nombre'], ['empresa', 'Empresa'], ['puesto', 'Puesto'], ['email', 'Mail'], ['telefono', 'Teléfono']];
   function htmlContactos() {
     var emp = {}; D.emps.forEach(function (e) { emp[e.id] = e.nombre; });
-    var nom = function (c) { return ((c.nombre || '') + ' ' + (c.apellido || '')).trim(); };
-    var L = D.cons.filter(function (c) { return coincide([nom(c), emp[c.empresa_id], c.puesto, c.area_trabajo, c.email].join(' ')); })
-      .sort(function (a, b) { return nom(a).localeCompare(nom(b), 'es'); });
+    var L = D.cons.map(function (c) { return Object.assign({}, c, { empresa: emp[c.empresa_id] || 'Sin empresa' }); })
+      .filter(function (c) { return coincide([c.nombre, c.apellido, c.empresa, c.puesto, c.area_trabajo, c.email, c.telefono].join(' ')); })
+      .sort(function (a, b) {
+        var k = CON.ord, r = String(a[k] || '').localeCompare(String(b[k] || ''), 'es', { sensitivity: 'base' }) ||
+          String(a.apellido || '').localeCompare(String(b.apellido || ''), 'es') || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+        if (!a[k] !== !b[k]) return a[k] ? -1 : 1;     // los vacíos, siempre al final
+        return CON.asc ? r : -r;
+      });
     if (!L.length) return '<div class="empty">Ningún contacto coincide.</div>';
-    var h = '<div class="card u-p0">', letra = '';
-    L.forEach(function (c) {
-      var l = (nom(c).charAt(0) || '#').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (l !== letra) { letra = l; h += '<div class="ag-letra">' + esc(l) + '</div>'; }
-      var wp = String(c.telefono || '').replace(/[^0-9]/g, '');
-      h += '<div class="ag-fila"><div class="u-f1m"><div class="emp-n">' + esc(nom(c) || '—') + '</div>' +
-          '<div class="u-s11-mt">' + esc([emp[c.empresa_id] || 'Sin empresa', c.puesto].filter(Boolean).join(' · ')) + '</div></div>' +
-        (c.email ? '<a class="u-s11 ag-mail" href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '') +
-        (wp ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '<span class="ag-sin"></span>') +
-        bIco('con', c.id, 'editar', 'Editar contacto') + '</div>';
-    });
-    return h + '</div>';
+    return '<div class="card u-p0 u-ovx"><table class="tbl con-tbl"><thead><tr>' + CON_COL.map(function (c) {
+        return '<th class="rec-th" data-cord="' + c[0] + '">' + c[1] + (CON.ord === c[0] ? ' ' + ico(CON.asc ? 'arriba' : 'abajo') : '') + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
+      L.map(function (c) {
+        var wp = String(c.telefono || '').replace(/[^0-9]/g, ''), id = esc(c.id);
+        return '<tr class="con-fila" data-cver="' + id + '"><td class="u-fw6">' + esc(c.apellido || '') + '</td><td>' + esc(c.nombre || '') + '</td>' +
+          '<td>' + esc(c.empresa) + '</td><td class="u-c-mt">' + esc(c.puesto || '') + '</td>' +
+          '<td>' + (c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '<button class="btn bg xs" data-cadd="fe-c-e" data-id="' + id + '">' + ico('mas') + ' Mail</button>') + '</td>' +
+          '<td class="m">' + (c.telefono ? esc(c.telefono) : '<button class="btn bg xs" data-cadd="fe-c-tel" data-id="' + id + '">' + ico('mas') + ' Teléfono</button>') + '</td>' +
+          '<td class="u-tr">' + (wp ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  // Ver un contacto (sólo lectura); «Editar» abre el formulario de siempre (abrirContacto)
+  function verContacto(c, alGuardar) {
+    var m = document.getElementById('m-con-ver');
+    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-con-ver'; document.body.appendChild(m); }
+    var e = D.emps.find(function (x) { return x.id === c.empresa_id; }), wp = String(c.telefono || '').replace(/[^0-9]/g, '');
+    var kv = function (l, v) { return '<div class="con-kv"><span class="u-s11-mt">' + l + '</span><span>' + (v || '<span class="u-c-mt">—</span>') + '</span></div>'; };
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim() || 'Contacto') + '</span>' +
+      '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-con-ver">' + ico('cerrar') + '</button></div><div class="mb2">' +
+      kv('Empresa', esc(e ? e.nombre : 'Sin empresa')) + kv('Puesto', esc(c.puesto || '')) + kv('Área', esc(c.area_trabajo || '')) +
+      kv('Mail', c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '') +
+      kv('Teléfono', c.telefono ? '<span class="m">' + esc(c.telefono) + '</span>' + (wp ? ' <a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') : '') +
+      '</div><div class="mf"><button class="btn bg" data-cerrar="m-con-ver">Cerrar</button><button class="btn bp" id="con-ver-ed">' + ico('editar') + ' Editar</button></div></div>';
+    document.getElementById('con-ver-ed').onclick = function () { closeM('m-con-ver'); abrirContacto(c, alGuardar); };
+    openM('m-con-ver');
   }
 
   // ── exportar lo que se ve (respeta el filtro) ────────────────
@@ -175,7 +196,8 @@
     // después de guardar en la ficha: releer y repintar, sin perder pestaña ni filtro
     var alGuardar = { onSave: async function () { await cargar(); pintar(el); } };
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-filtro],[data-pest],[data-ver],[data-ed],[data-con],[data-addcon],[data-addrs],#cli-exportar,#cli-nuevo');
+      if (ev.target.closest('a')) return;            // mail y WhatsApp: el link, sin abrir la ficha
+      var b = ev.target.closest('[data-filtro],[data-pest],[data-ver],[data-ed],[data-con],[data-addcon],[data-addrs],[data-cord],[data-cadd],[data-cver],#cli-exportar,#cli-nuevo');
       if (!b) return;
       if (b.id === 'cli-exportar') return exportar();
       if (b.id === 'cli-nuevo') return pest === 'con' ? abrirContacto(null, alGuardar) : abrirFichaEmpresa('', alGuardar);
@@ -187,6 +209,13 @@
       }
       if (b.hasAttribute('data-filtro')) filtro = b.getAttribute('data-filtro');
       if (b.hasAttribute('data-pest')) { pest = b.getAttribute('data-pest'); marcarSub(pest); }
+      var cc = function (id) { return D.cons.find(function (c) { return c.id === id; }); };
+      if (b.hasAttribute('data-cord')) { var k = b.getAttribute('data-cord'); CON.asc = CON.ord === k ? !CON.asc : true; CON.ord = k; return pintar(el); }
+      if (b.hasAttribute('data-cadd')) {
+        var campo = b.getAttribute('data-cadd');
+        return abrirContacto(cc(b.getAttribute('data-id')), alGuardar).then(function () { var f = document.getElementById(campo); if (f) f.focus(); });
+      }
+      if (b.hasAttribute('data-cver')) return verContacto(cc(b.getAttribute('data-cver')), alGuardar);
       if (b.hasAttribute('data-addcon')) return abrirContacto(null, Object.assign({ empresa: b.getAttribute('data-addcon') }, alGuardar));
       if (b.hasAttribute('data-addrs')) return abrirFichaEmpresa(b.getAttribute('data-addrs'), Object.assign({ nuevaRS: true }, alGuardar));
       pintar(el);
