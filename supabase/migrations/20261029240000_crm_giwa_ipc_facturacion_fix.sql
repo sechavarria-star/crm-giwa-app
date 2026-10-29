@@ -1,0 +1,19 @@
+-- ══════════════════════════════════════════════════════════════════════
+-- crm_giwa · Ajuste IPC, fin de abonos y correcciones de datos · 29/10/2026
+-- ──────────────────────────────────────────────────────────────────────
+-- Aplicado en la sesión reemplazando estos fragmentos en las vistas vigentes:
+-- v_recordatorios_faltan (Ajuste IPC): lo decide la columna Ajuste del desarrollo
+--   (con/sin ajuste), no el estado (desarrollo_estados.ajuste_ipc es «recotizar por
+--   IPC», sólo Nuevo/Aprobado, y dejaba a los abonos En Curso sin su IPC). Sólo abonos
+--   (es_mant) y sólo si el próximo ajuste cae dentro del contrato:
+--     (norm(d.ajuste) ~ '(ajuste|ipc)') AND (norm(d.ajuste) !~ 'sin') AND d.es_mant AND d.ejecutando
+--     AND (fin_contrato(d.id) IS NULL OR (coalesce(fecha_ajuste_cuota, fecha_inicio) + 3 meses) <= fin_contrato(d.id))
+-- v_facturar_mensuales: no ofrece cuotas después de la última (cuotas cobradas < q_cuotas)
+--   ni después del fin del contrato (mes <= fin_contrato). D-0005 (12 de 12) ya no figura.
+-- Datos:
+--   D-0021 fecha_fin «47500-12-07» → 2027-08-31 (inicio + 12 meses del contrato).
+--   T-0037 / T-0038 cliente EMP-007 → EMP-004 (son de Prodigy); T-0037 cerrada (el contrato
+--   de D-0005 termina el 07/11/2026, antes del ajuste). T-0047 Renovación: frecuencia Única.
+--   aplicar_mayus(): 9 filas normalizadas.
+-- Resultado: Crear recordatorios creó T-0074 (D-0021), T-0075 (D-0027), T-0076 (D-0042).
+-- ══════════════════════════════════════════════════════════════════════
