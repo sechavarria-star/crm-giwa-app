@@ -27,11 +27,13 @@
       db().from('v_proyeccion_12m').select('*').order('orden'),
       db().from('v_proy_sin_fecha').select('*'),
       db().from('v_fin_negocios').select('*').order('esperado', { ascending: false }),
-      db().from('v_proyectos_clasif').select('id,estado_proyecto')
+      db().from('v_proyectos_clasif').select('id,estado_proyecto'),
+      db().from('v_pm_proyectos').select('empresa,items')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
             esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data,
+            proyItems: r[10].data,
             estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
 
@@ -192,12 +194,42 @@
   // ── Negocios a seguir: el pipeline por valor esperado (monto × probabilidad) ──
   function negocios() {
     var G = F.d.neg; if (!G.length) return '<div class="empty">Nada en pipeline.</div>';
-    return '<div class="u-ovx"><table class="tbl"><thead><tr><th>Empresa</th><th>Proyecto</th><th>Estado</th><th class="u-tr">Desarrollos</th><th class="u-tr">Abono / mes</th>' +
-      '<th class="u-tr">Prob</th><th class="u-tr">Esperado</th></tr></thead><tbody>' + G.slice(0, 10).map(function (o) {
-        var cls = /negoc/i.test(o.estado || '') ? 't-xw' : 't-xm';
-        return '<tr><td>' + esc(o.empresa || '') + '</td><td>' + esc(o.nombre || '') + '</td><td class="' + cls + '">' + esc(o.estado || '') + '</td>' +
-          td(N(o.monto), 'm-pendiente') + td(N(o.mant_mes), 'm-abono') + '<td class="m u-tr">' + N(o.prob) + '%</td>' + td(N(o.esperado), 'm-cobrado') + '</tr>';
+    // El abono va por mes y, al lado y más apagado, su proyección anual (× 12). No suma al esperado (29/10/2026)
+    return '<div class="ft-info u-mb8">Esperado = desarrollos × probabilidad. El abono va aparte: por mes y su proyección a 12 meses (abono × 12), si se firma.</div>' +
+      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Empresa</th><th>Proyecto</th><th>Estado</th><th class="u-tr">Desarrollos</th><th class="u-tr">Abono / mes</th>' +
+      '<th class="u-tr" title="Abono mensual × 12: lo que sumaría en un año si se firma">Abono a 12 meses</th><th class="u-tr">Prob</th><th class="u-tr">Esperado</th></tr></thead><tbody>' + G.slice(0, 10).map(function (o) {
+        var c = _canonProy(o.estado), cls = colorEstadoProy(o.estado).cls;
+        return '<tr><td>' + esc(o.empresa || '') + '</td><td>' + esc(o.nombre || '') + '</td><td class="t-' + cls + '">' + esc(o.estado || '') + '</td>' +
+          td(N(o.monto), 'm-pendiente') + td(N(o.mant_mes), 'm-abono') + td(N(o.mant_mes) * 12, 'm-abono u-op6') + '<td class="m u-tr">' + N(o.prob) + '%</td>' + td(N(o.esperado), 'm-cobrado') + '</tr>';
       }).join('') + '</tbody></table></div>' + (G.length > 10 ? '<div class="ft-info u-mt6">Los 10 de mayor esperado, de ' + G.length + '.</div>' : '');
+  }
+
+  // ── Abonos en curso: lo que queda por cobrar, según sus cuotas (29/10/2026) ──
+  // Por abono: cuota del mes, cuotas cobradas de las del contrato, cuántas quedan, lo pendiente
+  // (cuota × las que quedan) y el fin. Potencial anual (× 12) vs previsto real (lo que queda).
+  // No se inventan cuotas: si falta un dato, se marca.
+  function abonos() {
+    var L = [];
+    (F.d.proyItems || []).forEach(function (p) {
+      (p.items || []).forEach(function (it) {
+        if (!it.es_mantenimiento || it.detenido || ['aprobada', 'curso', 'garantia'].indexOf(_canonSol(it.estado)) < 0) return;
+        var cu = N(it.cuota_act) || N(it.valor_cuota), tot = N(it.duracion) || N(it.cuotas), cob = N(it.cuotas_facturadas);
+        var fin = _pd(it.fecha_fin), finOk = fin && fin.getFullYear() < 2100;
+        L.push({ emp: p.empresa, tit: it.titulo, cu: cu, tot: tot, cob: cob, quedan: tot ? Math.max(0, tot - cob) : null, fin: finOk ? fin : null, finMal: !!fin && !finOk });
+      });
+    });
+    if (!L.length) return '<div class="empty">No hay abonos en curso.</div>';
+    var pot = 0, prev = 0;
+    var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th>Abono</th><th class="u-tr">Por mes</th><th class="u-tr">Cuotas</th>' +
+      '<th class="u-tr">Quedan</th><th class="u-tr">Pendiente</th><th>Termina</th></tr></thead><tbody>' + L.map(function (a) {
+        pot += a.cu * 12; prev += a.quedan != null ? a.cu * a.quedan : 0;
+        return '<tr><td>' + esc(a.emp || '') + '</td><td class="u-s11">' + esc(a.tit || '') + '</td>' + td(a.cu, 'm-abono') +
+          '<td class="m u-tr">' + (a.tot ? a.cob + ' de ' + a.tot : '<span class="u-c-wa">sin dato</span>') + '</td>' +
+          '<td class="m u-tr">' + (a.quedan != null ? a.quedan : '—') + '</td>' + td(a.quedan != null ? a.cu * a.quedan : 0, 'm-pendiente') +
+          '<td class="m">' + (a.fin ? ff(a.fin) : '<span class="u-c-wa">' + (a.finMal ? 'fecha mal cargada' : 'sin fecha') + '</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+    return h + '<div class="ft-info u-mt6">Potencial anual (cuota × 12): <span class="m m-abono">' + fmt(pot) + '</span> · Previsto según las cuotas que quedan: <span class="m m-pendiente">' + fmt(prev) + '</span>. ' +
+      'Mes a mes, en «Proyección próximos 12 meses».</div>';
   }
 
   function pintar(el) {
@@ -210,6 +242,7 @@
       sec('cli', 'Por cliente', D.emp.length, '<span class="m m-contratado">' + fmt(D.emp.reduce(function (a, x) { return a + N(x.contratado); }, 0)) + '</span>', porCliente()) +
       sec('esc', '¿Dónde podríamos estar?', D.esc.length, '', escenarios()) +
       sec('p12', 'Proyección próximos 12 meses', '', '', proyeccion()) +
+      sec('abo', 'Abonos en curso', '', '', abonos()) +
       sec('neg', 'Negocios a seguir', D.neg.length, '', negocios());
   }
 
