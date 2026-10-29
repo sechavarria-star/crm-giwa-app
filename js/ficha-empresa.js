@@ -137,7 +137,7 @@
       $('fe-prov').innerHTML = opciones(F.L.provincias, e.provincia, '— Provincia —');
       $('fe-rs').innerHTML = '';
       ((d && d.razones) || []).forEach(agregarRS);
-      if (!e.id && !((d && d.razones) || []).length) agregarRS();            // el alta arranca con una
+      if (opts.nuevaRS || (!e.id && !((d && d.razones) || []).length)) agregarRS();   // el alta arranca con una; «+ Razón social» de la tarjeta, también
       ((d && d.contactos) || []).forEach(agregarContacto);
       if (opts.nuevoContacto || (!e.id && !((d && d.contactos) || []).length)) agregarContacto();
       contar();
