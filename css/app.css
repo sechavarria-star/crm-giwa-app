@@ -316,3 +316,20 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .rec-th { cursor: pointer; white-space: nowrap; user-select: none; }
 .rec-th .ico { width: 11px; height: 11px; vertical-align: -1px; }
 .rec-rep td { color: var(--rd); background: var(--rd-a); }
+
+/* Hoy · filas que se abren (29/10/2026) */
+.hoy-item { border-bottom: 1px solid var(--b-suave); }
+.hoy-item:last-child { border-bottom: none; }
+.hoy-item .hoy-row { border-bottom: none; cursor: pointer; }
+.hoy-item .hoy-row:hover { background: var(--bg3); }
+.hoy-item.ab > .hoy-row .chev { transform: rotate(90deg); color: var(--blue); }
+.hoy-body { padding: 4px 13px 12px 40px; display: flex; flex-direction: column; gap: 8px; }
+.hoy-panel { padding: 8px 10px; border: 1px solid var(--b); border-radius: var(--r); background: var(--bg2); }
+.hoy-fecha { width: auto; }
+.hoy-det { font-size: 12px; white-space: pre-wrap; margin-bottom: 3px; }
+.hoy-coms { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--b-suave); padding-top: 8px; }
+.hoy-com { font-size: 11.5px; line-height: 1.45; }
+.hoy-nota { font-size: 12px; }
+.hoy-acc .btn-ico:hover { color: var(--blue); }
+.hoy-acc .btn-ico.h-ok:hover { color: var(--ok); }
+.hoy-alertas .hoy-sec-h { color: var(--wa); }
