@@ -502,3 +502,4 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .proy-logo-i { display: inline-flex; align-items: center; justify-content: center; color: var(--blue); font-size: 13px; }
 .pr-lista .proy-tog { align-items: center; gap: 10px; }
 .proy-tit { justify-content: center; }
+.proy-tog .chev.on .ico { transform: none; }   /* el giro va en el chevron, no dos veces */
