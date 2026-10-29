@@ -29,7 +29,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'seg',
-            seg: { fil: 'vivos', q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'empresa', abiertas: {} },
+            seg: { fil: 'vivos', q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
             f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'seg' };
   var CARRUSEL = 3;   // más de esto por cliente → carrusel
   var SUBS = [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']];   // Tareas vive en Hoy (29/10/2026)
@@ -179,16 +179,18 @@
     var rev = P.seg.rev.indexOf(p.id) >= 0, pid = esc(p.id);
     var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; });
     var h = '<div class="seg-card' + (p.detenido ? ' det' : '') + (rev ? ' rev' : '') + '">';
-    h += '<div class="seg-h"><div class="u-f1m"><div class="seg-nom">' + esc(p.nombre || '—') + '</div>' +
+    // Encabezado (29/10/2026, punto 10.B.7): el título abre la ficha; arriba a la derecha el
+    // estado y, debajo, sus acciones (menos destacadas, con confirmación) y ↗ (ficha completa).
+    h += '<div class="seg-h"><div class="u-f1m"><button class="seg-nom seg-nom-btn" data-pm="ficha" data-id="' + pid + '" data-tip="Abrir la ficha">' + esc(p.nombre || '—') + '</button>' +
       (p.owner ? '<div class="u-s10-mt">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="seg-hacc">' + avisoAbono(p) + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xd') : '') +
-      (can === 'finalizado' || can === 'rechazado' ? '' : ib(p.detenido ? 'play' : 'pausa', p.detenido ? 'Reanudar el proyecto' : 'Detener el proyecto', 'data-pm="det-proy" data-id="' + pid + '"')) +
-      accionesProy(p).map(function (a) { return ib(a[2], a[1] + ' el proyecto', 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('') +
-      ib('abrir', 'Abrir la ficha del proyecto', 'data-pm="ficha" data-id="' + pid + '"') + '</div></div>';
+      '<div class="seg-der"><div class="seg-der-est">' + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xd') : '') + '</div>' +
+      '<div class="seg-der-acc">' +
+      accionesProy(p).map(function (a) { return ib(a[2], a[1] + ' el proyecto', 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"', 'seg-acc-est'); }).join('') +
+      (can === 'finalizado' || can === 'rechazado' ? '' : ib(p.detenido ? 'play' : 'pausa', p.detenido ? 'Reanudar el proyecto' : 'Detener el proyecto', 'data-pm="det-proy" data-id="' + pid + '"', 'seg-acc-est')) +
+      ib('abrir', 'Abrir la ficha completa del proyecto', 'data-pm="ficha" data-id="' + pid + '"') + '</div></div></div>';
+    var av = avisoAbono(p); if (av) h += '<div class="seg-aviso">' + av + '</div>';   // los avisos, en su línea: no compiten con el estado
     var pq = porQue(p, can); if (pq) h += '<div class="seg-porque">' + esc(pq) + '</div>';
-    if (its.length) h += '<div class="seg-barra">' + its.map(function (it) {
-      return '<i class="e-' + (it.detenido ? 'xd' : colorEstado(it.estado).cls) + (_canonSol(it.estado) === 'finalizada' ? ' pas' : '') + '" title="' + esc((it.titulo || '') + ' · ' + (it.estado || '')) + '"></i>';
-    }).join('') + '</div>';
+    h += rielVista(p);
     var fila = function (l, v, cls) { return '<div class="seg-kv"><span>' + l + '</span><b class="' + cls + '">' + v + '</b></div>'; };
     if (can === 'prospecto' || can === 'negociacion') {
       var cot = Number(p.monto_cotizado) || 0, env = _pd(p.fecha_envio) || (can === 'negociacion' ? _pd(p.fecha_propuesta) : null);
@@ -258,7 +260,7 @@
     h += desp(p, 'tar', 'Tareas <span>' + (ta.length ? ta.length + ' pendiente' + s(ta.length) : '') + '</span>' + (nv ? ' <span class="u-c-rd">· ' + nv + ' vencida' + s(nv) + '</span>' : ''),
       '<div class="seg-tars">' + th + '</div>', ib('mas', 'Nueva tarea de este proyecto', 'data-pm="nueva-tarea" data-id="' + pid + '"'));
     var otros = cs.filter(function (c) { return !vistos[c.id]; }).slice(0, 3);
-    h += '<div class="sec seg-s seg-otros">Otros comentarios</div>' + (otros.length ? otros.map(comLinea).join('') : '<div class="u-s10-mt">Sin comentarios.</div>');
+    h += desp(p, 'otros', 'Otros comentarios <span class="seg-mono">' + otros.length + '</span>', otros.length ? otros.map(comLinea).join('') : '<div class="u-s10-mt">Sin comentarios.</div>');
     if (auto.length) h += desp(p, 'hist', 'Historial <span class="seg-mono">' + auto.length + '</span>', '<div class="seg-hist">' + auto.map(comLinea).join('') + '</div>');
     h += '<div class="seg-nota"><input class="fc" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">' +
       ib('revisado', rev ? 'Revisado · tocá para volver a su lugar' : 'Ya revisado: mandarlo al final', 'data-pm="rev" data-id="' + pid + '"', rev ? 'seg-rev-on' : '') + '</div>';
@@ -320,7 +322,9 @@
     var monto = mTotal(p), cotiz = Number(p.monto_cotizado) || 0, nov = (p.comentarios || [])[0];
     var tars = tareasAbiertas(p), venc = tars.filter(vencida).length;
     var h = '<div class="proy-row e-borde-' + (p.detenido ? 'xd' : ec.cls) + (p.detenido ? ' det' : '') + '">';
-    h += '<div class="u-row8"><div class="proy-row-name u-f1m">' + esc(p.nombre || '—') + '</div>' + ib('abrir', 'Abrir la ficha del proyecto', 'data-pm="ficha" data-id="' + esc(p.id) + '"') + '</div>';
+    var ab = P.inline === p.id;
+    h += '<div class="u-row8"><button class="proy-row-name proy-tog u-f1m" data-pm="inline" data-id="' + esc(p.id) + '" aria-expanded="' + ab + '">' +
+      '<span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span>' + esc(p.nombre || '—') + '</button></div>';
     h += '<div class="seg-est">' + est(e || '—', ec.cls) + (p.detenido ? est('Detenido', 'xd') : '') + (p.owner ? '<span>' + esc(nombre(p.owner)) + '</span>' : '') + '</div>';
     var pq = porQue(p, can); if (pq) h += '<div class="seg-porque">' + esc(pq) + '</div>';
     if (tars.length || nov) {
@@ -334,13 +338,14 @@
     if (sal > 1) pl = 'Saldo <b class="m m-pendiente">' + fmt(sal) + '</b>';
     else if (!(monto > 0) && cotiz > 0 && can !== 'rechazado') pl = 'Cotizado <b class="m m-pendiente">' + fmt(cotiz) + '</b> · sin aprobar';
     if (pl) h += '<div class="seg-linea proy-row-pie">' + pl + '</div>';
+    if (ab && P.f && P.f.id === p.id) h += '<div class="proy-inline">' + fichaCuerpo(p) + '</div>';   // la ficha, debajo
     return h + '</div>';
   }
   function htmlProy() {
     var R = P.pr, estados = estadosProyecto();
     var h = '<div class="seg-bar"><input class="fc u-f1" id="pr-q" placeholder="Buscar empresa o proyecto…" aria-label="Buscar" value="' + esc(R.q) + '">' +
-      '<select class="fc u-wauto" id="pr-orden" aria-label="Ordenar por">' +
-        [['empresa', 'Por empresa'], ['monto', 'Por monto'], ['fecha', 'Por fecha'], ['prob', 'Por probabilidad']].map(function (o) {
+      '<select class="fc u-wauto" id="pr-orden" aria-label="Ordenar los proyectos de cada cliente">' +
+        [['monto', 'Por monto'], ['fecha', 'Por fecha'], ['prob', 'Por probabilidad']].map(function (o) {
           return '<option value="' + o[0] + '"' + (R.orden === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>';
     h += '<div class="filtros u-mb10" role="group" aria-label="Estados"><button class="ptab' + (R.fil.length ? '' : ' on') + '" data-pm="prfil" data-f="todos">Todos</button>' +
       estados.map(function (e) { return '<button class="ptab' + (R.fil.indexOf(e) >= 0 ? ' on' : '') + '" data-pm="prfil" data-f="' + esc(e) + '">' + esc(e) + '</button>'; }).join('') + '</div>';
@@ -360,12 +365,12 @@
     if (!f.length) return h + '<div class="empty">Sin proyectos para este filtro.</div>';
     f.sort(function (a, b) {
       var dr = (esProyDetenido(a) ? 1 : 0) - (esProyDetenido(b) ? 1 : 0); if (dr) return dr;   // detenidos al final
-      if (R.orden === 'empresa') return (a.empresa || '').localeCompare(b.empresa || '') || ((b.monto_final_ars || 0) - (a.monto_final_ars || 0));
+      var em = (a.empresa || '').localeCompare(b.empresa || ''); if (em) return em;
       if (R.orden === 'prob') return (b.probabilidad || 0) - (a.probabilidad || 0);
       if (R.orden === 'fecha') return String(b.fecha_propuesta || '').localeCompare(String(a.fecha_propuesta || ''));
       return (b.monto_final_ars || 0) - (a.monto_final_ars || 0);
     });
-    if (R.orden !== 'empresa') return h + f.map(tarjetaProy).join('');
+    // Siempre por cliente (decisión del 15/10): barra del cliente → sus proyectos → la ficha debajo
     var by = {}, ord = [];
     f.forEach(function (p) { var e = p.empresa || 'Sin empresa'; if (!by[e]) { by[e] = []; ord.push(e); } by[e].push(p); });
     ord.forEach(function (emp) {
@@ -373,7 +378,7 @@
       var tot = sum(ps, mTotal, function (p) { return p.es_ganado; });
       // cotizado = lo ofrecido que sigue en juego: sin lo rechazado ni lo ganado
       var cot = sum(ps, 'monto_cotizado', function (p) { var c = _canonProy(p.estado_proyecto); return !p.es_ganado && (c === 'prospecto' || c === 'negociacion'); });
-      h += '<details class="desp" data-emp="' + esc(emp) + '"' + (R.abiertas[emp] ? ' open' : '') + '><summary class="proy-emp-h">' +
+      h += '<details class="desp" data-emp="' + esc(emp) + '"' + (R.abiertas[emp] || ps.some(function (p) { return p.id === P.inline; }) ? ' open' : '') + '><summary class="proy-emp-h">' +
         logo(emp, 'proy-emp-logo', 'proy-emp-initial') + '<span class="proy-emp-name">' + esc(emp) + '</span>' +
         '<span class="proy-emp-n">' + ps.length + ' proyecto' + (ps.length === 1 ? '' : 's') + '</span>' +
         (tot > 0 ? '<span class="sec">contratado</span><span class="m m-contratado" title="Suma de los desarrollos aprobados de esta empresa. No incluye mantenimientos.">' + fmt(tot) + '</span>' : '') +
@@ -436,6 +441,15 @@
         (s.attrs || '') + ' title="' + esc(s.tit || s.lbl) + '"><i class="e-' + (s.est === 'fut' ? 'xm' : s.cls) + '"></i>' +
         '<span class="' + (s.est === 'aqui' ? 't-' + s.cls : '') + '">' + esc(s.lbl) + '</span></' + tag + '>';
     }).join('') + '</div>';
+  }
+  // La misma barra que la ficha, sólo para mirar: en Seguimiento el estado se cambia con sus
+  // acciones (con confirmación), no tocando la barra. Un tramo por estado real (29/10/2026).
+  function rielVista(p) {
+    var can = _canonProy(p.estado_proyecto), det = esProyDetenido(p) || can === 'rechazado', idx = CAMINO.indexOf(can);
+    return '<div class="seg-riel">' + barraEstados(CAMINO.map(function (c, i) {
+      var lbl = nombreProy(c), hecho = !det && idx >= 0 && i < idx, aqui = !det && i === idx;
+      return { lbl: lbl, cls: colorEstadoProy(lbl).cls, est: aqui ? 'aqui' : hecho ? 'pas' : 'fut', tit: aqui ? 'El proyecto está ' + lbl : lbl };
+    }), can === 'finalizado') + '</div>';
   }
   function riel(p) {
     var can = _canonProy(p.estado_proyecto), det = esProyDetenido(p) || can === 'rechazado', idx = CAMINO.indexOf(can);
@@ -651,10 +665,17 @@
                 ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
     var h = '<div class="u-row8 u-mb12"><button class="btn bg sm" data-pm="volver">' + ico('izquierda') + ' Volver</button>' +
       (lista.length > 1 ? ib('izquierda', 'Proyecto anterior', 'data-pm="nav" data-dir="-1"') + '<span class="u-s11-mt m">' + (i + 1) + '/' + lista.length + '</span>' + ib('derecha', 'Proyecto siguiente', 'data-pm="nav" data-dir="1"') : '') + '</div>';
-    h += '<div class="ficha-grid"><div class="card u-p0"><div class="ficha-cab">' +
+    return h + fichaCuerpo(p);
+  }
+  function fichaCuerpo(p) {
+    var e = p.estado_proyecto || 'Prospecto', ab = P.f.tareas.filter(function (t) { return !t.closed; }).length, can = _canonProy(e);
+    var tabs = [['info', 'Información', tabInfo], ['analisis', 'Análisis', tabAnalisis], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
+                ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
+    var h = '<div class="ficha-grid"><div class="card u-p0"><div class="ficha-cab">' +
       '<div class="u-row8">' + logo(p.empresa, 'emp-logo', 'emp-ini') + '<div class="u-f1m"><div class="u-s11-mt">' + esc(p.empresa) + '</div>' +
       '<div class="ficha-tit">' + esc(p.nombre) + '</div><div class="u-row8">' + est(e, colorEstadoProy(e).cls) + avisoAbono(p) + '<span class="u-s10-mt">' + esc(deDondeSale(p)) + '</span></div></div>' +
-      '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Recotizar, renovar, editar, mejora y horas de soporte">' + ico('abrir') + ' Cotizar en el CRM actual</a></div>' + riel(p) + '</div>' +
+      // Cotizar sólo mientras se vende: lo que está en ejecución no va al Cotizador (29/10/2026)
+      ((can === 'prospecto' || can === 'negociacion') ? '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Recotizar y editar la cotización">' + ico('abrir') + ' Cotizar en el CRM actual</a>' : '') + '</div>' + riel(p) + '</div>' +
       '<div class="u-p14"><div class="ptabs">' + tabs.map(function (t) { return '<button class="ptab' + (t[0] === P.fTab ? ' on' : '') + '" data-pm="ftab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
       (tabs.find(function (t) { return t[0] === P.fTab; }) || tabs[1])[2](p) + '</div></div>' + lateral(p) + '</div>';
     return h;
@@ -833,7 +854,7 @@
   }
 
   VISTAS.pm = async function (el, op) {
-    var leer = async function () { await cargar(); if (P.sub === 'ficha' && P.f) await cargarFicha(P.f.id); };
+    var leer = async function () { await cargar(); if (P.sub === 'ficha' && P.f) await cargarFicha(P.f.id); else if (P.inline) await cargarFicha(P.inline); };
     var refrescar = async function () { await leer(); pintar(el); };
     var s = subPedida(); if (s === 'tar') { location.hash = '#/hoy'; return; }   // la vieja vista Tareas
     if (SUBS.some(function (x) { return x[0] === s; })) P.sub = s;
@@ -922,7 +943,15 @@
         });
       }
       if (a === 'edit-des') { ev.preventDefault(); return abrirDesarrollo(id, { onSave: refrescar }); }
-      if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id); return hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo detenido'); }
+      if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id);
+        return ask(dd.detenido ? '¿Reanudar este desarrollo?' : '¿Detener este desarrollo? Queda marcado y griseado.', dd.detenido ? 'Reanudar' : 'Detener').then(function (ok) {
+          if (ok) hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo detenido'); }); }
+      if (a === 'inline') {
+        ev.preventDefault();
+        if (P.inline === id) { P.inline = null; return pintar(el); }
+        P.inline = id; P.fTab = P.fTab || 'info';
+        return cargarFicha(id).then(function () { pintar(el); }).catch(function (e2) { P.inline = null; toast(e2.message, 'err'); });
+      }
       if (a === 'acc-des') {
         ev.preventDefault();
         var acc = b.getAttribute('data-acc');

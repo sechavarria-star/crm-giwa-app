@@ -394,3 +394,21 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .mo .fc { background: #060716; border: 1px solid #1A3DB4; }
 .mo .fc:focus { border-color: #3AB8FF; box-shadow: 0 0 0 2px rgba(58,184,255,.18); }
 .mo .fc:disabled { opacity: .55; }
+
+/* ══ Proyectos (29/10/2026, puntos 5 y 10.B.7) ═════════════════════════════ */
+/* Seguimiento: el título abre la ficha; a la derecha el estado y, debajo, sus acciones */
+.seg-nom-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.seg-nom-btn:hover { color: #3AB8FF; }
+.seg-der { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.seg-der-est { display: flex; gap: 6px; }
+.seg-der-acc { display: flex; gap: 1px; }
+.seg-acc-est { opacity: .55; }
+.seg-acc-est:hover { opacity: 1; }
+.seg-aviso { margin: 4px 0 2px; }
+.seg-riel { margin: 6px 0 4px; font-size: 10px; }
+.seg-riel .riel-paso { cursor: default; }
+/* Vista general: cliente → proyecto → ficha debajo */
+.proy-tog { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.proy-tog:hover { color: #3AB8FF; }
+.proy-tog .chev.on { transform: rotate(90deg); color: var(--blue); }
+.proy-inline { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--b); }
