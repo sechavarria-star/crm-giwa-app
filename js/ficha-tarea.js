@@ -194,7 +194,7 @@
       var item0 = String(t.item_ids || t.desarrollo_id || '').split(',')[0].trim(), fact = /factur/i.test(t.title + ' ' + t.alert_type);
       if (fact)
         a += '<button class="btn bp sm" data-fta="cb-fact" data-id="' + esc(item0) + '">' + ico('documento') + ' Facturar</button>' +
-             '<button class="btn bg sm" data-fta="cb-pago" data-id="' + esc(item0) + '">' + ico('plata') + ' Registrar pago</button>';
+             '<button class="btn bg sm" data-fta="cb-pago" data-id="' + esc(item0) + '">' + ico('cobro') + ' Registrar pago</button>';
       a += '<button class="btn ' + (fact ? 'bg' : 'bp') + ' sm" data-fta="procesar">' + ico('check') + ' Procesar</button>' +
            // la alerta se delega en el lugar: delegar_tarea le cambia el responsable (29/10/2026)
            (rs.indexOf(yo()) >= 0 ? '<button class="btn bg sm" data-fta="caja" data-caja="ftv-del">' + ico('flecha') + ' Delegar</button>' : '') +

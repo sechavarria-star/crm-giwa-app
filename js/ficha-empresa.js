@@ -239,7 +239,7 @@
                  '<div class="u-s11-mt">' + esc(['CUIT ' + (x.cuit || '—'), x.condicion_fiscal, x.mail_facturacion].filter(Boolean).join(' · ')) + '</div></div>';
         }).join('') || '<div class="empty">Sin razones sociales.</div>');
       h += '<div class="u-row8 u-mt10"><span class="sec">Contactos (' + d.contactos.length + ')</span>' +
-           '<button class="btn bg xs u-mla" data-acc="contacto" data-id="' + esc(e.id) + '">' + ico('mas') + ' Contacto</button></div>' +
+           '<button class="btn bsec xs u-mla" data-acc="contacto" data-id="' + esc(e.id) + '">' + ico('contacto') + ' Contacto</button></div>' +
         (d.contactos.map(function (c) {
           var wp = String(c.telefono || '').replace(/[^0-9]/g, '');
           return '<div class="fe-linea u-row8"><div class="u-f1m"><div class="emp-n">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim()) + '</div>' +

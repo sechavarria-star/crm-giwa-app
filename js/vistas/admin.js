@@ -222,7 +222,7 @@
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
           '<td class="u-tr u-nw"><button class="btn bp xs" data-adm="cb-fact" data-id="' + esc(f.item) + '">' + ico('documento') + ' Facturar</button> ' +
-            '<button class="btn bg xs" data-adm="cb-pago" data-id="' + esc(f.item) + '">' + ico('plata') + ' Registrar pago</button></td></tr>';
+            '<button class="btn bg xs" data-adm="cb-pago" data-id="' + esc(f.item) + '">' + ico('cobro') + ' Registrar pago</button></td></tr>';
       }).join('') + '</tbody></table></details>';
     };
     var h = fil.length ? '' : '<div class="empty u-p10">Nada pendiente de facturar.</div>';
@@ -366,7 +366,7 @@
         opt('sinfc', 'Cobros sin factura', F.dep) + opt('depositado', 'Depositados', F.dep) + '</select>' +
       '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Quién facturó: todos', F.own) +
         Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select>' +
-      '<button class="btn bp sm" data-adm="cb-fact">' + ico('mas') + ' Nueva factura</button><button class="btn bg sm" data-adm="cb-pago">' + ico('plata') + ' Registrar pago</button></div>';
+      '<button class="btn bp sm" data-adm="cb-fact">' + ico('factura') + ' Nueva factura</button><button class="btn bp sm" data-adm="cb-pago">' + ico('cobro') + ' Registrar pago</button></div>';
     var list = filtrarFact(), pend = list.filter(sinDep);
     h += '<div class="g3 u-mb12">' +
       '<div class="kpi k-cobrado"><div class="kpi-lbl">Total cobrado ARS (neto)</div><div class="kpi-val">' + fmt(suma(list, 'monto')) + '</div><div class="kpi-sub">' + n(list.length, 'cobro') + '</div></div>' +

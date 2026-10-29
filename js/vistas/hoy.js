@@ -131,7 +131,7 @@
     };
     var h = '<div class="hoy-head"><div><div class="hoy-h1">Buen día' + (nombre ? ', ' + esc(nombre.split(' ')[0]) : '') + '</div>' +
       '<div class="hoy-sub">' + esc(fecha.charAt(0).toUpperCase() + fecha.slice(1)) + ' · ' + ahora.length + ' para resolver</div></div>' +
-      '<div class="u-row8"><button class="btn bp sm" data-hoy="nueva">' + ico('mas') + ' Nueva tarea</button></div></div>';
+      '<div class="u-row8"><button class="btn bp sm" data-hoy="nueva">' + ico('tarea') + ' Nueva tarea</button></div></div>';
     h += '<div class="kpi-grid hoy-kpis">' +
       k('venc', venc.length ? 'k-alerta' : 'k-neutro', 'Vencidas', venc.length, 'tareas atrasadas') +
       k('hoy', 'k-contratado', 'Para hoy', deHoy.length, 'vencen hoy') +

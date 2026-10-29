@@ -113,10 +113,10 @@
         }).join('') + '</ul>' : '<div class="u-s11-mt u-mt6">Sin contactos.</div>') +
         '<div class="u-s11-mt u-mt4"><span class="m">' + np + '</span> proyecto' + (np !== 1 ? 's' : '') + '</div>' +
         '<div class="u-row6 u-mt8">' +
-          '<button class="btn bg xs" data-addcon="' + esc(e.id) + '">' + ico('mas') + ' Contacto</button>' +
-          '<button class="btn bg xs" data-addrs="' + esc(e.id) + '">' + ico('mas') + ' Razón social</button>' +
-          (e.drive_interno ? '<a class="btn bg xs btn-ico u-mla" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener" data-tip="Drive" aria-label="Drive">' + ico('carpeta') + '</a>' : '') +
-          (web ? '<a class="btn bg xs btn-ico' + (e.drive_interno ? '' : ' u-mla') + '" href="' + esc(web) + '" target="_blank" rel="noopener" data-tip="Web" aria-label="Web">' + ico('link') + '</a>' : '') +
+          '<button class="btn bsec xs" data-addcon="' + esc(e.id) + '">' + ico('contacto') + ' Contacto</button>' +
+          '<button class="btn bsec xs" data-addrs="' + esc(e.id) + '">' + ico('mas') + ' Razón social</button>' +
+          (e.drive_interno ? '<a class="lnk lnk-dr u-mla" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + ico('carpeta') + 'DRIVE</a>' : '') +
+          (web ? '<a class="lnk' + (e.drive_interno ? '' : ' u-mla') + '" href="' + esc(web) + '" target="_blank" rel="noopener">' + ico('web') + 'WEB</a>' : '') +
         '</div>' +
       '</div></div>';
     }).join('') + '</div>';
@@ -186,7 +186,7 @@
       return '<button class="ptab' + (pest === t[0] ? ' on' : '') + '" data-pest="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     el.querySelector('#cli-cuerpo').innerHTML = tabs + (pest === 'con' ? htmlContactos() : htmlClientes());
     el.querySelector('#cli-exportar').hidden = pest !== 'cli';
-    el.querySelector('#cli-nuevo').innerHTML = ico('mas') + (pest === 'con' ? ' Nuevo contacto' : ' Nueva empresa');
+    el.querySelector('#cli-nuevo').innerHTML = (pest === 'con' ? ico('contacto') + ' Nuevo contacto' : ico('empresa') + ' Nueva empresa');
   }
 
   VISTAS.clientes = async function (el, op) {
