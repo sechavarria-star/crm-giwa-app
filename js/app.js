@@ -20,7 +20,7 @@
 var MODULOS = [
   { id: 'hoy',      nombre: 'Hoy',            ico: 'casa',     listo: true  },
   { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true,
-    subs: [['cli', 'Clientes'], ['emp', 'Empresas'], ['con', 'Contactos']] },
+    subs: [['cli', 'Clientes'], ['con', 'Contactos']] },
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true,
     subs: [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']] },
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },

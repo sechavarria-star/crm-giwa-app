@@ -551,18 +551,12 @@
         ib('editar', 'Ver o editar el desarrollo', 'data-pm="edit-des" data-id="' + esc(it.id) + '"') +
         (det ? '' : botonesDes(it, false)) +
         '<span class="dev-est t-' + cls + '">' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
+      // Contratado, cobrado y pendiente van sólo en el lateral: acá no se repiten (29/10/2026)
       h += '<div class="seg-linea u-mt6">';
       if (rec) {
         if (cuota) h += '<span>Cuota <b class="m m-abono">' + fmt(cuota) + '/mes</b></span>';
         if (it.duracion) h += '<span>' + (it.cuotas_facturadas || 0) + ' de ' + it.duracion + ' cuotas</span>';
-        h += '<span>Acumulado <b class="m m-cobrado">' + fmt(fact) + '</b></span>';
-        if (pend) h += '<span>Por cobrar <b class="m m-pendiente">' + fmt(pend) + '</b></span>';
-      } else {
-        if (tot) h += '<span>Total <b class="m m-contratado">' + fmt(tot) + '</b></span>';
-        h += '<span>Cobrado <b class="m m-cobrado">' + fmt(fact) + '</b></span>';
-        if (pend > 0) h += '<span>Falta <b class="m m-pendiente">' + fmt(pend) + '</b></span>';
-        if (it.cuotas > 1) h += '<span>' + it.cuotas + ' cuotas</span>';
-      }
+      } else if (it.cuotas > 1) h += '<span>' + it.cuotas + ' cuotas</span>';
       if (it.horas) h += '<span>Vendidas <b>' + it.horas + ' h</b></span>';
       if (it.socios) h += '<span>' + ico('personas') + ' ' + esc(crmLista(it.socios).map(nombre).join(', ')) + '</span>';
       if (it.garantia_dias) h += '<span>' + it.garantia_dias + ' días de garantía</span>';
@@ -616,7 +610,7 @@
     var pct = function (v) { return v === null || v === undefined || v === '' ? '' : (v >= 0 ? '+' : '') + v + '%'; };
     return '<div class="ft-info u-mb8">Referencia = horas estimadas × valor hora de venta GIWA a la fecha × Tier. El abono compensa lo que faltó.</div>' +
       '<div class="u-ovx"><table class="tbl"><thead><tr><th>Desarrollo</th><th class="u-tr">Horas</th><th class="u-tr">VH ref.</th><th class="u-tr">Referencia</th>' +
-      '<th class="u-tr">Cobrado</th><th>Resultado</th><th class="u-tr">Abono</th></tr></thead><tbody>' +
+      '<th class="u-tr">Cobrado</th><th>Margen neto proyectado</th><th class="u-tr">Abono</th></tr></thead><tbody>' +
       (c.devs || []).map(function (d) {
         return '<tr><td>' + esc(d.id) + ' · ' + esc(d.titulo) + (d.reutiliza ? ' <span class="u-s10-mt">mejora de ' + esc(d.reutiliza) + '</span>' : '') + '</td>' +
           '<td class="m u-tr">' + d.horas + '</td><td class="m u-tr">' + fmt(d.vh_referencia) + '</td><td class="m u-tr">' + fmt(d.referencia) + '</td>' +

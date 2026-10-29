@@ -26,11 +26,13 @@
       db().from('v_fin_escenarios').select('*').order('por_mes', { ascending: false }).order('una_vez', { ascending: false }),
       db().from('v_proyeccion_12m').select('*').order('orden'),
       db().from('v_proy_sin_fecha').select('*'),
-      db().from('v_fin_negocios').select('*').order('esperado', { ascending: false })
+      db().from('v_fin_negocios').select('*').order('esperado', { ascending: false }),
+      db().from('v_proyectos_clasif').select('id,estado_proyecto')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
-            esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data };
+            esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data,
+            estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
 
   // ── ayudas ───────────────────────────────────────────────────
@@ -101,13 +103,35 @@
   }
 
   // ── Análisis por cliente (lo que guardó el Cotizador; no se recalcula) ──
+  // Análisis por cliente (29/10/2026): sólo lo vigente. Cuentan los desarrollos de
+  // proyectos aprobados, activos o en negociación; lo histórico (finalizado,
+  // rechazado, prospecto) queda afuera. Los totales se rehacen con esos
+  // desarrollos, con la misma cuenta que la vista: margen = cobrado − referencia.
   function analisis() {
-    var A = F.d.an; if (!A.length) return '<div class="empty">Sin análisis guardados.</div>';
-    return '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th class="u-tr">Referencia</th><th class="u-tr">Cobrado</th><th class="u-tr">Resultado</th>' +
-      '<th class="u-tr">Abono / mes</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Con 24 meses</th><th>Lectura</th></tr></thead><tbody>' + A.map(function (c) {
-        var lect = N(c.dif) < 0 ? (N(c.mmr) ? 'faltan ' + N(c.meses) + ' mes(es) de abono' : 'sin abono que lo compense') : 'igual o arriba de la referencia';
-        return '<tr><td>' + esc(c.nombre || c.empresa || '—') + '</td>' + td(N(c.referencia)) + td(N(c.precio), 'm-cobrado') +
-          td(N(c.dif), N(c.dif) < 0 ? 'm-pendiente' : 'm-cobrado', N(c.dif) < 0) + td(N(c.mmr), 'm-abono') + td(N(c.a12)) + td(N(c.a24)) +
+    var A = clientesVigentes();
+    if (!A.length) return '<div class="empty">Ningún cliente con proyectos aprobados, activos o en negociación.</div>';
+    return tablaAnalisis(A);
+  }
+  function clientesVigentes() {
+    var V = { aprobado: 1, activo: 1, negociacion: 1 }, E = F.d.estProy;
+    var A = F.d.an.map(function (c) {
+      var ds = (c.devs || []).filter(function (d) { return V[E[d.proyecto_id]]; }); if (!ds.length) return null;
+      var ref = 0, pre = 0, mmr = 0, neg = ds.some(function (d) { return E[d.proyecto_id] === 'negociacion'; });
+      ds.forEach(function (d) { ref += N(d.referencia); pre += N(d.precio); mmr += N(d.mmr); });
+      return { nombre: c.nombre || c.empresa, ref: ref, pre: pre, mmr: mmr, dif: pre - ref, neg: neg };
+    }).filter(Boolean);
+    return A;
+  }
+  function tablaAnalisis(A) {
+    return '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th class="u-tr">Referencia</th><th class="u-tr">Cobrado</th><th class="u-tr">Margen neto proyectado</th>' +
+      '<th class="u-tr">Abono / mes</th><th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Con 24 meses</th><th>Estatus de viabilidad</th></tr></thead><tbody>' + A.map(function (c) {
+        var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
+        var lect = c.dif < 0 ? (c.mmr ? 'faltan ' + meses + ' mes(es) de abono' : 'sin abono que lo compense') : 'igual o arriba de la referencia';
+        var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
+        return '<tr><td>' + esc(c.nombre || '—') + '</td>' + td(c.ref) + td(c.pre, 'm-cobrado') +
+          td(c.dif, c.dif < 0 ? 'm-pendiente' : 'm-cobrado', c.dif < 0) + td(c.mmr, 'm-abono') +
+          (sinAbono ? '<td class="m u-tr u-c-rd" title="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
+          td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.dif + c.mmr * 24, '', c.dif + c.mmr * 24 < 0) +
           '<td class="u-s10-mt">' + esc(lect) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
@@ -181,7 +205,7 @@
     var D = F.d;
     el.innerHTML = '<div class="page-h"><div><h2>Estado financiero</h2><div class="page-s">Cómo está parado el negocio: lo cobrado, lo contratado y lo que viene.</div></div></div>' +
       '<div class="kpi-grid u-mb12">' + kpis() + '</div>' +
-      sec('an', 'Análisis por cliente', D.an.length, '', analisis()) +
+      sec('an', 'Análisis por cliente', clientesVigentes().length, '', analisis()) +
       sec('graf', 'Cobrado vs Contratado por empresa', '', '', grafEmpresas()) +
       sec('cli', 'Por cliente', D.emp.length, '<span class="m m-contratado">' + fmt(D.emp.reduce(function (a, x) { return a + N(x.contratado); }, 0)) + '</span>', porCliente()) +
       sec('esc', '¿Dónde podríamos estar?', D.esc.length, '', escenarios()) +

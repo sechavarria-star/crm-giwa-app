@@ -8,13 +8,16 @@
    Tres pestañas sobre los mismos datos, que se piden una sola vez y en
    paralelo. Cambiar de pestaña o filtrar no vuelve a pedir nada.
 
+   29/10/2026: Clientes y Empresas son una sola pantalla (los mismos datos),
+   con un selector Tabla / Tarjetas. #/clientes/emp abre las tarjetas.
+
    Colores de estado según el Design System (22/10/2026), no los de la
    pantalla vieja: prospecto y detenido gris, abono violeta, cliente
    celeste, deuda vencida rojo (es un vencimiento).
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var D = null;                     // los datos de la base
-  var pest = 'cli', filtro = 'todos', busca = '';
+  var pest = 'cli', filtro = 'todos', busca = '', vista = 'tabla';
 
   var EST = {                       // estado del cliente → color (sufijo del Design System)
     'prospecto': 'xm', 'detenido': 'xm', 'cliente': 'xb', 'abono activo': 'xv', 'deuda vencida': 'xr'
@@ -35,7 +38,7 @@
     var nProy = {}; r[4].data.forEach(function (p) { if (p.empresa_id) nProy[p.empresa_id] = (nProy[p.empresa_id] || 0) + 1; });
     D = { emps: r[0].data, cons: r[1].data, cli: cli, tiers: r[3].data, nProy: nProy };
   }
-  var PEST = ['cli', 'emp', 'con'];
+  var PEST = ['cli', 'con'];
 
   // ── ayudas ───────────────────────────────────────────────────
   function clienteDe(e) { return D.cli[e.id] || D.cli[e.nombre] || { estado: 'prospecto' }; }
@@ -76,14 +79,17 @@
       ? '<p class="u-s11-mt">Tier = tamaño del cliente; multiplica el valor hora al cotizar: ' +
         D.tiers.map(function (t) { return esc(tierCorto(t.id)) + ' ' + esc(t.empresa || '—') + ' ×' + String(t.multiplicador).replace('.', ','); }).join(' · ') + '</p>'
       : '';
-    var fil = '<div class="filtros" role="group" aria-label="Filtro">' + FILTROS.map(function (f) {
+    var fil = '<div class="u-row8 u-mb8"><div class="filtros u-f1 u-mb0" role="group" aria-label="Filtro">' + FILTROS.map(function (f) {
       return '<button class="ptab' + (filtro === f[0] ? ' on' : '') + '" data-filtro="' + f[0] + '">' + f[1] + '</button>';
-    }).join('') + '</div>';
+    }).join('') + '</div><div class="filtros u-mb0" role="group" aria-label="Vista">' + [['tabla', 'Tabla'], ['tarjetas', 'Tarjetas']].map(function (v) {
+      return '<button class="ptab' + (vista === v[0] ? ' on' : '') + '" data-vista="' + v[0] + '">' + v[1] + '</button>';
+    }).join('') + '</div></div>';
     var filas = D.emps.filter(function (e) {
       var g = clienteDe(e);
-      return pasaFiltro(g) && coincide(e.nombre + ' ' + (e.alias || '') + ' ' + g.estado);
+      return pasaFiltro(g) && coincide([e.nombre, e.alias, e.rubro, e.localidad, e.provincia, g.estado].join(' '));
     });
     if (!filas.length) return fil + ley + '<div class="empty">Ninguna empresa con este filtro.</div>';
+    if (vista === 'tarjetas') return fil + ley + htmlEmpresas(filas);
     var h = '<div class="card u-p0"><table class="tbl"><thead><tr><th>Empresa</th><th>Tier</th><th>Estado</th>' +
             '<th class="u-tr">Contratado</th><th class="u-tr">Saldo</th><th>Último contacto</th><th></th></tr></thead><tbody>';
     filas.forEach(function (e) {
@@ -99,18 +105,18 @@
     return fil + ley + h + '</tbody></table></div>';
   }
 
-  function htmlEmpresas() {
-    var lista = D.emps.filter(function (e) { return coincide([e.nombre, e.alias, e.rubro, e.localidad].join(' ')); });
-    if (!lista.length) return '<div class="empty">Ninguna empresa coincide.</div>';
+  // Tarjetas: nombre, rubro, localidad y provincia, Tier, estado y contactos · proyectos
+  function htmlEmpresas(lista) {
     return '<div class="emp-grid">' + lista.map(function (e) {
-      var n = consDe(e).length, np = D.nProy[e.id] || 0;
+      var n = consDe(e).length, np = D.nProy[e.id] || 0, g = clienteDe(e);
       var web = e.web ? (e.web.indexOf('http') === 0 ? e.web : 'https://' + e.web) : '';
+      var lugar = [e.localidad, e.provincia].filter(Boolean).join(', ');
       return '<div class="card"><div class="u-p1214">' +
         '<div class="u-row8">' + logo(e) + '<div class="u-f1m"><div class="emp-n">' + esc(e.nombre) + '</div>' +
-          '<div class="u-s11-mt">' + esc([e.rubro, e.localidad].filter(Boolean).join(' · ') || '—') + '</div></div>' +
+          '<div class="u-s11-mt">' + esc([e.rubro, lugar].filter(Boolean).join(' · ') || '—') + '</div></div>' +
           bIco('ver', e.id, 'abrir', 'Abrir ficha') + bIco('ed', e.id, 'editar', 'Editar empresa') + '</div>' +
-        '<div class="u-s11-mt u-mt6">' + [e.tier_id, n ? n + ' contacto' + (n !== 1 ? 's' : '') : '',
-          np ? np + ' proyecto' + (np !== 1 ? 's' : '') : ''].filter(Boolean).map(esc).join(' · ') + '</div>' +
+        '<div class="u-row8 u-mt6">' + (e.tier_id ? '<span class="emp-tier">' + esc(tierCorto(e.tier_id)) + '</span>' : '') + estado(g.estado) + '</div>' +
+        '<div class="u-s11-mt u-mt6"><span class="m">' + n + '</span> contacto' + (n !== 1 ? 's' : '') + ' · <span class="m">' + np + '</span> proyecto' + (np !== 1 ? 's' : '') + '</div>' +
         ((e.drive_interno || web) ? '<div class="u-row6 u-mt6">' +
           (e.drive_interno ? '<a class="btn bg xs" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + ico('carpeta') + ' Drive</a>' : '') +
           (web ? '<a class="btn bg xs" href="' + esc(web) + '" target="_blank" rel="noopener">' + ico('link') + ' Web</a>' : '') +
@@ -165,15 +171,15 @@
   function pintar(el) {
     if (_montado !== 'clientes' || !el.querySelector('#cli-cuerpo')) return;
     marcarSub(pest);
-    set('cli-tit', { cli: 'Clientes', emp: 'Empresas', con: 'Contactos' }[pest]);
-    var cuerpo = pest === 'emp' ? htmlEmpresas() : pest === 'con' ? htmlContactos() : htmlClientes();
+    set('cli-tit', { cli: 'Clientes', con: 'Contactos' }[pest]);
+    var cuerpo = pest === 'con' ? htmlContactos() : htmlClientes();
     el.querySelector('#cli-cuerpo').innerHTML = cuerpo;
     el.querySelector('#cli-exportar').hidden = pest !== 'cli';
     el.querySelector('#cli-nuevo').innerHTML = ico('mas') + (pest === 'con' ? ' Nuevo contacto' : ' Nueva empresa');
   }
 
   VISTAS.clientes = async function (el, op) {
-    var p = subPedida(); if (PEST.indexOf(p) >= 0) pest = p;
+    var p = subPedida(); if (p === 'emp') { pest = 'cli'; vista = 'tarjetas'; } else if (PEST.indexOf(p) >= 0) pest = p;
     el.innerHTML =
       '<div class="page-h"><div><h2 id="cli-tit">Clientes</h2><div class="page-s">Empresas, su estado y sus contactos.</div></div>' +
         '<div class="u-row8"><input class="fc" id="cli-q" placeholder="Buscar empresa o contacto…" aria-label="Buscar">' +
@@ -186,7 +192,7 @@
     // después de guardar en la ficha: releer y repintar, sin perder pestaña ni filtro
     var alGuardar = { onSave: async function () { await cargar(); pintar(el); } };
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-filtro],[data-ver],[data-ed],[data-con],#cli-exportar,#cli-nuevo');
+      var b = ev.target.closest('[data-filtro],[data-vista],[data-ver],[data-ed],[data-con],#cli-exportar,#cli-nuevo');
       if (!b) return;
       if (b.id === 'cli-exportar') return exportar();
       if (b.id === 'cli-nuevo') return pest === 'con' ? abrirContacto(null, alGuardar) : abrirFichaEmpresa('', alGuardar);
@@ -197,11 +203,12 @@
         return abrirContacto(D.cons.find(function (c) { return c.id === id; }), alGuardar);
       }
       if (b.hasAttribute('data-filtro')) filtro = b.getAttribute('data-filtro');
+      if (b.hasAttribute('data-vista')) vista = b.getAttribute('data-vista');
       pintar(el);
     };
     el.querySelector('#cli-q').oninput = function () { busca = this.value.toLowerCase().trim(); pintar(el); };
   };
   // Del menú lateral: otra pestaña, sin releer
-  VISTAS.clientes.irA = function (s) { if (PEST.indexOf(s) < 0) return; pest = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0); };
+  VISTAS.clientes.irA = function (s) { if (s === 'emp') { s = 'cli'; vista = 'tarjetas'; } if (PEST.indexOf(s) < 0) return; pest = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0); };
   VISTAS.clientes.precargar = cargar;
 })();
