@@ -161,8 +161,22 @@
   // ══ SEGUIMIENTO · tarjetas por cliente ══════════════════════
   // Filtros de Seguimiento (29/10/2026): los estados reales del proyecto, más dos condiciones
   // de Activo (En garantía / En mantenimiento) y Detenido. Rechazado y Finalizado van en Proyectos.
-  var SEG_FIL = [['todos', 'Todos', ''], ['activo', 'Activo', 'xc'], ['garantia', 'En garantía', 'xt'], ['mant', 'En mantenimiento', 'xv'],
-                 ['aprobado', 'Aprobado', 'xb'], ['negociacion', 'Negociación', 'xw'], ['prospecto', 'Prospecto', 'xn'], ['det', 'Detenido', 'xd']];
+  // [clave, etiqueta, color, tramo]: 'c' = el camino del proyecto (en orden), 'x' = condiciones aparte
+  var SEG_FIL = [['prospecto', 'Prospecto', 'xn', 'c'], ['negociacion', 'Negociación', 'xw', 'c'], ['aprobado', 'Aprobado', 'xb', 'c'], ['activo', 'Activo', 'xc', 'c'],
+                 ['det', 'Detenido', 'xd', 'x'], ['garantia', 'En garantía', 'xt', 'x'], ['mant', 'En mantenimiento', 'xv', 'x']];
+  // La barra de filtros es la barrita de estados (la misma que la del proyecto): un tramo por estado,
+  // con su color y su número; tocarlo filtra, tocarlo de nuevo vuelve a todos (29/10/2026).
+  function barraFiltro(defs, fil, n, attr, total, mostrando) {
+    var seg = function (d) {
+      var on = fil === d[0];
+      return '<button type="button" class="fseg' + (on ? ' on' : '') + (fil && fil !== 'todos' && !on ? ' off' : '') + '" data-pm="' + attr + '" data-f="' + (on ? 'todos' : d[0]) + '" title="' + (on ? 'Ver todos' : 'Filtrar: ' + d[1]) + '">' +
+        '<i class="e-' + d[2] + '"></i><span class="' + (on ? 't-' + d[2] : '') + '">' + d[1] + '</span><b class="m">' + n(d[0]) + '</b></button>';
+    };
+    return '<div class="fbar"><div class="fbar-c">' + defs.filter(function (d) { return d[3] === 'c'; }).map(seg).join('') + '</div>' +
+      '<div class="fbar-x">' + defs.filter(function (d) { return d[3] === 'x'; }).map(seg).join('') + '</div></div>' +
+      '<div class="pr-cuenta">Mostrando <b class="m">' + mostrando + '</b> de <b class="m">' + total + '</b> proyectos' +
+      (fil && fil !== 'todos' ? ' · <button class="hoy-go" data-pm="' + attr + '" data-f="todos">ver todos</button>' : '') + '</div>';
+  }
   function segPasa(p, fil) {
     var c = _canonProy(p.estado_proyecto);
     if (c === 'rechazado' || c === 'finalizado') return false;
@@ -274,13 +288,11 @@
   }
   function htmlSeg() {
     var S = P.seg, all = P.proys;
-    var h = '<div class="seg-bar"><input class="fc u-f1" id="seg-q" placeholder="Buscar cliente o proyecto…" aria-label="Buscar" value="' + esc(S.q) + '">' +
-      '<div class="seg-chips" role="group" aria-label="Filtrar por estado">' + SEG_FIL.map(function (f) {
-        return '<button class="seg-chip' + (S.fil === f[0] ? ' on' : '') + (f[2] ? ' c-' + f[2] : '') + '" data-pm="segfil" data-f="' + f[0] + '">' +
-          (f[2] ? '<i class="est-dot e-' + f[2] + '"></i>' : '') + f[1] + ' <b class="m">' + all.filter(function (p) { return segPasa(p, f[0]); }).length + '</b></button>';
-      }).join('') + '</div></div>';
     var q = norm(S.q);
     var list = all.filter(function (p) { return segPasa(p, S.fil); }).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0; });
+    var h = '<div class="seg-bar"><input class="fc u-f1" id="seg-q" placeholder="Buscar cliente o proyecto…" aria-label="Buscar" value="' + esc(S.q) + '"></div>' +
+      barraFiltro(SEG_FIL, S.fil, function (k) { return all.filter(function (p) { return segPasa(p, k); }).length; }, 'segfil',
+                  all.filter(function (p) { return segPasa(p, 'todos'); }).length, list.length);
     if (!list.length) return h + '<div class="empty">Nada para este filtro.</div>';
     var peso = { activo: 0, aprobado: 1, negociacion: 2, prospecto: 3, finalizado: 4, rechazado: 5 };
     var rank = function (p) { return (S.rev.indexOf(p.id) >= 0 ? 100 : 0) + (p.detenido ? 50 : 0) + (peso[_canonProy(p.estado_proyecto)] || 0); };
@@ -327,15 +339,15 @@
     var e = p.estado_proyecto || '', ec = colorEstadoProy(e), ab = P.inline === p.id, bc = p.detenido ? 'xd' : ec.cls;
     var h = '<div class="proy-row e-borde-' + bc + (p.detenido ? ' det' : '') + (ab ? ' ab' : '') + '">';
     h += '<button class="proy-tog" data-pm="inline" data-id="' + esc(p.id) + '" aria-expanded="' + ab + '">' +
-      '<span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span>' +
-      '<span class="proy-tit"><span class="proy-row-name">' + esc(p.nombre || '—') + '</span><span class="u-s10-mt">' + esc(p.empresa || '') + '</span></span>' +
+      '<span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span>' + logo(p.empresa, 'proy-logo', 'proy-logo proy-logo-i') +
+      '<span class="proy-tit"><span class="u-s10-mt">' + esc(p.empresa || '') + '</span><span class="proy-row-name">' + esc(p.nombre || '—') + '</span></span>' +
       '<span class="proy-est">' + est(e || '—', ec.cls) + (p.detenido ? est('Detenido', 'xd') : '') + '</span></button>';
-    if (ab && P.f && P.f.id === p.id) h += '<div class="proy-inline">' + fichaCuerpo(p) + '</div>';   // la ficha, debajo
+    if (ab && P.f && P.f.id === p.id) h += '<div class="proy-inline">' + fichaCuerpo(p, true) + '</div>';   // la ficha, debajo, sin repetir el encabezado
     return h + '</div>';
   }
   // Proyectos = el universo completo (29/10/2026): los mismos chips de Seguimiento más Finalizado
   // y Rechazado; lista plana por título (sin agrupar por cliente); al desplegar, la ficha completa.
-  var PR_FIL = SEG_FIL.concat([['finalizado', 'Finalizado', 'xg'], ['rechazado', 'Rechazado', 'xz']]);
+  var PR_FIL = SEG_FIL.slice(0, 4).concat([['finalizado', 'Finalizado', 'xg', 'c']], SEG_FIL.slice(4), [['rechazado', 'Rechazado', 'xz', 'x']]);
   function proyPasa(p, fil) {
     var c = _canonProy(p.estado_proyecto);
     if (!fil || fil === 'todos') return true;
@@ -348,14 +360,11 @@
       '<select class="fc u-wauto" id="pr-orden" aria-label="Ordenar">' +
         [['monto', 'Por monto'], ['fecha', 'Por fecha'], ['prob', 'Por probabilidad'], ['nombre', 'Por título']].map(function (o) {
           return '<option value="' + o[0] + '"' + (R.orden === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
-      '<div class="seg-chips" role="group" aria-label="Filtrar por estado">' + PR_FIL.map(function (f) {
-        return '<button class="seg-chip' + (fil === f[0] ? ' on' : '') + (f[2] ? ' c-' + f[2] : '') + '" data-pm="prchip" data-f="' + f[0] + '">' +
-          (f[2] ? '<i class="est-dot e-' + f[2] + '"></i>' : '') + f[1] + ' <b class="m">' + all.filter(function (p) { return proyPasa(p, f[0]); }).length + '</b></button>';
-      }).join('') + '</div></div>';
+      '</div>';
     var q = norm(R.q);
     var f = all.filter(function (p) { return proyPasa(p, fil); }).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0; });
-    h = htmlKpis(f) + h + '<div class="pr-cuenta">Mostrando <b class="m">' + f.length + '</b> de <b class="m">' + all.length + '</b> proyectos' +
-      (fil !== 'todos' || q ? ' · <button class="hoy-go" data-pm="prchip" data-f="todos">ver todos</button>' : '') + '</div>';
+    // sin los recuadros de totales: ya están en el Dashboard (29/10/2026)
+    h += barraFiltro(PR_FIL, fil, function (k) { return all.filter(function (p) { return proyPasa(p, k); }).length; }, 'prchip', all.length, f.length);
     if (!f.length) return h + '<div class="empty">Sin proyectos para este filtro.</div>';
     f.sort(function (a, b) {
       if (R.orden === 'nombre') return (a.nombre || '').localeCompare(b.nombre || '', 'es');
@@ -660,10 +669,24 @@
       (lista.length > 1 ? ib('izquierda', 'Proyecto anterior', 'data-pm="nav" data-dir="-1"') + '<span class="u-s11-mt m">' + (i + 1) + '/' + lista.length + '</span>' + ib('derecha', 'Proyecto siguiente', 'data-pm="nav" data-dir="1"') : '') + '</div>';
     return h + fichaCuerpo(p);
   }
-  function fichaCuerpo(p) {
+  // Acciones del proyecto según su estado (las mismas de Seguimiento, con confirmación) y su alerta general
+  function accionesYAlerta(p) {
+    var can = _canonProy(p.estado_proyecto), pid = esc(p.id), av = avisoAbono(p);
+    var bt = function (lbl, attrs) { return '<button class="btn sm bg" ' + attrs + '>' + lbl + '</button>'; };
+    var acc = can === 'rechazado'
+      ? '<a class="btn sm bp" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + ico('abrir') + ' Volver a cotizar</a>'
+      : (p.detenido ? '' : accionesProy(p).map(function (a) { return bt(a[1] + (a[0] === 'finalizado' ? ' proyecto' : ''), 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
+        (can === 'finalizado' ? '' : bt(p.detenido ? 'Reanudar proyecto' : 'Detener proyecto', 'data-pm="det-proy" data-id="' + pid + '"')) +
+        ((can === 'prospecto' || can === 'negociacion') ? '<a class="btn sm bg" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Cotizar en el CRM actual</a>' : '');
+    return (av ? '<div class="u-mb8">' + av + '</div>' : '') + (acc ? '<div class="seg-acc u-mb12">' + acc + '</div>' : '');
+  }
+  function fichaCuerpo(p, enLista) {
     var e = p.estado_proyecto || 'Prospecto', ab = P.f.tareas.filter(function (t) { return !t.closed; }).length, can = _canonProy(e);
     var tabs = [['info', 'Información', tabInfo], ['analisis', 'Análisis', tabAnalisis], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
                 ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
+    if (enLista) return '<div class="ficha-grid"><div class="card u-p0"><div class="u-p14">' + accionesYAlerta(p) +
+      '<div class="ptabs">' + tabs.map(function (t) { return '<button class="ptab' + (t[0] === P.fTab ? ' on' : '') + '" data-pm="ftab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+      (tabs.find(function (t) { return t[0] === P.fTab; }) || tabs[1])[2](p) + '</div></div>' + lateral(p) + '</div>';
     var h = '<div class="ficha-grid"><div class="card u-p0"><div class="ficha-cab">' +
       '<div class="u-row8">' + logo(p.empresa, 'emp-logo', 'emp-ini') + '<div class="u-f1m"><div class="u-s11-mt">' + esc(p.empresa) + '</div>' +
       '<div class="ficha-tit">' + esc(p.nombre) + '</div><div class="u-row8">' + est(e, colorEstadoProy(e).cls) + avisoAbono(p) + '<span class="u-s10-mt">' + esc(deDondeSale(p)) + '</span></div></div>' +
