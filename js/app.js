@@ -31,7 +31,7 @@ var MODULOS = [
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
     subs: [['meta', 'Simulador Costos Meta']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
-    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']] }
+    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] }
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
 var _recargarVista = null;

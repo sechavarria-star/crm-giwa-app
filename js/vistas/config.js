@@ -5,6 +5,8 @@
      Listas                 CotConfig (guardar_config)
      Valor hora y márgenes  CotConfig (params_cotizacion / guardar_params_cotizacion)
      Tipos de gastos        contrataciones (guardar_contratacion / borrar_contratacion)
+     Usuarios               usuarios (guardar_usuario: sólo Administración) · 29/10/2026
+     Diagnóstico            v_diag_alertas (alertas mal armadas) y pruebas de Telegram · 29/10/2026
 
    Cada lista se guarda en la clave que realmente se usa: la primera de
    «claves» que tiene valores en CotConfig (si ninguna, la primera). La
@@ -38,15 +40,17 @@
   var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %']];
   var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
-  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['telegram', 'Telegram'], ['otros', 'Más']];
-  var C = { sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '', tab: 'clientes', num: {} };
+  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
+  var C = { usu: [], admin: false, sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '', tab: 'clientes', num: {} };
 
   async function cargar() {
     var r = await Promise.all([
       db().from('cot_config').select('clave,valor,aclaracion'),
       db().rpc('params_cotizacion'),
       db().from('contrataciones').select('*').order('categoria').order('producto'),
-      db().from('v_tipo_cambio_hoy').select('valor').maybeSingle()
+      db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
+      db().from('usuarios').select('*').order('orden'),
+      db().rpc('es_admin')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     C.cfg = {}; C.desc = {};
@@ -60,6 +64,7 @@
     C.vh = r[1].data;
     ['dificultad', 'especialidad', 'mercado'].forEach(function (t) { C.vhl[t] = (C.vh[t] || []).map(function (x) { return { k: x.k, v: Number(x.v) }; }); });
     C.cont = r[2].data;
+    C.usu = r[4].data; C.admin = !!r[5].data;
     C.tc = Number(r[3].data && r[3].data.valor) || Number(C.vh.tc) || _tcDefault();
   }
 
@@ -195,6 +200,67 @@
     openM('m-cont');
   }
 
+  // ── Usuarios (guardar_usuario: sólo Administración) ─────────
+  var ROLES = ['Administracion', 'Comercial', 'Desarrollo'];
+  function htmlUsu() {
+    var si = function (b) { return b ? ico('check') : '<span class="u-c-mt">—</span>'; };
+    return '<div class="u-row8 u-mb10"><div class="hint u-f1">Quién usa el CRM. El chat de Telegram es el que recibe los avisos y el resumen diario.' +
+        (C.admin ? '' : ' Sólo Administración puede cambiarlos.') + '</div>' +
+        (C.admin ? '<button class="btn bp sm" data-cfg="usu" data-id="">' + ico('mas') + ' Nuevo usuario</button>' : '') + '</div>' +
+      '<div class="card u-p0 u-ovx"><table class="tbl"><thead><tr><th>Nombre</th><th>Mail</th><th>Rol</th><th class="u-tc">Factura</th>' +
+      '<th>Telegram</th><th class="u-tc">GIWA</th><th class="u-tc">Activo</th><th></th></tr></thead><tbody>' + C.usu.map(function (u) {
+        return '<tr' + (u.activo ? '' : ' class="u-op6"') + '><td>' + esc(u.nombre || '') + '</td><td class="u-c-mt">' + esc(u.mail || '') + '</td><td>' + esc(u.rol || '—') + '</td>' +
+          '<td class="u-tc">' + si(u.factura) + '</td><td class="m">' + (u.telegram ? esc(u.telegram) : '<span class="u-c-wa">sin chat</span>') + '</td>' +
+          '<td class="u-tc">' + si(u.es_giwa) + '</td><td class="u-tc">' + si(u.activo) + '</td>' +
+          '<td class="u-tr">' + (C.admin ? '<button class="btn bg xs btn-ico" data-cfg="usu" data-id="' + esc(u.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  function abrirUsu(id, alGuardar) {
+    var u = C.usu.find(function (x) { return x.id === id; }) || { es_giwa: true, activo: true };
+    var m = document.getElementById('m-usu');
+    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-usu'; document.body.appendChild(m); }
+    var chk = function (k, l) { return '<label class="u-row6 u-s12"><input type="checkbox" id="us-' + k + '"' + (u[k] ? ' checked' : '') + '> ' + l + '</label>'; };
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + (id ? 'Editar usuario' : 'Nuevo usuario') + '</span>' +
+      '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-usu">' + ico('cerrar') + '</button></div><div class="mb2">' +
+      '<div class="g2"><div class="fg"><label class="fl" for="us-nom">Nombre <span class="req">*</span></label><input class="fc" id="us-nom" value="' + esc(u.nombre || '') + '"></div>' +
+      '<div class="fg"><label class="fl" for="us-rol">Rol</label><select class="fc" id="us-rol">' + opts(ROLES, u.rol || 'Comercial') + '</select></div></div>' +
+      '<div class="fg"><label class="fl" for="us-mail">Mail <span class="req">*</span></label><input class="fc" id="us-mail" type="email" value="' + esc(u.mail || '') + '"></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="us-tg">Chat de Telegram</label><input class="fc" id="us-tg" placeholder="123456789" value="' + esc(u.telegram || '') + '"></div>' +
+      '<div class="fg"><label class="fl" for="us-cal">Calendario</label><input class="fc" id="us-cal" placeholder="mail del calendario" value="' + esc(u.calendario || '') + '"></div></div>' +
+      '<div class="u-row8 u-mt6">' + chk('factura', 'Factura') + chk('es_giwa', 'Es del equipo GIWA') + chk('activo', 'Activo') + '</div>' +
+      '</div><div class="mf"><button class="btn bg" data-cerrar="m-usu">Cancelar</button><button class="btn bp" id="us-ok">Guardar</button></div></div>';
+    var v = function (i) { return document.getElementById(i).value.trim(); }, c = function (i) { return document.getElementById(i).checked; };
+    document.getElementById('us-ok').onclick = async function () {
+      var r = await db().rpc('guardar_usuario', { p: { id: id || null, nombre: v('us-nom'), mail: v('us-mail'), rol: v('us-rol'), telegram: v('us-tg'),
+        calendario: v('us-cal'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo') } });
+      if (r.error) return toast(r.error.message, 'err');
+      closeM('m-usu'); toast('Usuario guardado', 'ok'); alGuardar();
+    };
+    openM('m-usu');
+  }
+
+  // ── Diagnóstico: alertas mal armadas y pruebas de Telegram ───
+  function htmlDiag() { return '<div id="dg-c"><div class="loading"><div class="spin"></div></div></div>'; }
+  async function diagPintar() {
+    var c = document.getElementById('dg-c'); if (!c) return;
+    var r = await db().from('v_diag_alertas').select('*');
+    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
+    var L = r.data;
+    c.innerHTML = '<div class="card u-mb12"><div class="u-row8"><div class="card-t u-f1">Alertas</div>' +
+        '<button class="btn bg sm" data-cfg="dg-ref">' + ico('recargar') + ' Revisar de nuevo</button>' +
+        '<button class="btn bp sm" data-cfg="dg-sinc">' + ico('repetir') + ' Rehacer alertas de facturación</button></div>' +
+        '<div class="hint">Busca alertas duplicadas, abiertas de algo que ya no se factura, sin responsable, y desarrollos con algo para facturar que no tienen alerta. ' +
+        '«Rehacer» crea las que faltan y cierra las que ya no tienen nada para facturar.</div>' +
+        (L.length ? '<div class="u-ovx u-mt10"><table class="tbl"><thead><tr><th>Problema</th><th>Alerta</th><th>Desarrollo</th><th>Detalle</th><th></th></tr></thead><tbody>' + L.map(function (x) {
+          return '<tr><td class="' + (x.problema === 'Falta la alerta' ? 'u-c-wa' : 'u-c-rd') + '">' + esc(x.problema) + '</td><td>' + (x.id ? '<span class="m">' + esc(x.id) + '</span> · ' : '') + esc(x.titulo || '') + '</td>' +
+            '<td class="m">' + esc(x.item || '—') + '</td><td class="u-s11-mt">' + esc(x.detalle || '') + '</td>' +
+            '<td class="u-tr">' + (x.id ? '<button class="btn bg xs btn-ico" data-cfg="dg-ver" data-id="' + esc(x.id) + '" data-tip="Abrir la alerta" aria-label="Abrir la alerta">' + ico('abrir') + '</button>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<div class="u-c-ok u-mt10">' + ico('check') + ' No hay alertas con problemas.</div>') + '</div>' +
+      '<div class="card"><div class="card-t">Telegram</div><div class="hint">Las pruebas te llegan sólo a vos, al chat cargado en Usuarios.</div>' +
+        '<div class="u-row8 u-mt10"><button class="btn bg sm" data-cfg="tg-probar">' + ico('chat') + ' Mandarme un mensaje de prueba</button>' +
+        '<button class="btn bg sm" data-cfg="tg-resumen">' + ico('campana') + ' Mandarme el resumen diario ahora</button></div></div>';
+  }
+
   function htmlOtros() {
     return '<div class="card"><p>Estas herramientas siguen en el CRM actual: ' +
       '<b>Plantilla Doc</b> (la usa el documento de propuesta del Cotizador), <b>Mantenimiento de datos</b> y <b>Diagnósticos</b> (reparan la planilla).</p>' +
@@ -236,9 +302,10 @@
     if (_montado !== 'config') return;            // se terminó de leer con otro módulo en pantalla
     marcarSub(C.sub);
     var cab = '<div class="page-h"><div><h2>' + SUBS.find(function (s) { return s[0] === C.sub; })[1] + '</h2>' +
-      '<div class="page-s">Configuración: listas, valor hora y tipos de gastos.</div></div></div>';
-    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, telegram: htmlTelegram, otros: htmlOtros }[C.sub])();
+      '<div class="page-s">Configuración: listas, valor hora, usuarios y diagnóstico.</div></div></div>';
+    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
     if (C.sub === 'telegram') tgPintar();
+    if (C.sub === 'diag') diagPintar();
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
   }
 
@@ -246,7 +313,7 @@
     var refrescar = async function () { await cargar(); pintar(el); };
     var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) C.sub = s;
     await abrirModulo(el, { id: 'config', texto: 'Cargando Configuración…', forzar: op && op.forzar, cargar: cargar,
-      cargado: function () { return !!C.vh; }, firma: function () { return JSON.stringify([C.cfg, C.vh, C.cont]); }, pintar: function () { pintar(el); } });
+      cargado: function () { return !!C.vh; }, firma: function () { return JSON.stringify([C.cfg, C.vh, C.cont, C.usu]); }, pintar: function () { pintar(el); } });
     var guardar = async function (fn, args, msg) {
       var r = await db().rpc(fn, args);
       if (r.error) { toast(r.error.message, 'err'); return null; }
@@ -323,6 +390,19 @@
         var rp = await db().rpc('probar_telegram');
         if (rp.error) return toast(rp.error.message, 'err');
         toast(rp.data.msg, 'ok'); return setTimeout(tgPintar, 4000);
+      }
+      if (a === 'tg-resumen') {
+        var rr = await db().rpc('telegram_resumen_mio');
+        if (rr.error) return toast(rr.error.message, 'err');
+        return toast(rr.data.msg, rr.data.ok ? 'ok' : 'err');
+      }
+      if (a === 'usu') return abrirUsu(id, refrescar);
+      if (a === 'dg-ref') return diagPintar();
+      if (a === 'dg-ver') return verTarea(id, { onSave: diagPintar });
+      if (a === 'dg-sinc') {
+        var rs = await db().rpc('sincronizar_alertas_facturacion');
+        if (rs.error) return toast(rs.error.message, 'err');
+        toast('Listo: ' + rs.data.creadas + ' creada(s), ' + rs.data.cerradas + ' cerrada(s)', 'ok'); return diagPintar();
       }
       if (a === 'cont') return abrirCont(id, refrescar);
       if (a === 'cont-del') {
