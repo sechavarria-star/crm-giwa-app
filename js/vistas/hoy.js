@@ -61,9 +61,9 @@
     var id = esc(t.id), ab = !!H.ab[t.id], fin = t.is_alert ? 'Cerrar' : 'Finalizar';
     var acc = function (a, icon, tip, cls) { return '<button class="btn bg xs btn-ico' + (cls || '') + '" data-hoy="' + a + '" data-id="' + id + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icon) + '</button>'; };
     var acciones = t.closed ? '' : ab
-      ? acc('hecho', 'check', fin, ' h-ok') + (esMia(t) ? acc('p-del', 'personas', 'Delegar') : '') + acc('p-pos', 'calendario', 'Postergar') +
+      ? acc('hecho', 'check', fin, ' h-ok') + (esMia(t) ? acc('p-del', 'personas', 'Delegar') : '') + acc('p-pos', 'arena', 'Postergar') +
         (t.is_alert ? '' : acc('p-rec', 'campana', 'Recordatorio (con aviso por Telegram)'))
-      : acc('manana', 'reloj', 'Pasar a mañana') + acc('hecho', 'check', fin, ' h-ok');
+      : acc('manana', 'manana', 'Pasar a mañana') + acc('hecho', 'check', fin, ' h-ok');
     var h = '<div class="hoy-item' + (ab ? ' ab' : '') + '"><div class="hoy-row" data-hoy="tog" data-id="' + id + '"><span class="hoy-bar ' + barra + '"></span>' +
       '<span class="chev">' + ico('derecha') + '</span>' +
       '<div class="hoy-main"><div class="hoy-t" title="' + esc(t.title) + '">' + esc(t.title) + '</div>' +
@@ -156,7 +156,7 @@
       (alertasAb.length ? sec('alertas', 'campana', 'Alertas', alertasAb.length, lista(alertasAb, ''), '', 'hoy-alertas') : '') +
       (H.kpi === 'alertas' ? '' :
         sec('ahora', 'alerta', 'Ahora', ahora.length, lista(ahora, 'Nada vencido ni para hoy.'), H.kpi ? '<button class="hoy-go" data-hoy="kpi" data-k="">ver todo</button>' : '') +
-        sec('semana', 'calendario', 'Esta semana', semana.length, lista(semana, 'Semana libre.')) +
+        sec('semana', 'lista', 'Esta semana', semana.length, lista(semana, 'Semana libre.')) +
         sec('despues', 'derecha', 'Más adelante', despues.length, lista(despues, 'Nada más adelante.'), '', '', !(H.q || H.cli || H.who || H.tipo)) +
         (H.fin ? sec('fin', 'check', 'Finalizadas', cerradas.length, lista(cerradas, 'Ninguna.')) : '')) +
       '</div><div>' +

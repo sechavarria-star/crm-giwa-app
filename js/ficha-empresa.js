@@ -229,7 +229,7 @@
         '<div class="u-f1m"><div class="emp-n">' + esc(e.nombre) + (e.alias ? ' <span class="u-s11-mt">(' + esc(e.alias) + ')</span>' : '') + '</div>' +
         '<div class="u-s11-mt">' + esc([e.rubro, e.localidad, e.provincia].filter(Boolean).join(' · ') || '—') + '</div></div>' +
         '<button class="btn bp sm" data-acc="editar" data-id="' + esc(e.id) + '">' + ico('editar') + ' Editar</button></div>';
-      h += '<div class="fe-datos">' + dato('Tier', e.tier_id) + dato('Proyectos', d.nProy ? String(d.nProy) : '') + '</div>';
+      h += '<div class="fe-datos">' + (e.tier_id ? '<div class="fe-dato"><div class="sec">Tier</div><div>' + tierChip(e.tier_id) + '</div></div>' : '') + dato('Proyectos', d.nProy ? String(d.nProy) : '') + '</div>';
       if (e.drive_interno || web) h += '<div class="u-row6 u-mt6">' +
         (e.drive_interno ? '<a class="btn bg xs" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + ico('carpeta') + ' Drive</a>' : '') +
         (web ? '<a class="btn bg xs" href="' + esc(web) + '" target="_blank" rel="noopener">' + ico('link') + ' Web</a>' : '') + '</div>';

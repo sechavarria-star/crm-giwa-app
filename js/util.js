@@ -55,3 +55,11 @@ function isoMas(n) {
   var d = new Date(); d.setDate(d.getDate() + (n || 0));
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+
+// Tier de la empresa: etiqueta con relleno, escala de azul GIWA que se intensifica con
+// el multiplicador (T1 = el más intenso). La misma en Clientes y la ficha (29/10/2026).
+function tierChip(t) {
+  var n = parseInt(String(t || '').replace(/\D/g, ''), 10);
+  if (!n) return t ? '<span class="tier-chip">' + esc(String(t)) + '</span>' : '';
+  return '<span class="tier-chip tier-' + Math.min(5, Math.max(1, n)) + '">T' + n + '</span>';
+}

@@ -79,7 +79,7 @@
   function htmlClientes() {
     var ley = D.tiers.length
       ? '<p class="u-s11-mt">Tier = tamaño del cliente; multiplica el valor hora al cotizar: ' +
-        D.tiers.map(function (t) { return esc(tierCorto(t.id)) + ' ' + esc(t.empresa || '—') + ' ×' + String(t.multiplicador).replace('.', ','); }).join(' · ') + '</p>'
+        D.tiers.map(function (t) { return tierChip(t.id) + ' ' + esc(t.empresa || '—') + ' <span class="m">×' + String(t.multiplicador).replace('.', ',') + '</span>'; }).join(' · ') + '</p>'
       : '';
     var fil = '<div class="filtros u-mb8" role="group" aria-label="Filtro">' + FILTROS.map(function (f) {
       return '<button class="ptab' + (filtro === f[0] ? ' on' : '') + '" data-filtro="' + f[0] + '">' + f[1] + '</button>';
@@ -100,11 +100,18 @@
       return '<div class="card"><div class="u-p1214">' +
         '<div class="u-row8">' + logo(e) + '<div class="u-f1m"><button class="emp-n emp-link" data-ver="' + esc(e.id) + '" data-tip="Ver la ficha">' + esc(e.nombre) + '</button>' +
           '<div class="u-s11-mt">' + esc([e.rubro, lugar].filter(Boolean).join(' · ') || '—') + '</div></div></div>' +
-        '<div class="u-row8 u-mt6">' + (e.tier_id ? '<span class="emp-tier">' + esc(tierCorto(e.tier_id)) + '</span>' : '') + estado(g.estado) + '</div>' +
+        '<div class="u-row8 u-mt6">' + tierChip(e.tier_id) + estado(g.estado) + '</div>' +
         (g.estado === 'prospecto' ? '' : '<div class="emp-plata u-mt6"><span>Contratado <b class="m m-contratado">' + fmt(g.contratado) + '</b></span>' +
           '<span>Saldo <b class="m m-pendiente">' + fmt(g.saldo) + '</b></span></div>') +
         '<div class="u-s11-mt u-mt6">Último contacto: ' + hace(g.ultimo) + '</div>' +
-        '<div class="u-s11-mt u-mt6"><span class="m">' + n + '</span> contacto' + (n !== 1 ? 's' : '') + ' · <span class="m">' + np + '</span> proyecto' + (np !== 1 ? 's' : '') + '</div>' +
+        // Los contactos, en viñetas: nombre · puesto con WhatsApp y mail (cada ícono sólo si hay dato)
+        (n ? '<ul class="emp-cons">' + consDe(e).map(function (c) {
+          var wp = String(c.telefono || '').replace(/[^0-9]/g, '');
+          return '<li><span class="u-f1m">' + esc([((c.nombre || '') + ' ' + (c.apellido || '')).trim(), c.puesto].filter(Boolean).join(' · ')) + '</span>' +
+            (wp ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') +
+            (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + ico('mail') + '</a>' : '') + '</li>';
+        }).join('') + '</ul>' : '<div class="u-s11-mt u-mt6">Sin contactos.</div>') +
+        '<div class="u-s11-mt u-mt4"><span class="m">' + np + '</span> proyecto' + (np !== 1 ? 's' : '') + '</div>' +
         '<div class="u-row6 u-mt8">' +
           '<button class="btn bg xs" data-addcon="' + esc(e.id) + '">' + ico('mas') + ' Contacto</button>' +
           '<button class="btn bg xs" data-addrs="' + esc(e.id) + '">' + ico('mas') + ' Razón social</button>' +
