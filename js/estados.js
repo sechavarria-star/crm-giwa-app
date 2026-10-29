@@ -183,15 +183,16 @@ function tareaHecha(e)   { return _canonTarea(e) === 'finalizada'; }
      · finalizado salía violeta en el navegador y GRIS en el servidor:
        otra copia espejo desincronizada
    ══════════════════════════════════════════════════════════════════════ */
-var _PALETA_EST = {
-  nueva:      { cls:'xm', color:'var(--mt)'     },   // todavía no es nada
-  negociacion:{ cls:'xw', color:'var(--wa)'     },   // se está vendiendo: naranja (22/10/2026)
-  aprobada:   { cls:'xb', color:'var(--blue)'   },   // vendido
-  curso:      { cls:'xt', color:'var(--teal)'   },   // corriendo
-  garantia:   { cls:'xs', color:'var(--slate)'  },   // post-venta: azul pizarra. Violeta queda sólo para el abono (29/10/2026)
-  finalizada: { cls:'xg', color:'var(--ok)'     },   // cerrado
-  rechazada:  { cls:'xm', color:'var(--mt)'     }    // no va: resultado, no alerta
+var _PALETA_EST = {          // paleta GIWA del 29/10/2026 (punto 9): fría, con brillo; un color por estado
+  nueva:      { cls:'xn', color:'var(--e-nueva)'  },   // violeta del logo: lo que hay que vender
+  negociacion:{ cls:'xw', color:'var(--e-negoc)'  },   // ámbar: todavía requiere gestión comercial
+  aprobada:   { cls:'xb', color:'var(--e-aprob)'  },   // celeste: listo para empezar
+  curso:      { cls:'xc', color:'var(--e-curso)'  },   // cian eléctrico: trabajo activo, el más visible
+  garantia:   { cls:'xt', color:'var(--e-garan)'  },   // turquesa: posventa, familia de Finalizado
+  finalizada: { cls:'xg', color:'var(--e-final)'  },   // verde apagado: terminado, sin protagonismo
+  rechazada:  { cls:'xz', color:'var(--e-rech)'   }    // gris azulado: histórico, nunca rojo
 };
+var _COLOR_DETENIDO = { cls:'xd', color:'var(--e-deten)' };   // amarillo + pausa: hay que revisar qué pasa
 function colorEstado(e) {
   return _PALETA_EST[_canonSol(e)] || _PALETA_EST.nueva;
 }
@@ -201,12 +202,12 @@ function colorEstado(e) {
 // que era lo que pasaba cuando eran dos ramas separadas del if.
 // Misma paleta que el desarrollo: las dos escalas son paralelas.
 var _COLOR_PROY = {
-  prospecto:  _PALETA_EST.nueva,        // gris
-  negociacion:_PALETA_EST.negociacion,  // amarillo
+  prospecto:  _PALETA_EST.nueva,        // violeta
+  negociacion:_PALETA_EST.negociacion,  // ámbar
   aprobado:   _PALETA_EST.aprobada,     // celeste
-  activo:     _PALETA_EST.curso,        // turquesa
+  activo:     _PALETA_EST.curso,        // cian
   finalizado: _PALETA_EST.finalizada,   // verde
-  rechazado:  _PALETA_EST.rechazada     // rojo
+  rechazado:  _PALETA_EST.rechazada     // gris azulado
 };
 
 function colorEstadoProy(e) { return _COLOR_PROY[_canonProy(e)] || _PALETA_EST.nueva; }

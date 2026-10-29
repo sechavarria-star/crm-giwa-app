@@ -22,7 +22,7 @@
   var pest = 'cli', filtro = 'todos', busca = '';
 
   var EST = {                       // estado del cliente → color (sufijo del Design System)
-    'prospecto': 'xm', 'detenido': 'xm', 'cliente': 'xb', 'abono activo': 'xv', 'deuda vencida': 'xr'
+    'prospecto': 'xm', 'detenido': 'xd', 'cliente': 'xb', 'abono activo': 'xv', 'deuda vencida': 'xr'
   };
   var FILTROS = [['todos', 'Todos'], ['abono', 'Con abono'], ['deuda', 'Con deuda'], ['prospecto', 'Prospectos']];
 

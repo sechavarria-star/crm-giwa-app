@@ -295,10 +295,6 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .seg-desc { display: block; font-size: 10.5px; color: var(--mt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .seg-hist { opacity: .7; font-size: 10.5px; }
 
-/* En Garantía: azul pizarra. Violeta es sólo mantenimiento/abono; gris, prospecto (29/10/2026) */
-:root { --slate: #6478a8; }
-.e-xs { background: var(--slate); }
-.t-xs { color: var(--slate); }
 
 /* Clientes · tarjetas (29/10/2026): logo fijo de 48px sin deformar, Tier en bloque gris */
 .emp-grid .emp-logo, .emp-grid .emp-ini { width: 48px; height: 48px; }
@@ -349,3 +345,43 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .con-fila:hover td { background: var(--bg3); }
 .con-tbl td { font-size: 12px; }
 .con-kv { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--b-suave); font-size: 12px; }
+
+
+/* ══ Paleta GIWA · fuente única de estados y dinero (29/10/2026, punto 9) ══════
+   Un color por estado, el mismo en el listado, la ficha, Desarrollo, Seguimiento
+   y las barras. Los usa estados.js (_PALETA_EST); ninguna pantalla pone colores a mano.
+   Familia fría con brillo, sobre el fondo #060716. El rojo queda para errores y
+   vencimientos críticos; Rechazado es gris. */
+:root {
+  --e-nueva: #A855F7;  --e-negoc: #FF9F1C;  --e-aprob: #3AB8FF;  --e-curso: #00F0FF;
+  --e-garan: #14B8A6;  --e-final: #2BA07A;  --e-rech: #5A6488;   --e-deten: #FACC15;
+  --d-contr: #3AB8FF;  --d-cobr: #2BE28A;   --d-pend: #FF9F1C;   --d-abono: #A855F7;
+  --d-neutro: #94A3B8; --d-usd: #90D5FF;
+}
+.e-xn { background: var(--e-nueva); } .t-xn { color: var(--e-nueva); }
+.e-xw { background: var(--e-negoc); } .t-xw { color: var(--e-negoc); }
+.e-xb { background: var(--e-aprob); } .t-xb { color: var(--e-aprob); }
+.e-xc { background: var(--e-curso); } .t-xc { color: var(--e-curso); }
+.e-xt { background: var(--e-garan); } .t-xt { color: var(--e-garan); }
+.e-xg { background: var(--e-final); } .t-xg { color: var(--e-final); }
+.e-xz { background: var(--e-rech); }  .t-xz { color: var(--e-rech); }
+.e-xd { background: var(--e-deten); } .t-xd { color: var(--e-deten); }
+.proy-row.e-borde-xn, .des-card.e-borde-xn { border-left-color: var(--e-nueva); }
+.proy-row.e-borde-xw, .des-card.e-borde-xw { border-left-color: var(--e-negoc); }
+.proy-row.e-borde-xb, .des-card.e-borde-xb { border-left-color: var(--e-aprob); }
+.proy-row.e-borde-xc, .des-card.e-borde-xc { border-left-color: var(--e-curso); }
+.proy-row.e-borde-xt, .des-card.e-borde-xt { border-left-color: var(--e-garan); }
+.proy-row.e-borde-xg, .des-card.e-borde-xg { border-left-color: var(--e-final); }
+.proy-row.e-borde-xz, .des-card.e-borde-xz { border-left-color: var(--e-rech); }
+.proy-row.e-borde-xd, .des-card.e-borde-xd { border-left-color: var(--e-deten); }
+/* Dinero: el verde brillante es sólo lo cobrado; el USD de referencia, celeste claro */
+.m-contratado { color: var(--d-contr); } .m-cobrado { color: var(--d-cobr); } .m-pendiente { color: var(--d-pend); }
+.m-abono { color: var(--d-abono); } .m-neutro { color: var(--d-neutro); } .m-usd { color: var(--d-usd); }
+.k-contratado { --accent: var(--d-contr); background: linear-gradient(rgba(58,184,255,.12), transparent), var(--card); }
+.k-cobrado    { --accent: var(--d-cobr);  background: linear-gradient(rgba(43,226,138,.12), transparent), var(--card); }
+.k-pendiente  { --accent: var(--d-pend);  background: linear-gradient(rgba(255,159,28,.12), transparent), var(--card); }
+.k-abono      { --accent: var(--d-abono); }
+.k-neutro, .k-negativo, .k-pipeline { --accent: var(--d-neutro); }
+.k-usd        { --accent: var(--d-usd);   background: linear-gradient(rgba(144,213,255,.12), transparent), var(--card); }
+.k-activo     { --accent: var(--e-curso); background: linear-gradient(rgba(0,240,255,.10), transparent), var(--card); }
+.k-negociacion{ --accent: var(--e-negoc); background: linear-gradient(rgba(255,159,28,.12), transparent), var(--card); }
