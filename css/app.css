@@ -431,3 +431,35 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .emp-cons li > * { vertical-align: middle; }
 .emp-cons li .u-f1m { display: inline; }
 .emp-cons .btn-ico { width: 24px; height: 24px; }
+
+/* ══ Seguimiento (29/10/2026) ════════════════════════════════════════════
+   Filtros: chips con el color de cada estado. Tarjeta: barrita del color del estado y
+   sombreado al pasar el mouse; acciones del proyecto con texto; finalizado atenuado. */
+.seg-chips { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; margin-top: 6px; }
+.seg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 14px; border: 1px solid var(--b); background: none; color: var(--mt); font: inherit; font-size: 11.5px; cursor: pointer; }
+.seg-chip .m { color: inherit; opacity: .8; }
+.seg-chip:hover { border-color: var(--b-fuerte); color: var(--tx); }
+.seg-chip.on { color: var(--tx); border-color: #3AB8FF; background: rgba(58,184,255,.10); }
+.seg-chip.c-xc.on { border-color: var(--e-curso); background: rgba(0,240,255,.10); }
+.seg-chip.c-xt.on { border-color: var(--e-garan); background: rgba(20,184,166,.12); }
+.seg-chip.c-xv.on { border-color: var(--violet); background: rgba(168,85,247,.12); }
+.seg-chip.c-xb.on { border-color: var(--e-aprob); background: rgba(58,184,255,.10); }
+.seg-chip.c-xw.on { border-color: var(--e-negoc); background: rgba(255,159,28,.10); }
+.seg-chip.c-xn.on { border-color: var(--e-nueva); background: rgba(168,85,247,.12); }
+.seg-chip.c-xd.on { border-color: var(--e-deten); background: rgba(250,204,21,.10); }
+.seg-card { border-left: 3px solid var(--b); transition: box-shadow .15s, background .15s; }
+.seg-card:hover { box-shadow: 0 0 0 1px rgba(58,184,255,.35), 0 6px 18px rgba(0,0,0,.35); }
+.seg-card.e-borde-xn { border-left-color: var(--e-nueva); } .seg-card.e-borde-xw { border-left-color: var(--e-negoc); }
+.seg-card.e-borde-xb { border-left-color: var(--e-aprob); } .seg-card.e-borde-xc { border-left-color: var(--e-curso); }
+.seg-card.e-borde-xt { border-left-color: var(--e-garan); } .seg-card.e-borde-xg { border-left-color: var(--e-final); }
+.seg-card.e-borde-xd { border-left-color: var(--e-deten); }
+.seg-nom { font-size: 13.5px; font-weight: 600; color: var(--tx); }
+.seg-porque { opacity: .9; }
+.seg-acc { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg-acc .btn { font-size: 11px; padding: 4px 10px; }
+.seg-acc .seg-rev-on { color: var(--e-final); border-color: var(--e-final); }
+.seg-dev.fin .seg-dev-t { color: var(--mt); }
+.seg-dev.fin { opacity: .7; }
+.seg-dev .btn-ico { width: 22px; height: 22px; }     /* el ícono no agranda la fila: mismo espacio hasta la línea de cobro */
+.seg-devs .seg-sub { margin-top: -2px; margin-bottom: 4px; }
+.des-card.e-borde-xg .dev-tit { color: var(--mt); }

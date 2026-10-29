@@ -29,7 +29,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'seg',
-            seg: { fil: 'vivos', q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
+            seg: { fil: 'todos', q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
             f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'seg' };
   var CARRUSEL = 3;   // más de esto por cliente → carrusel
   var SUBS = [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']];   // Tareas vive en Hoy (29/10/2026)
@@ -62,7 +62,7 @@
   function yo() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').trim().toLowerCase(); }
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
   // Finalizado (verde) lleva además el tilde: así no se confunde con Activo/En curso (turquesa), sin tocar los colores
-  function est(txt, cls) { return '<span class="est t-' + cls + '"><i class="est-dot e-' + cls + '"></i>' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(txt || '—') + '</span>'; }
+  function est(txt, cls) { return '<span class="est t-' + cls + '"><i class="est-dot e-' + cls + '"></i>' + esc(txt || '—') + '</span>'; }   // sin tilde en Finalizado: confundía (29/10/2026)
   // Abono por vencer (29/10/2026): mantenimiento vigente en su última cuota o a menos
   // de 30 días de su fecha de fin. Va en rojo en el encabezado: antes vencía en silencio.
   function abonoPorVencer(p) {
@@ -159,16 +159,21 @@
   var AVISO_ALERTAS = 'Revisá «Faltan recordatorios» en Administración: los de este cambio se crean desde ahí.';
 
   // ══ SEGUIMIENTO · tarjetas por cliente ══════════════════════
+  // Filtros de Seguimiento (29/10/2026): los estados reales del proyecto, más dos condiciones
+  // de Activo (En garantía / En mantenimiento) y Detenido. Rechazado y Finalizado van en Proyectos.
+  var SEG_FIL = [['todos', 'Todos', ''], ['activo', 'Activo', 'xc'], ['garantia', 'En garantía', 'xt'], ['mant', 'En mantenimiento', 'xv'],
+                 ['aprobado', 'Aprobado', 'xb'], ['negociacion', 'Negociación', 'xw'], ['prospecto', 'Prospecto', 'xn'], ['det', 'Detenido', 'xd']];
   function segPasa(p, fil) {
     var c = _canonProy(p.estado_proyecto);
-    if (c === 'rechazado') return false;           // lo rechazado se ve sólo en Proyectos
-    switch (fil) {
-      case 'act': return esProyActivo(p);
-      case 'pipe': return esProyPipeline(p);
-      case 'det': return esProyDetenido(p);
-      case 'fin': return esProyFinalizado(p);
-    }
-    return !esProyFinalizado(p);                    // en marcha
+    if (c === 'rechazado' || c === 'finalizado') return false;
+    if (fil === 'det') return esProyDetenido(p);
+    if (fil === 'todos' || !fil) return true;
+    if (esProyDetenido(p)) return false;
+    var vivos = (p.items || []).filter(function (it) { return !it.detenido && ['curso', 'garantia'].indexOf(_canonSol(it.estado)) >= 0; });
+    if (fil === 'garantia') return c === 'activo' && vivos.some(function (it) { return _canonSol(it.estado) === 'garantia'; });
+    if (fil === 'mant') return c === 'activo' && vivos.length > 0 && vivos.every(esMant) &&
+      (p.items || []).filter(function (it) { return !esMant(it); }).every(function (it) { return ['finalizada', 'rechazada'].indexOf(_canonSol(it.estado)) >= 0; });
+    return c === fil;
   }
   function desp(p, k, tit, cuerpo, der) {
     var key = p.id + ':' + k;
@@ -178,19 +183,20 @@
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e), ec = colorEstadoProy(e);
     var rev = P.seg.rev.indexOf(p.id) >= 0, pid = esc(p.id);
     var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; });
-    var h = '<div class="seg-card' + (p.detenido ? ' det' : '') + (rev ? ' rev' : '') + '">';
-    // Encabezado (29/10/2026, punto 10.B.7): el título abre la ficha; arriba a la derecha el
-    // estado y, debajo, sus acciones (menos destacadas, con confirmación) y ↗ (ficha completa).
-    h += '<div class="seg-h"><div class="u-f1m"><button class="seg-nom seg-nom-btn" data-pm="ficha" data-id="' + pid + '" data-tip="Abrir la ficha">' + esc(p.nombre || '—') + '</button>' +
+    // Tarjeta (29/10/2026): barrita al costado con el color del estado; el estado arriba a la
+    // derecha; el «por qué» en su color; las acciones del proyecto, con texto y confirmación.
+    var bc = p.detenido ? 'xd' : ec.cls;
+    var h = '<div class="seg-card e-borde-' + bc + (p.detenido ? ' det' : '') + (rev ? ' rev' : '') + '">';
+    h += '<div class="seg-h"><div class="u-f1m"><div class="seg-nom">' + esc(p.nombre || '—') + '</div>' +
       (p.owner ? '<div class="u-s10-mt">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="seg-der"><div class="seg-der-est">' + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xd') : '') + '</div>' +
-      '<div class="seg-der-acc">' +
-      accionesProy(p).map(function (a) { return ib(a[2], a[1] + ' el proyecto', 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"', 'seg-acc-est'); }).join('') +
-      (can === 'finalizado' || can === 'rechazado' ? '' : ib(p.detenido ? 'play' : 'pausa', p.detenido ? 'Reanudar el proyecto' : 'Detener el proyecto', 'data-pm="det-proy" data-id="' + pid + '"', 'seg-acc-est')) +
-      ib('abrir', 'Abrir la ficha completa del proyecto', 'data-pm="ficha" data-id="' + pid + '"') + '</div></div></div>';
+      '<div class="seg-der"><div class="seg-der-est">' + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xd') : '') + '</div></div></div>';
     var av = avisoAbono(p); if (av) h += '<div class="seg-aviso">' + av + '</div>';   // los avisos, en su línea: no compiten con el estado
-    var pq = porQue(p, can); if (pq) h += '<div class="seg-porque">' + esc(pq) + '</div>';
-    h += rielVista(p);
+    var pq = porQue(p, can); if (pq) h += '<div class="seg-porque t-' + bc + '">' + esc(pq) + '</div>';
+    var bt = function (lbl, attrs, cls) { return '<button class="btn sm ' + (cls || 'bg') + '" ' + attrs + '>' + lbl + '</button>'; };
+    h += '<div class="seg-acc">' + bt(ico('abrir') + ' Ir al proyecto', 'data-pm="ficha" data-id="' + pid + '"') +
+      (p.detenido ? '' : accionesProy(p).map(function (a) { return bt(a[1] + (a[0] === 'finalizado' ? ' proyecto' : ''), 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
+      (can === 'finalizado' || can === 'rechazado' ? '' : bt(p.detenido ? 'Reanudar proyecto' : 'Detener proyecto', 'data-pm="det-proy" data-id="' + pid + '"')) +
+      bt(rev ? 'Volver a su lugar' : 'Ya lo revisé', 'data-pm="rev" data-id="' + pid + '" title="' + (rev ? 'Vuelve a su lugar en la lista' : 'Lo pasa al final de la lista de este cliente') + '"', rev ? 'bg seg-rev-on' : 'bg') + '</div>';
     var fila = function (l, v, cls) { return '<div class="seg-kv"><span>' + l + '</span><b class="' + cls + '">' + v + '</b></div>'; };
     if (can === 'prospecto' || can === 'negociacion') {
       var cot = Number(p.monto_cotizado) || 0, env = _pd(p.fecha_envio) || (can === 'negociacion' ? _pd(p.fecha_propuesta) : null);
@@ -201,11 +207,12 @@
     if (its.length) {
       h += '<div class="sec seg-s">Desarrollos</div><div class="seg-devs">';
       its.forEach(function (it) {
-        var mant = esMant(it), m = '', cls = it.detenido ? 'xd' : colorEstado(it.estado).cls;
-        h += '<div class="seg-dev' + (it.detenido ? ' det' : '') + '"><i class="est-dot e-' + cls + '"></i>' +
+        // El proyecto se DETIENE; el desarrollo se PAUSA (independiente: ej. un abono que todavía no arranca)
+        var mant = esMant(it), m = '', fin = _canonSol(it.estado) === 'finalizada', pd = p.detenido || it.detenido, cls = pd ? 'xd' : colorEstado(it.estado).cls;
+        h += '<div class="seg-dev' + (pd ? ' det' : '') + (fin ? ' fin' : '') + '"><i class="est-dot e-' + cls + '"></i>' +
           '<span class="seg-dev-t dev-tit" title="' + esc(it.titulo || '') + '">' + (mant ? ico('repetir') + ' ' : '') + esc(it.titulo || it.tipo || '—') + '</span>' +
-          (p.detenido || it.detenido ? '' : botonesDes(it, true)) +
-          '<span class="dev-est t-' + cls + '">' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(it.estado || '—') + (it.detenido ? ' · detenido' : '') + '</span></div>';
+          (pd ? '' : botonesDes(it, true)) +
+          '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (p.detenido ? ' · detenido por el proyecto' : it.detenido ? ' · pausado' : '') + '</span></div>';
         if (esGanado(it.estado)) {
           if (!mant) {
             var tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
@@ -262,16 +269,15 @@
     var otros = cs.filter(function (c) { return !vistos[c.id]; }).slice(0, 3);
     h += desp(p, 'otros', 'Otros comentarios <span class="seg-mono">' + otros.length + '</span>', otros.length ? otros.map(comLinea).join('') : '<div class="u-s10-mt">Sin comentarios.</div>');
     if (auto.length) h += desp(p, 'hist', 'Historial <span class="seg-mono">' + auto.length + '</span>', '<div class="seg-hist">' + auto.map(comLinea).join('') + '</div>');
-    h += '<div class="seg-nota"><input class="fc" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">' +
-      ib('revisado', rev ? 'Revisado · tocá para volver a su lugar' : 'Ya revisado: mandarlo al final', 'data-pm="rev" data-id="' + pid + '"', rev ? 'seg-rev-on' : '') + '</div>';
+    h += '<div class="seg-nota"><input class="fc" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido"></div>';
     return h + '</div>';
   }
   function htmlSeg() {
     var S = P.seg, all = P.proys;
-    var fil = [['vivos', 'En marcha'], ['act', 'Activos'], ['pipe', 'Pipeline'], ['det', 'Detenidos'], ['fin', 'Finalizados']];
     var h = '<div class="seg-bar"><input class="fc u-f1" id="seg-q" placeholder="Buscar cliente o proyecto…" aria-label="Buscar" value="' + esc(S.q) + '">' +
-      '<div class="filtros" role="group" aria-label="Filtro">' + fil.map(function (f) {
-        return '<button class="ptab' + (S.fil === f[0] ? ' on' : '') + '" data-pm="segfil" data-f="' + f[0] + '">' + f[1] + ' <b class="m">' + all.filter(function (p) { return segPasa(p, f[0]); }).length + '</b></button>';
+      '<div class="seg-chips" role="group" aria-label="Filtrar por estado">' + SEG_FIL.map(function (f) {
+        return '<button class="seg-chip' + (S.fil === f[0] ? ' on' : '') + (f[2] ? ' c-' + f[2] : '') + '" data-pm="segfil" data-f="' + f[0] + '">' +
+          (f[2] ? '<i class="est-dot e-' + f[2] + '"></i>' : '') + f[1] + ' <b class="m">' + all.filter(function (p) { return segPasa(p, f[0]); }).length + '</b></button>';
       }).join('') + '</div></div>';
     var q = norm(S.q);
     var list = all.filter(function (p) { return segPasa(p, S.fil); }).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0; });
@@ -558,13 +564,14 @@
       var sub = [it.tipo_nombre || it.tipo, it.modelo_nombre || it.modelo].filter(Boolean).join(' · ');
       if (rec) { var cubre = (it.mant_de_ids || []).map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? (d.titulo || d.id) : ''; }).filter(Boolean); if (cubre.length) sub += ' · cubre ' + cubre.join(', '); }
       var cls = det ? 'xd' : colorEstado(it.estado).cls;
-      var h = '<details class="des-card e-borde-' + (det ? 'xd' : vivo ? cls : 'xm') + (det || !vivo ? ' apagado' : '') + '"' + (P.fAb[it.id] !== undefined ? (P.fAb[it.id] ? ' open' : '') : ((lista.length === 1 || can === 'curso' || can === 'garantia') ? ' open' : '')) + ' data-des="' + esc(it.id) + '">' +
+      // Finalizado: verde apagado y atenuado, igual que en Seguimiento (29/10/2026)
+      var h = '<details class="des-card e-borde-' + (det ? 'xd' : vivo || can === 'finalizada' ? cls : 'xm') + (det || !vivo ? ' apagado' : '') + '"' + (P.fAb[it.id] !== undefined ? (P.fAb[it.id] ? ' open' : '') : ((lista.length === 1 || can === 'curso' || can === 'garantia') ? ' open' : '')) + ' data-des="' + esc(it.id) + '">' +
         '<summary class="des-h"><div class="u-row8"><div class="u-f1m"><div class="dev-tit">' + (rec ? ico('repetir') + ' ' : '') + esc(it.titulo || it.descripcion || '—') + '</div>' +
         '<div class="dev-sub">' + esc(sub) + '</div></div>' +
-        (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' : ib(it.detenido ? 'play' : 'pausa', it.detenido ? 'Reanudar este desarrollo' : 'Detener este desarrollo', 'data-pm="det-des" data-id="' + esc(it.id) + '"')) +
+        (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' : ib(it.detenido ? 'play' : 'pausa', it.detenido ? 'Reanudar este desarrollo' : 'Pausar este desarrollo', 'data-pm="det-des" data-id="' + esc(it.id) + '"')) +
         ib('editar', 'Ver o editar el desarrollo', 'data-pm="edit-des" data-id="' + esc(it.id) + '"') +
         (det ? '' : botonesDes(it, false)) +
-        '<span class="dev-est t-' + cls + '">' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(it.estado || '—') + (det ? ' · detenido' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
+        '<span class="dev-est t-' + cls + '">' + esc(it.estado || '—') + (p.detenido ? ' · detenido por el proyecto' : det ? ' · pausado' : '') + '</span></div>' + (det ? '' : pasosDes(it.estado, false)) + '</summary><div class="des-b">';
       // Contratado, cobrado y pendiente van sólo en el lateral: acá no se repiten (29/10/2026)
       h += '<div class="seg-linea u-mt6">';
       if (rec) {
@@ -944,8 +951,8 @@
       }
       if (a === 'edit-des') { ev.preventDefault(); return abrirDesarrollo(id, { onSave: refrescar }); }
       if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id);
-        return ask(dd.detenido ? '¿Reanudar este desarrollo?' : '¿Detener este desarrollo? Queda marcado y griseado.', dd.detenido ? 'Reanudar' : 'Detener').then(function (ok) {
-          if (ok) hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo detenido'); }); }
+        return ask(dd.detenido ? '¿Reanudar este desarrollo?' : '¿Pausar este desarrollo? No cambia el estado del proyecto.', dd.detenido ? 'Reanudar' : 'Pausar').then(function (ok) {
+          if (ok) hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo pausado'); }); }
       if (a === 'inline') {
         ev.preventDefault();
         if (P.inline === id) { P.inline = null; return pintar(el); }
@@ -992,7 +999,11 @@
         if (tr) tr.scrollBy({ left: Number(b.getAttribute('data-dir')) * tr.clientWidth * 0.9, behavior: 'smooth' });
         return;
       }
-      if (a === 'rev') { var i = P.seg.rev.indexOf(id); if (i >= 0) P.seg.rev.splice(i, 1); else P.seg.rev.push(id); return pintar(el); }
+      if (a === 'rev') {
+        var i = P.seg.rev.indexOf(id);
+        return ask(i >= 0 ? '¿Vuelve a su lugar en la lista?' : '¿Ya lo revisaste? Pasa al final de la lista de este cliente.', i >= 0 ? 'Volver a su lugar' : 'Ya lo revisé').then(function (ok) {
+          if (!ok) return; if (i >= 0) P.seg.rev.splice(i, 1); else P.seg.rev.push(id); pintar(el); });
+      }
       if (a === 'tarea') return verTarea(id, alGuardar);
       if (a === 'nueva-tarea') return nuevaTarea({ projectId: id }, alGuardar);
       if (a === 'prfil') {

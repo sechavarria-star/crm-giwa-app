@@ -38,3 +38,18 @@ Idioma: español rioplatense, informal. Respuestas cortas.
   mostrando los archivos viejos. Volver atrás = revertir el commit.
 - Una pantalla vive en un solo lugar: mientras se pasa, no se cambia en el Apps Script.
 - Antes de pasar una pantalla, cada número tiene que dar igual que en el Apps Script.
+
+## Estados de proyectos y desarrollos (29/10/2026)
+- Desarrollo: Nuevo · Aprobado · En Curso · En Garantía · Finalizado · Rechazado (`estados.js`, `_canonSol`).
+- El estado del proyecto SALE de sus desarrollos (`calcularEstadoDesde`, misma cascada que el Apps Script):
+  1 Rechazado si todos rechazados · 2 Activo si alguno En Curso o En Garantía · 3 Finalizado si todos
+  finalizados o rechazados · 4 Aprobado si hay algo ganado y nada ejecutándose · 5 Negociación si se envió
+  la propuesta · 6 Prospecto. «Activo» no se elige: aparece al arrancar un desarrollo.
+- Detenido NO es un estado: es una marca. El PROYECTO se detiene (`proyectos.detenido`); el DESARROLLO se
+  pausa (`desarrollos.detenido`, en pantalla «Pausado»), independiente (ej. un abono que no arranca).
+  Con el proyecto detenido, sus desarrollos se ven «detenido por el proyecto»; al reanudarlo cada uno vuelve
+  a lo que tenía. Ninguna de las dos marcas cambia el estado calculado (no hay ciclo).
+- Finalizar el proyecto cierra todos sus desarrollos (`finalizar_proyecto`). Rechazar, también (`rechazar_proyecto`).
+- Seguimiento filtra por: Activo · En garantía (Activo con algo en garantía) · En mantenimiento (Activo donde lo
+  único vivo es el mantenimiento) · Aprobado · Negociación · Prospecto · Detenido. Finalizado y Rechazado, en Proyectos.
+- Colores: un solo mapa (`_PALETA_EST` + tokens `--e-*` en `app.css`). Ninguna pantalla pone colores a mano.
