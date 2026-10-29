@@ -63,6 +63,22 @@
   function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
   // Finalizado (verde) lleva además el tilde: así no se confunde con Activo/En curso (turquesa), sin tocar los colores
   function est(txt, cls) { return '<span class="est t-' + cls + '"><i class="est-dot e-' + cls + '"></i>' + (cls === 'xg' ? ico('check') + ' ' : '') + esc(txt || '—') + '</span>'; }
+  // Abono por vencer (29/10/2026): mantenimiento vigente en su última cuota o a menos
+  // de 30 días de su fecha de fin. Va en rojo en el encabezado: antes vencía en silencio.
+  function abonoPorVencer(p) {
+    var hoy = _pd(isoMas(0));
+    return (p.items || []).filter(function (it) {
+      if (!esMant(it) || it.detenido || !esGanado(it.estado) || _canonSol(it.estado) === 'finalizada') return false;
+      var d = Number(it.duracion) || 12, cf = Number(it.cuotas_facturadas) || 0, fin = _pd(it.fecha_fin);
+      return d - cf <= 1 || (fin && (fin - hoy) / 864e5 < 30);
+    });
+  }
+  // Comentario que escribe el sistema, no una persona: delegar, procesar, posponer, cerrar, IPC
+  function esAuditoria(c) { return /^(delegada|viene de|procesada|pospuesta|reprogramada|cerrada|finalizada|ipc|ajuste ipc)\b/i.test(String(c.texto || '').trim()); }
+  function avisoAbono(p) {
+    var v = abonoPorVencer(p); if (!v.length) return '';
+    return '<span class="badge-crit" title="' + esc(v.map(function (it) { return it.titulo || it.id; }).join(' · ')) + '">' + ico('alerta') + ' Abono por vencer</span>';
+  }
   // El chevron de todos los desplegables: el mismo ícono de línea, gira al abrir (app.css · .chev)
   function chev() { return '<span class="chev">' + ico('derecha') + '</span>'; }
   // botón-ícono; el color del hover dice el resultado (check verde, cerrar gris)
@@ -165,7 +181,7 @@
     var h = '<div class="seg-card' + (p.detenido ? ' det' : '') + (rev ? ' rev' : '') + '">';
     h += '<div class="seg-h"><div class="u-f1m"><div class="seg-nom">' + esc(p.nombre || '—') + '</div>' +
       (p.owner ? '<div class="u-s10-mt">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="seg-hacc">' + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xm') : '') +
+      '<div class="seg-hacc">' + avisoAbono(p) + est(e, ec.cls) + (p.detenido ? est('Detenido', 'xm') : '') +
       (can === 'finalizado' || can === 'rechazado' ? '' : ib(p.detenido ? 'play' : 'pausa', p.detenido ? 'Reanudar el proyecto' : 'Detener el proyecto', 'data-pm="det-proy" data-id="' + pid + '"')) +
       accionesProy(p).map(function (a) { return ib(a[2], a[1] + ' el proyecto', 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('') +
       ib('abrir', 'Abrir la ficha del proyecto', 'data-pm="ficha" data-id="' + pid + '"') + '</div></div>';
@@ -222,15 +238,19 @@
       }).join('');
       h += desp(p, 'mod', 'Módulos <span class="seg-mono">' + listas.length + '/' + og.length + '</span>', mh);
     }
-    // Tareas abiertas, con sus comentarios debajo. Se abren en su ficha.
+    // Tareas abiertas: primero qué hay que hacer (título y descripción), después lo
+    // que comentó la gente. Los comentarios automáticos (delegada, procesada, IPC…)
+    // van aparte, en «Historial», con menos peso (29/10/2026).
     var ta = tareasAbiertas(p).sort(function (a, b) { return String(a.fecha_vencimiento || '9999').localeCompare(String(b.fecha_vencimiento || '9999')); });
     var nv = ta.filter(vencida).length, cs = p.comentarios || [], vistos = {}, th = '';
+    var auto = cs.filter(esAuditoria); auto.forEach(function (c) { vistos[c.id] = 1; });
     ta.slice(0, 3).forEach(function (x) {
       var f = _pd(x.fecha_vencimiento), xid = esc(x.id);
-      th += '<div class="seg-tar"><span class="u-f1m"><span class="seg-ell" title="' + esc(x.titulo || '') + '">' + esc(x.titulo || '—') + '</span></span>' +
+      th += '<div class="seg-tar"><span class="u-f1m"><span class="seg-ell" title="' + esc(x.titulo || '') + '">' + esc(x.titulo || '—') + '</span>' +
+        (x.descripcion ? '<span class="seg-desc" title="' + esc(x.descripcion) + '">' + esc(x.descripcion) + '</span>' : '') + '</span>' +
         (f ? '<span class="td-due' + (vencida(x) ? ' late' : '') + '">' + ico('calendario') + ff(f) + '</span>' : '') +
         ib('chat', 'Ver, comentar, finalizar o delegar', 'data-pm="tarea" data-id="' + xid + '"') + '</div>';
-      cs.filter(function (c) { return c.tarea_id && c.tarea_id === x.id; }).slice(0, 2).forEach(function (c) { vistos[c.id] = 1; th += '<div class="seg-sub">' + comLinea(c) + '</div>'; });
+      cs.filter(function (c) { return !vistos[c.id] && c.tarea_id && c.tarea_id === x.id; }).slice(0, 2).forEach(function (c) { vistos[c.id] = 1; th += '<div class="seg-sub">' + comLinea(c) + '</div>'; });
     });
     if (ta.length > 3) th += '<div class="u-s10-mt">+' + (ta.length - 3) + ' más</div>';
     if (!ta.length) th += '<div class="u-s10-mt">Sin tareas pendientes.</div>';
@@ -239,6 +259,7 @@
       '<div class="seg-tars">' + th + '</div>', ib('mas', 'Nueva tarea de este proyecto', 'data-pm="nueva-tarea" data-id="' + pid + '"'));
     var otros = cs.filter(function (c) { return !vistos[c.id]; }).slice(0, 3);
     h += '<div class="sec seg-s seg-otros">Otros comentarios</div>' + (otros.length ? otros.map(comLinea).join('') : '<div class="u-s10-mt">Sin comentarios.</div>');
+    if (auto.length) h += desp(p, 'hist', 'Historial <span class="seg-mono">' + auto.length + '</span>', '<div class="seg-hist">' + auto.map(comLinea).join('') + '</div>');
     h += '<div class="seg-nota"><input class="fc" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">' +
       ib('revisado', rev ? 'Revisado · tocá para volver a su lugar' : 'Ya revisado: mandarlo al final', 'data-pm="rev" data-id="' + pid + '"', rev ? 'seg-rev-on' : '') + '</div>';
     return h + '</div>';
@@ -445,7 +466,7 @@
     if (fo.fecha) h += fila(fo.faltan ? 'Fin de obra (parcial)' : 'Fin de obra', ff(fo.fecha), '',
       fo.faltan ? 'última fecha cargada · ' + fo.faltan + ' desarrollo' + (fo.faltan === 1 ? '' : 's') + ' sin fecha de fin' : 'todos los desarrollos entregados');
     else if (devs.length) h += fila('Fin de obra', 'Sin calcular', 'u-c-mt', fo.faltan + ' desarrollo' + (fo.faltan === 1 ? '' : 's') + ' sin fecha de fin');
-    if (gar) { var q = mFaltan(gar); h += fila('Garantía', ff(gar), q < 0 ? 'u-c-mt' : 't-xt', garDias + ' días' + (q < 0 ? ' · vencida' : ' · quedan ' + q)); }
+    if (gar) { var q = mFaltan(gar); h += fila('Garantía', ff(gar), q < 0 ? 'u-c-mt' : 't-xs', garDias + ' días' + (q < 0 ? ' · vencida' : ' · quedan ' + q)); }
     if (fm.fecha) h += fila('Fin de mantenimiento', ff(fm.fecha), 't-xv', fm.totales ? 'va por la cuota ' + fm.cobradas + ' de ' + fm.totales : '');
     return h;
   }
@@ -571,17 +592,21 @@
     var ab = F.tareas.filter(function (t) { return !t.closed; }).sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
     var tid = {}; F.tareas.forEach(function (t) { tid[t.id] = t; });
     h += ab.length ? ab.map(function (t) {
-      var cs = F.coms.filter(function (c) { return c.tarea_id === t.id; }).slice(0, 2);
+      var cs = F.coms.filter(function (c) { return c.tarea_id === t.id && !esAuditoria(c); }).slice(0, 2);
       return '<div class="seg-tar"><span class="u-f1m"><span class="seg-ell u-fw6" title="' + esc(t.title) + '">' + esc(t.title) + '</span>' +
-        '<span class="u-s10-mt"> · ' + esc(crmLista(t.assignees).map(nombre).join(', ') || 'sin responsable') + '</span></span>' +
+        '<span class="u-s10-mt"> · ' + esc(crmLista(t.assignees).map(nombre).join(', ') || 'sin responsable') + '</span>' +
+        (t.detail ? '<span class="seg-desc" title="' + esc(t.detail) + '">' + esc(t.detail) + '</span>' : '') + '</span>' +
         (t.due ? '<span class="td-due' + (t.overdue ? ' late' : '') + '">' + ico('calendario') + ff(t.due) + '</span>' : '') +
         ib('chat', 'Ver, comentar, finalizar o delegar', 'data-pm="tarea" data-id="' + esc(t.id) + '"') + '</div>' +
         cs.map(function (c) { return '<div class="seg-sub">' + comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }) + '</div>'; }).join('');
     }).join('') : '<div class="u-s10-mt">Sin tareas pendientes.</div>';
-    var otros = F.coms.filter(function (c) { return !c.tarea_id || !tid[c.tarea_id]; });
+    var otros = F.coms.filter(function (c) { return (!c.tarea_id || !tid[c.tarea_id]) && !esAuditoria(c); });
+    var auto = F.coms.filter(esAuditoria);   // delegada, procesada, IPC…: aparte y con menos peso (29/10/2026)
     h += '<div class="sec u-mt10">Otros comentarios</div>' +
       '<div class="seg-nota"><input class="fc" data-segnota="' + esc(p.id) + '" placeholder="Comentar el proyecto y Enter…" aria-label="Comentar el proyecto"></div>' +
       (otros.length ? otros.slice(0, 10).map(function (c) { return comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }); }).join('') : '<div class="u-s10-mt">Sin comentarios.</div>');
+    if (auto.length) h += '<details class="desp plano u-mt10"><summary>' + chev() + '<span class="u-f1m">Historial <span class="seg-mono">' + auto.length + '</span></span></summary>' +
+      '<div class="seg-hist">' + auto.slice(0, 20).map(function (c) { return comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }); }).join('') + '</div></details>';
     return h;
   }
   // Análisis del cliente (getAnalisisCliente): lo que guardó el Cotizador, no se recalcula
@@ -634,7 +659,7 @@
       (lista.length > 1 ? ib('izquierda', 'Proyecto anterior', 'data-pm="nav" data-dir="-1"') + '<span class="u-s11-mt m">' + (i + 1) + '/' + lista.length + '</span>' + ib('derecha', 'Proyecto siguiente', 'data-pm="nav" data-dir="1"') : '') + '</div>';
     h += '<div class="ficha-grid"><div class="card u-p0"><div class="ficha-cab">' +
       '<div class="u-row8">' + logo(p.empresa, 'emp-logo', 'emp-ini') + '<div class="u-f1m"><div class="u-s11-mt">' + esc(p.empresa) + '</div>' +
-      '<div class="ficha-tit">' + esc(p.nombre) + '</div><div class="u-row8">' + est(e, colorEstadoProy(e).cls) + '<span class="u-s10-mt">' + esc(deDondeSale(p)) + '</span></div></div>' +
+      '<div class="ficha-tit">' + esc(p.nombre) + '</div><div class="u-row8">' + est(e, colorEstadoProy(e).cls) + avisoAbono(p) + '<span class="u-s10-mt">' + esc(deDondeSale(p)) + '</span></div></div>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Recotizar, renovar, editar, mejora y horas de soporte">' + ico('abrir') + ' Cotizar en el CRM actual</a></div>' + riel(p) + '</div>' +
       '<div class="u-p14"><div class="ptabs">' + tabs.map(function (t) { return '<button class="ptab' + (t[0] === P.fTab ? ' on' : '') + '" data-pm="ftab" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
       (tabs.find(function (t) { return t[0] === P.fTab; }) || tabs[1])[2](p) + '</div></div>' + lateral(p) + '</div>';
@@ -689,6 +714,9 @@
     $e('ep-est').innerHTML = estadosProyecto().filter(function (o) { return o === act || puedeEstado(p, o).ok; })
       .map(function (o) { return '<option' + (o === act ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
     $e('ep-prob').value = p.probabilidad || 50; $e('ep-fecha').value = p.fecha_propuesta ? String(p.fecha_propuesta).slice(0, 10) : '';
+    // Aprobado o activo: nombre, empresa y lo comercial quedan fijos (29/10/2026). IPC y fechas van por su lado.
+    var fijo = ['aprobado', 'activo'].indexOf(_canonProy(act)) >= 0;
+    ['ep-nom', 'ep-emp', 'ep-prob', 'ep-fecha'].forEach(function (id) { $e(id).disabled = fijo; });
     openM('m-eproy');
     return new Promise(function (res) {
       $e('ep-ok').onclick = function () {

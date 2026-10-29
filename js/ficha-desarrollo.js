@@ -82,7 +82,7 @@
   function pintarMods() {
     var porEtapa = {}, orden = [];
     F.cat.forEach(function (m) { var e = m.etapa || 'Otros'; if (!porEtapa[e]) { porEtapa[e] = []; orden.push(e); } porEtapa[e].push(m); });
-    var dis = F.bloq ? ' disabled' : '';
+    var dis = F.bloq || F.vivo ? ' disabled' : '';
     $('fd-mods').innerHTML = orden.length ? orden.map(function (e) {
       return '<div class="u-mb12"><div class="fl">' + esc(e) + '</div>' + porEtapa[e].map(function (m) {
         return '<label class="u-row6 u-mt4' + (m.padre ? ' fd-hija' : '') + '"><input type="checkbox" data-mod="' + esc(m.id) + '"' + (F.sel[m.id] ? ' checked' : '') + dis + '> ' +
@@ -119,6 +119,8 @@
       var pr = await db().from('proyectos').select('empresa_id').eq('id', d.proyecto_id).maybeSingle();
       F.d = d; F.emp = (pr.data && pr.data.empresa_id) || '';
       F.bloq = /finaliz|cerrad|cancel|rechaz/i.test(String(d.estado_id || '').normalize('NFD').replace(/[̀-ͯ]/g, ''));
+      // Aprobado, en curso o en garantía: lo vendido no se toca; sólo el ajuste IPC (29/10/2026)
+      F.vivo = !F.bloq && ['aprobada', 'curso', 'garantia'].indexOf(_canonSol(d.estado_id || '')) >= 0;
       $('fd-tit').textContent = 'Desarrollo · ' + d.id;
       $('fd-tipo').innerHTML = r[1].data.map(function (t) { return '<option value="' + esc(t.id) + '"' + (t.id === d.tipo_id ? ' selected' : '') + '>' + esc(t.nombre) + '</option>'; }).join('');
       $('fd-modelo').innerHTML = '<option value="">—</option>' + r[2].data.map(function (m) { return '<option value="' + esc(m.id) + '"' + (m.id === d.modelo_pago_id ? ' selected' : '') + '>' + esc(m.nombre) + '</option>'; }).join('');
@@ -130,9 +132,10 @@
       $('fd-garantia').value = d.garantia_dias || ''; $('fd-sop-ars').value = d.soporte_hora_ars || ''; $('fd-sop-usd').value = d.soporte_hora_usd || '';
       await cargarCatalogo(d.tipo_id, r[3].data.map(function (x) { return x.modulo_id; }).filter(Boolean));
       // Lo cerrado se mira, no se edita
-      $('fd-bloq').hidden = !F.bloq;
+      $('fd-bloq').hidden = !F.bloq && !F.vivo;
       if (F.bloq) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + '. Se mira, no se edita. Si hay trabajo nuevo, va como módulo evolutivo aparte.';
-      $('m-fdes').querySelectorAll('.mb2 input, .mb2 select, .mb2 textarea').forEach(function (x) { x.disabled = F.bloq; });
+      else if (F.vivo) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + ': lo vendido no se edita. Sólo se cambia el ajuste IPC; las fechas, en la pestaña Fechas del proyecto.';
+      $('m-fdes').querySelectorAll('.mb2 input, .mb2 select, .mb2 textarea').forEach(function (x) { x.disabled = F.bloq || (F.vivo && x.id !== 'fd-ajuste'); });
       $('fd-ok').hidden = F.bloq;
       $('fd-sug').innerHTML = '';
       openM('m-fdes');
@@ -147,15 +150,8 @@
       total_ars: n('fd-total-ars'), total_usd: n('fd-total-usd'), tc: n('fd-tc'), cuotas: n('fd-cuotas'), modelo: v('fd-modelo'),
       inflacion: v('fd-ajuste'), cuota_act: n('fd-cuota'), mant_horas: n('fd-mant-hs'), garantia_dias: n('fd-garantia'),
       soporte_ars: n('fd-sop-ars'), soporte_usd: n('fd-sop-usd') };
-    // Ya aprobado: los montos son un compromiso comercial (la misma advertencia que PM)
-    if (['aprobada', 'curso', 'garantia'].indexOf(_canonSol(d.estado_id || '')) >= 0) {
-      var camb = [];
-      if (Math.round(Number(p.total_ars) || 0) !== Math.round(Number(d.total_ars) || 0)) camb.push('Total: ' + fmt(d.total_ars || 0) + ' → ' + fmt(p.total_ars || 0));
-      if (Math.round(Number(p.cuota_act) || 0) !== Math.round(Number(d.valor_cuota_actual) || 0)) camb.push('Cuota: ' + fmt(d.valor_cuota_actual || 0) + ' → ' + fmt(p.cuota_act || 0));
-      if ((Number(p.cuotas) || 0) !== (Number(d.q_cuotas) || 0)) camb.push('Cuotas: ' + (d.q_cuotas || 0) + ' → ' + (p.cuotas || 0));
-      if (camb.length && !(await ask('Este desarrollo ya está aprobado por el cliente.\n\nEstás por cambiar:\n· ' + camb.join('\n· ') +
-        '\n\nLos montos aprobados son un compromiso comercial. Los ajustes por IPC se hacen desde su alerta, no acá.\n\n¿Guardar igual?', 'Desarrollo aprobado', { ok: 'Guardar' }))) return;
-    }
+    // Ya aprobado: sólo viaja el ajuste IPC; el resto quedó bloqueado en pantalla (29/10/2026)
+    if (F.vivo) { p = { id: d.id, inflacion: v('fd-ajuste') }; F.modsTocados = false; }
     var b = $('fd-ok'); b.disabled = true;
     try {
       var r = await db().rpc('guardar_desarrollo', { p: p }); if (r.error) throw new Error(r.error.message);

@@ -285,3 +285,17 @@ span.riel-paso { cursor: default; }
 .hoy-fil select.fc { width: auto; min-width: 150px; }
 details.hoy-sec > summary { list-style: none; cursor: pointer; }
 details.hoy-sec > summary::-webkit-details-marker { display: none; }
+
+/* Abono por vencer: rojo de vencimiento crítico, en el encabezado del proyecto (29/10/2026) */
+.badge-crit { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border: 1px solid var(--rd); border-radius: 10px;
+  background: var(--rd-a); color: var(--rd); font-size: 10.5px; white-space: nowrap; }
+.badge-crit .ico { width: 12px; height: 12px; }
+
+/* Seguimiento: la tarea con su descripción; historial automático con menos peso (29/10/2026) */
+.seg-desc { display: block; font-size: 10.5px; color: var(--mt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seg-hist { opacity: .7; font-size: 10.5px; }
+
+/* En Garantía: azul pizarra. Violeta es sólo mantenimiento/abono; gris, prospecto (29/10/2026) */
+:root { --slate: #6478a8; }
+.e-xs { background: var(--slate); }
+.t-xs { color: var(--slate); }

@@ -188,7 +188,7 @@ var _PALETA_EST = {
   negociacion:{ cls:'xw', color:'var(--wa)'     },   // se está vendiendo: naranja (22/10/2026)
   aprobada:   { cls:'xb', color:'var(--blue)'   },   // vendido
   curso:      { cls:'xt', color:'var(--teal)'   },   // corriendo
-  garantia:   { cls:'xv', color:'var(--violet)' },   // post-venta
+  garantia:   { cls:'xs', color:'var(--slate)'  },   // post-venta: azul pizarra. Violeta queda sólo para el abono (29/10/2026)
   finalizada: { cls:'xg', color:'var(--ok)'     },   // cerrado
   rechazada:  { cls:'xm', color:'var(--mt)'     }    // no va: resultado, no alerta
 };
