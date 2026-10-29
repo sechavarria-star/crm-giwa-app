@@ -275,10 +275,7 @@ span.riel-paso { cursor: default; }
    Fondo de tarjeta, no el del modal (--sup-modal, verde agua). Sin scroll
    interno: se mueve toda la ficha con su título. Nueva y recordatorio, a
    720px para que «Para quién» entre en una línea. */
-#m-ftv .md, #m-ftn .md, #m-fta .md { background: var(--card); }
-#m-ftv .mh, #m-ftn .mh, #m-fta .mh { background: var(--card); }
-#m-ftv .mb2, #m-ftn .mb2, #m-fta .mb2 { max-height: none; overflow: visible; }
-#m-ftn .md.md-sm, #m-fta .md.md-sm { max-width: 720px; }
+/* (29/10/2026: pasó a la regla común de modales, al final de este archivo) */
 
 /* Hoy · filtros y «Más adelante» desplegable (29/10/2026) */
 .hoy-fil { margin: 4px 0 14px; }
@@ -385,3 +382,15 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .k-usd        { --accent: var(--d-usd);   background: linear-gradient(rgba(144,213,255,.12), transparent), var(--card); }
 .k-activo     { --accent: var(--e-curso); background: linear-gradient(rgba(0,240,255,.10), transparent), var(--card); }
 .k-negociacion{ --accent: var(--e-negoc); background: linear-gradient(rgba(255,159,28,.12), transparent), var(--card); }
+
+
+/* ══ Modales: un solo componente (29/10/2026, punto 10.B.5) ═════════════════
+   Todos iguales, con el modelo de Nueva Tarea: 720 px, sin scroll interno (se
+   mueve la ventana entera con su título), fondo #052342, campos sobre #060716
+   con contorno #1A3DB4 y foco #3AB8FF. Sin fondos verdes. Pie: Cancelar y Guardar. */
+.md, .md.md-sm { width: 100%; max-width: 720px; background: #052342; border-color: #1A3DB4; }
+.md .mh, .md .mf { background: #052342; }
+.md .mb2 { max-height: none; overflow: visible; }
+.mo .fc { background: #060716; border: 1px solid #1A3DB4; }
+.mo .fc:focus { border-color: #3AB8FF; box-shadow: 0 0 0 2px rgba(58,184,255,.18); }
+.mo .fc:disabled { opacity: .55; }

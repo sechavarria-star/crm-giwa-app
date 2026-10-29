@@ -15,15 +15,28 @@ function openM(id) {
   var el = document.getElementById(id); if (!el) return;
   el.classList.toggle('n2', !!document.querySelector('.mo.open'));
   el.classList.add('open');
+  delete el.dataset.sucio;                         // recién abierto: sin cambios
 }
-function closeM(id) { var el = document.getElementById(id); if (el) el.classList.remove('open', 'n2'); }
+function closeM(id) { var el = document.getElementById(id); if (el) { el.classList.remove('open', 'n2'); delete el.dataset.sucio; } }
+// Lo que se tipea en un modal lo marca «con cambios» (29/10/2026)
+['input', 'change'].forEach(function (t) {
+  document.addEventListener(t, function (ev) { var m = ev.target.closest && ev.target.closest('.mo.open'); if (m && ev.isTrusted) m.dataset.sucio = '1'; }, true);
+});
+// Cerrar a mano (Cancelar, ×, clic afuera): si hay cambios sin guardar, avisa antes de perderlos.
+// Después de guardar cada pantalla llama closeM directo, sin aviso.
+async function cerrarAMano(id) {
+  var el = document.getElementById(id); if (!el) return;
+  if (el.dataset.sucio && typeof ask === 'function' &&
+      !(await ask('Hay cambios sin guardar. Si cerrás, se pierden.', '¿Cerrar sin guardar?', { ok: 'Cerrar sin guardar' }))) return;
+  closeM(id);
+}
 // Cualquier botón con data-cerrar="<id del modal>" lo cierra
 document.addEventListener('click', function (ev) {
   var c = ev.target.closest && ev.target.closest('[data-cerrar]');
-  if (c) closeM(c.getAttribute('data-cerrar'));
+  if (c) cerrarAMano(c.getAttribute('data-cerrar'));
 });
 document.addEventListener('mousedown', function (ev) {
-  if (ev.target.classList && ev.target.classList.contains('mo') && ev.target.classList.contains('open')) closeM(ev.target.id);
+  if (ev.target.classList && ev.target.classList.contains('mo') && ev.target.classList.contains('open')) cerrarAMano(ev.target.id);
 });
 
 // ── Avisos cortos abajo a la derecha (los .toast del Design System) ──
