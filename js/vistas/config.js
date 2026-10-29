@@ -245,9 +245,9 @@
   // ── Todos los recordatorios (v_diag_recordatorios), tipo planilla · 29/10/2026 ──
   // Administración y reuniones mensuales, abiertos y cerrados. Se ordena tocando el
   // encabezado; las repetidas (misma clave, más de una abierta) van en rojo.
-  var REC = { L: [], q: '', ord: 'vencimiento', asc: true, cerr: false };
+  var REC = { L: [], q: '', ord: 'vencimiento', asc: true, cerr: false, sel: {} };
   var REC_COL = [['id', 'ID'], ['categoria', 'Categoría'], ['cliente', 'Cliente'], ['item', 'Desarrollo'], ['titulo', 'Título'], ['responsable', 'Responsable'],
-                 ['estado', 'Estado'], ['vencimiento', 'Vence'], ['frecuencia', 'Frecuencia'], ['creado', 'Creado'], ['repetida_con', 'Repetida con']];
+                 ['estado', 'Estado'], ['vencimiento', 'Vence'], ['frecuencia', 'Frecuencia'], ['telegram', 'Telegram'], ['creado', 'Creado'], ['repetida_con', 'Repetida con']];
   async function recCargar() {
     var r = await db().from('v_diag_recordatorios').select('*');
     if (r.error) return set('dg-rec', '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>');
@@ -259,23 +259,36 @@
     var L = REC.L.filter(function (x) { return (REC.cerr || x.abierta) && (!q || REC_COL.some(function (col) { return String(x[col[0]] || '').toLowerCase().indexOf(q) >= 0; })); })
       .sort(function (a, b) { var r = String(a[k] || '').localeCompare(String(b[k] || ''), 'es', { numeric: true }); return REC.asc ? r : -r; });
     var rep = REC.L.filter(function (x) { return x.repetida_con; }).length;
+    var puede = function (x) { return x.es_tarea && x.abierta && !x.telegram && x.vencimiento; };   // a quién se le puede sumar Telegram
+    var nSel = Object.keys(REC.sel).filter(function (id) { return REC.sel[id]; }).length;
     var mono = { id: 1, item: 1, vencimiento: 1, creado: 1, repetida_con: 1 };
     var nom = function (m) { return String(m || '').split(',').map(function (x) { return x.trim().split('@')[0]; }).join(', '); };
-    c.innerHTML = '<div class="card u-mt12"><div class="u-row8"><div class="card-t u-f1">Todos los recordatorios <span class="u-s11-mt m">' + L.length + '</span></div>' +
+    c.innerHTML = '<div class="card u-mt12"><div class="u-row8"><div class="card-t u-f1">Todas las tareas y recordatorios <span class="u-s11-mt m">' + L.length + '</span></div>' +
+        '<button class="btn ' + (nSel ? 'bp' : 'bg') + ' sm" data-cfg="rec-tg"' + (nSel ? '' : ' disabled') + '>' + ico('chat') + ' Activar aviso por Telegram' + (nSel ? ' (' + nSel + ')' : '') + '</button>' +
         '<label class="u-row6 u-s12"><input type="checkbox" id="rec-cerr"' + (REC.cerr ? ' checked' : '') + '> Ver cerrados</label>' +
         '<button class="btn ' + (rep ? 'bp' : 'bg') + ' sm" data-cfg="rec-sim"' + (rep ? '' : ' disabled') + '>' + ico('check') + ' Cerrar repetidas' + (rep ? ' (' + rep + ')' : '') + '</button></div>' +
-      '<div class="hint">Recordatorios de Administración y reuniones mensuales. Repetida = misma categoría y desarrollo (o mismo cliente en reuniones) con más de una abierta: queda la que vence primero.</div>' +
+      '<div class="hint">Tildá las tareas sin Telegram para que su aviso también llegue por Telegram (misma fecha). Los de Administración ya van en el resumen diario. Repetida = misma categoría y desarrollo (o mismo cliente en reuniones) con más de una abierta: queda la que vence primero.</div>' +
       '<div class="sw u-mt10"><input class="fc" id="rec-q" placeholder="Buscar en la tabla…" value="' + esc(REC.q) + '" aria-label="Buscar"></div>' +
-      '<div class="u-ovx u-mt10"><table class="tbl rec-tbl"><thead><tr>' + REC_COL.map(function (col) {
+      '<div class="u-ovx u-mt10"><table class="tbl rec-tbl"><thead><tr><th><input type="checkbox" id="rec-all" aria-label="Elegir todas"></th>' + REC_COL.map(function (col) {
         return '<th class="rec-th" data-cfg="rec-ord" data-k="' + col[0] + '">' + col[1] + (REC.ord === col[0] ? ' ' + ico(REC.asc ? 'arriba' : 'abajo') : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
       (L.length ? L.map(function (x) {
-        return '<tr class="' + (x.repetida_con ? 'rec-rep' : x.abierta ? '' : 'u-op6') + '">' + REC_COL.map(function (col) {
+        return '<tr class="' + (x.repetida_con ? 'rec-rep' : x.abierta ? '' : 'u-op6') + '"><td>' +
+          (puede(x) ? '<input type="checkbox" data-recsel="' + esc(x.id) + '"' + (REC.sel[x.id] ? ' checked' : '') + ' aria-label="Elegir ' + esc(x.id) + '">' : '') + '</td>' + REC_COL.map(function (col) {
           var v = x[col[0]];
+          if (col[0] === 'telegram') v = x.telegram ? 'Sí' : 'No';
           if (col[0] === 'creado') v = String(v || '').slice(0, 10);
           if (col[0] === 'vencimiento') v = v ? ff(v) : '';
           if (col[0] === 'responsable') v = nom(v);
           return '<td class="' + (mono[col[0]] ? 'm' : '') + '">' + esc(v == null ? '' : v) + '</td>'; }).join('') + '</tr>';
-      }).join('') : '<tr><td colspan="' + REC_COL.length + '" class="u-c-mt">Nada para mostrar.</td></tr>') + '</tbody></table></div></div>';
+      }).join('') : '<tr><td colspan="' + (REC_COL.length + 1) + '" class="u-c-mt">Nada para mostrar.</td></tr>') + '</tbody></table></div></div>';
+  }
+  async function recTelegram() {
+    var ids = Object.keys(REC.sel).filter(function (id) { return REC.sel[id]; }); if (!ids.length) return;
+    if (!(await ask('A ' + ids.length + ' tarea(s) se les suma el aviso por Telegram. La fecha no cambia.', 'Activar Telegram', { ok: 'Activar' }))) return;
+    var r = await db().rpc('activar_telegram', { ids: ids });
+    if (r.error) return toast(r.error.message, 'err');
+    toast(r.data.activadas + ' con Telegram' + (r.data.saltadas ? ' · ' + r.data.saltadas + ' salteada(s)' : ''), 'ok');
+    REC.sel = {}; recCargar();
   }
   async function recCerrar() {
     var s = await db().rpc('cerrar_repetidas', { aplicar: false });
@@ -376,6 +389,8 @@
     };
     el.onchange = function (ev) {
       if (ev.target.id === 'rec-cerr') { REC.cerr = ev.target.checked; return recPintar(); }
+      if (ev.target.id === 'rec-all') { document.querySelectorAll('[data-recsel]').forEach(function (x) { REC.sel[x.getAttribute('data-recsel')] = ev.target.checked; }); return recPintar(); }
+      if (ev.target.hasAttribute && ev.target.hasAttribute('data-recsel')) { REC.sel[ev.target.getAttribute('data-recsel')] = ev.target.checked; return recPintar(); }
       var t = ev.target, k = t.getAttribute && t.getAttribute('data-vhset'); if (!k) return;
       var n = Number(t.value), i = Number(t.getAttribute('data-i'));
       if (!(n > 0)) { toast('Tiene que ser un número mayor a cero', 'err'); t.value = C.vhl[k][i].v; return; }
@@ -449,6 +464,7 @@
       if (a === 'dg-ref') { recCargar(); return diagPintar(); }
       if (a === 'rec-ord') { var kk = b.getAttribute('data-k'); REC.asc = REC.ord === kk ? !REC.asc : true; REC.ord = kk; return recPintar(); }
       if (a === 'rec-sim') return recCerrar();
+      if (a === 'rec-tg') return recTelegram();
       if (a === 'dg-ver') return verTarea(id, { onSave: diagPintar });
       if (a === 'dg-sinc') {
         // crear sólo desde «Crear recordatorios» (no duplica: la base no deja dos abiertas); después cerrar lo que sobra

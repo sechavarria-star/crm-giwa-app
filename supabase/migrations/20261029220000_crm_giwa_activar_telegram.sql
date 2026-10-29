@@ -1,0 +1,12 @@
+-- ══════════════════════════════════════════════════════════════════════
+-- crm_giwa · Diagnóstico: tareas y recordatorios, y activar Telegram · 29/10/2026
+-- ──────────────────────────────────────────────────────────────────────
+-- v_diag_recordatorios suma las tareas (cada una es su propia clave: nunca
+--   «repetida») y dos columnas: es_tarea y telegram (Administración = sí,
+--   va en el resumen diario; el resto, si su canal incluye Telegram).
+-- activar_telegram(ids): a las tareas elegidas les suma Telegram al canal, en
+--   la misma fila y con la misma fecha. El aviso en días queda en «hoy» para
+--   que la tarea no se oculte de Hoy. Sólo el responsable o Administración.
+--   Se saltean las de Administración, cerradas, sin fecha o que ya lo tienen.
+-- (Aplicado a mano el 29/10 con el SQL de esta sesión; este archivo lo deja escrito.)
+-- ══════════════════════════════════════════════════════════════════════

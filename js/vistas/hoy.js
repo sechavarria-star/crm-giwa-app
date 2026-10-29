@@ -29,7 +29,7 @@
    PENDIENTE: la agenda (Google Calendar) llega con el puente de Google.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var H = { tareas: [], kpi: '', plata: null, q: '', tipo: '', cli: '', who: null, fin: false, users: [], ab: {}, coms: {}, panel: {} };
+  var H = { tareas: [], kpi: '', plata: null, q: '', tipo: '', cli: '', who: null, fin: false, users: [], ab: {}, coms: {}, panel: {}, cerr: {} };
 
   async function cargar() {
     var r = await Promise.all([
@@ -145,25 +145,26 @@
       '<select class="fc" data-hoyf="cli" aria-label="Cliente">' + opt('', 'Todos los clientes', H.cli) + Object.keys(clis).sort(function (a, b) { return clis[a].localeCompare(clis[b], 'es'); }).map(function (k) { return opt(k, clis[k], H.cli); }).join('') + '</select>' +
       '<select class="fc" data-hoyf="who" aria-label="Responsable">' + opt('', 'Todos los responsables', H.who) + H.users.map(function (u) { return opt(u.mail, u.name, H.who); }).join('') + '</select>' +
       '<label class="u-row6 u-s12"><input type="checkbox" data-hoyf="fin"' + (H.fin ? ' checked' : '') + '> Finalizadas</label></div>';
+    // Cada bloque se pliega con su chevron, como «Más adelante». Lo que se pliega queda así (H.cerr) · 29/10/2026
+    var sec = function (k, icon, tit, n, cuerpo, extra, cls, cerradoDef) {
+      var cerrado = H.cerr[k] !== undefined ? H.cerr[k] : !!cerradoDef;
+      return '<details class="hoy-sec' + (cls ? ' ' + cls : '') + '" data-hsec="' + k + '"' + (cerrado ? '' : ' open') + '><summary class="hoy-sec-h">' +
+        '<span class="chev">' + ico('derecha') + '</span>' + ico(icon) + ' ' + tit + (n !== null ? ' <span class="u-s11-mt">' + n + '</span>' : '') + (extra || '') + '</summary>' + cuerpo + '</details>';
+    };
+    var lista = function (L, vacio) { return L.length ? L.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">' + vacio + '</div>'; };
     h += '<div class="hoy"><div>' +
-      (alertasAb.length ? '<div class="hoy-sec hoy-alertas"><div class="hoy-sec-h">' + ico('campana') + ' Alertas <span class="u-s11-mt">' + alertasAb.length + '</span></div>' +
-        alertasAb.map(function (t) { return fila(t, hoy); }).join('') + '</div>' : '') +
-      (H.kpi === 'alertas' ? '' : '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('alerta') + ' Ahora <span class="u-s11-mt">' + ahora.length + '</span>' +
-        (H.kpi ? '<button class="hoy-go" data-hoy="kpi" data-k="">ver todo</button>' : '') + '</div>' +
-        (ahora.length ? ahora.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Nada vencido ni para hoy.</div>') + '</div>' +
-      '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('calendario') + ' Esta semana <span class="u-s11-mt">' + semana.length + '</span></div>' +
-        (semana.length ? semana.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Semana libre.</div>') + '</div>' +
-      '<details class="hoy-sec"' + (H.q || H.cli || H.who || H.tipo ? ' open' : '') + '><summary class="hoy-sec-h">' + '<span class="chev">' + ico('derecha') + '</span> Más adelante <span class="u-s11-mt">' + despues.length + '</span></summary>' +
-        (despues.length ? despues.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Nada más adelante.</div>') + '</details>' +
-      (H.fin ? '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('check') + ' Finalizadas <span class="u-s11-mt">' + cerradas.length + '</span></div>' +
-        (cerradas.length ? cerradas.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Ninguna.</div>') + '</div>' : '')) +
+      (alertasAb.length ? sec('alertas', 'campana', 'Alertas', alertasAb.length, lista(alertasAb, ''), '', 'hoy-alertas') : '') +
+      (H.kpi === 'alertas' ? '' :
+        sec('ahora', 'alerta', 'Ahora', ahora.length, lista(ahora, 'Nada vencido ni para hoy.'), H.kpi ? '<button class="hoy-go" data-hoy="kpi" data-k="">ver todo</button>' : '') +
+        sec('semana', 'calendario', 'Esta semana', semana.length, lista(semana, 'Semana libre.')) +
+        sec('despues', 'derecha', 'Más adelante', despues.length, lista(despues, 'Nada más adelante.'), '', '', !(H.q || H.cli || H.who || H.tipo)) +
+        (H.fin ? sec('fin', 'check', 'Finalizadas', cerradas.length, lista(cerradas, 'Ninguna.')) : '')) +
       '</div><div>' +
-      '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('reloj') + ' Agenda de hoy</div>' +
-        '<div class="hoy-vacio">La agenda de Google Calendar llega con el puente de Google.</div></div>' +
-      '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('plata') + ' Plata<a class="hoy-go" href="#/admin">Administración</a></div>' +
+      sec('agenda', 'reloj', 'Agenda de hoy', null, '<div class="hoy-vacio">La agenda de Google Calendar llega con el puente de Google.</div>') +
+      sec('plata', 'plata', 'Plata', null,
         '<div class="hoy-plata"><span>Cobros vencidos</span><b class="m' + (P.venc ? ' u-c-rd' : '') + '">' + P.venc + '</b></div>' +
         '<div class="hoy-plata"><span>Abonos a facturar</span><b class="m">' + P.mens + '</b></div>' +
-        '<div class="hoy-plata"><span>Desarrollos a facturar</span><b class="m">' + P.saldos + '</b></div></div>' +
+        '<div class="hoy-plata"><span>Desarrollos a facturar</span><b class="m">' + P.saldos + '</b></div>', '<a class="hoy-go" href="#/admin">Administración</a>') +
       '</div></div>';
     el.innerHTML = h;
   }
@@ -184,6 +185,10 @@
     var alGuardar = { onSave: refrescar };
     await abrirModulo(el, { id: 'hoy', texto: 'Armando el día…', forzar: op && op.forzar, cargar: cargar,
       cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata]); }, pintar: function () { pintar(el); } });
+    if (!el._hoySec) {                            // recordar qué bloque quedó plegado
+      el._hoySec = true;
+      el.addEventListener('toggle', function (ev) { var d = ev.target; if (_montado === 'hoy' && d.matches && d.matches('details[data-hsec]')) H.cerr[d.getAttribute('data-hsec')] = !d.open; }, true);
+    }
     el.onkeydown = async function (ev) {
       var id = ev.target.getAttribute && ev.target.getAttribute('data-nota');
       if (!id || ev.key !== 'Enter' || !ev.target.value.trim()) return;
