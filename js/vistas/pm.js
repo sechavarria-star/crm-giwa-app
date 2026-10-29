@@ -919,6 +919,7 @@
   };
   // Del menú lateral: otra subpantalla, sin releer
   VISTAS.pm.irA = function (s) {
+    if (s === 'tar') { location.hash = '#/hoy'; return; }   // la vieja vista Tareas vive en Hoy
     if (!SUBS.some(function (x) { return x[0] === s; })) return;
     P.sub = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0);
   };
