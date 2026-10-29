@@ -134,7 +134,7 @@
       // Lo cerrado se mira, no se edita
       $('fd-bloq').hidden = !F.bloq && !F.vivo;
       if (F.bloq) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + '. Se mira, no se edita. Si hay trabajo nuevo, va como módulo evolutivo aparte.';
-      else if (F.vivo) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + ': lo vendido no se edita. Sólo se cambia el ajuste IPC; las fechas, en la pestaña Fechas del proyecto.';
+      else if (F.vivo) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + ': lo vendido no se edita. Sólo se cambia el ajuste IPC.';
       $('m-fdes').querySelectorAll('.mb2 input, .mb2 select, .mb2 textarea').forEach(function (x) { x.disabled = F.bloq || (F.vivo && x.id !== 'fd-ajuste'); });
       $('fd-ok').hidden = F.bloq;
       $('fd-sug').innerHTML = '';
