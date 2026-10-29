@@ -333,3 +333,5 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .hoy-acc .btn-ico:hover { color: var(--blue); }
 .hoy-acc .btn-ico.h-ok:hover { color: var(--ok); }
 .hoy-alertas .hoy-sec-h { color: var(--wa); }
+/* En pantallas angostas la columna no se estiraba más allá del ancho y los íconos quedaban afuera */
+@media (max-width: 980px) { .hoy { grid-template-columns: minmax(0, 1fr); } }
