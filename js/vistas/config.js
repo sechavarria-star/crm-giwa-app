@@ -240,7 +240,54 @@
   }
 
   // ── Diagnóstico: alertas mal armadas y pruebas de Telegram ───
-  function htmlDiag() { return '<div id="dg-c"><div class="loading"><div class="spin"></div></div></div>'; }
+  function htmlDiag() { return '<div id="dg-c"><div class="loading"><div class="spin"></div></div></div><div id="dg-rec"></div>'; }
+
+  // ── Todos los recordatorios (v_diag_recordatorios), tipo planilla · 29/10/2026 ──
+  // Administración y reuniones mensuales, abiertos y cerrados. Se ordena tocando el
+  // encabezado; las repetidas (misma clave, más de una abierta) van en rojo.
+  var REC = { L: [], q: '', ord: 'vencimiento', asc: true, cerr: false };
+  var REC_COL = [['id', 'ID'], ['categoria', 'Categoría'], ['cliente', 'Cliente'], ['item', 'Desarrollo'], ['titulo', 'Título'], ['responsable', 'Responsable'],
+                 ['estado', 'Estado'], ['vencimiento', 'Vence'], ['frecuencia', 'Frecuencia'], ['creado', 'Creado'], ['repetida_con', 'Repetida con']];
+  async function recCargar() {
+    var r = await db().from('v_diag_recordatorios').select('*');
+    if (r.error) return set('dg-rec', '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>');
+    REC.L = r.data; recPintar();
+  }
+  function recPintar() {
+    var c = document.getElementById('dg-rec'); if (!c) return;
+    var q = REC.q.toLowerCase(), k = REC.ord;
+    var L = REC.L.filter(function (x) { return (REC.cerr || x.abierta) && (!q || REC_COL.some(function (col) { return String(x[col[0]] || '').toLowerCase().indexOf(q) >= 0; })); })
+      .sort(function (a, b) { var r = String(a[k] || '').localeCompare(String(b[k] || ''), 'es', { numeric: true }); return REC.asc ? r : -r; });
+    var rep = REC.L.filter(function (x) { return x.repetida_con; }).length;
+    var mono = { id: 1, item: 1, vencimiento: 1, creado: 1, repetida_con: 1 };
+    var nom = function (m) { return String(m || '').split(',').map(function (x) { return x.trim().split('@')[0]; }).join(', '); };
+    c.innerHTML = '<div class="card u-mt12"><div class="u-row8"><div class="card-t u-f1">Todos los recordatorios <span class="u-s11-mt m">' + L.length + '</span></div>' +
+        '<label class="u-row6 u-s12"><input type="checkbox" id="rec-cerr"' + (REC.cerr ? ' checked' : '') + '> Ver cerrados</label>' +
+        '<button class="btn ' + (rep ? 'bp' : 'bg') + ' sm" data-cfg="rec-sim"' + (rep ? '' : ' disabled') + '>' + ico('check') + ' Cerrar repetidas' + (rep ? ' (' + rep + ')' : '') + '</button></div>' +
+      '<div class="hint">Recordatorios de Administración y reuniones mensuales. Repetida = misma categoría y desarrollo (o mismo cliente en reuniones) con más de una abierta: queda la que vence primero.</div>' +
+      '<div class="sw u-mt10"><input class="fc" id="rec-q" placeholder="Buscar en la tabla…" value="' + esc(REC.q) + '" aria-label="Buscar"></div>' +
+      '<div class="u-ovx u-mt10"><table class="tbl rec-tbl"><thead><tr>' + REC_COL.map(function (col) {
+        return '<th class="rec-th" data-cfg="rec-ord" data-k="' + col[0] + '">' + col[1] + (REC.ord === col[0] ? ' ' + ico(REC.asc ? 'arriba' : 'abajo') : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      (L.length ? L.map(function (x) {
+        return '<tr class="' + (x.repetida_con ? 'rec-rep' : x.abierta ? '' : 'u-op6') + '">' + REC_COL.map(function (col) {
+          var v = x[col[0]];
+          if (col[0] === 'creado') v = String(v || '').slice(0, 10);
+          if (col[0] === 'vencimiento') v = v ? ff(v) : '';
+          if (col[0] === 'responsable') v = nom(v);
+          return '<td class="' + (mono[col[0]] ? 'm' : '') + '">' + esc(v == null ? '' : v) + '</td>'; }).join('') + '</tr>';
+      }).join('') : '<tr><td colspan="' + REC_COL.length + '" class="u-c-mt">Nada para mostrar.</td></tr>') + '</tbody></table></div></div>';
+  }
+  async function recCerrar() {
+    var s = await db().rpc('cerrar_repetidas', { aplicar: false });
+    if (s.error) return toast(s.error.message, 'err');
+    if (!s.data.n) return toast('No hay repetidas abiertas.', 'inf');
+    var txt = s.data.cerrar.map(function (x) { return x.id + ' (' + x.titulo + ') → queda ' + x.queda; }).join('\n');
+    if (!(await ask('Se cierran ' + s.data.n + ' recordatorio(s) como Finalizada, con el comentario «Cerrada: repetida con …». No se borra nada.\n\n' + txt,
+      '¿Cerrar las repetidas?', { ok: 'Cerrar' }))) return;
+    var r = await db().rpc('cerrar_repetidas', { aplicar: true });
+    if (r.error) return toast(r.error.message, 'err');
+    toast(r.data.n + ' cerrada(s)', 'ok'); diagPintar(); recCargar();
+  }
   async function diagPintar() {
     var c = document.getElementById('dg-c'); if (!c) return;
     var r = await db().from('v_diag_alertas').select('*');
@@ -305,7 +352,7 @@
       '<div class="page-s">Configuración: listas, valor hora, usuarios y diagnóstico.</div></div></div>';
     el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
     if (C.sub === 'telegram') tgPintar();
-    if (C.sub === 'diag') diagPintar();
+    if (C.sub === 'diag') { diagPintar(); recCargar(); }
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
   }
 
@@ -324,9 +371,11 @@
       if (t.id && t.id.indexOf('cf-') === 0 && t.id.slice(3) in C.num) C.num[t.id.slice(3)] = t.value;
       if (t.id === 'cf-hs-ars') document.getElementById('cf-hs-hint').innerHTML = hsHint();
       if (t.id === 'vh-mv' || t.id === 'vh-mh') { document.getElementById('vh-ej').innerHTML = vhEjemplo(); document.getElementById('vh-l-mercado').innerHTML = vhLista('mercado'); }
+      if (t.id === 'rec-q') { var p0 = t.selectionStart; REC.q = t.value; recPintar(); var nq = document.getElementById('rec-q'); nq.focus(); nq.setSelectionRange(p0, p0); return; }
       if (t.id === 'cf-q') { C.q = t.value; var pos = t.selectionStart; pintar(el); var q = document.getElementById('cf-q'); q.focus(); q.setSelectionRange(pos, pos); }
     };
     el.onchange = function (ev) {
+      if (ev.target.id === 'rec-cerr') { REC.cerr = ev.target.checked; return recPintar(); }
       var t = ev.target, k = t.getAttribute && t.getAttribute('data-vhset'); if (!k) return;
       var n = Number(t.value), i = Number(t.getAttribute('data-i'));
       if (!(n > 0)) { toast('Tiene que ser un número mayor a cero', 'err'); t.value = C.vhl[k][i].v; return; }
@@ -397,7 +446,9 @@
         return toast(rr.data.msg, rr.data.ok ? 'ok' : 'err');
       }
       if (a === 'usu') return abrirUsu(id, refrescar);
-      if (a === 'dg-ref') return diagPintar();
+      if (a === 'dg-ref') { recCargar(); return diagPintar(); }
+      if (a === 'rec-ord') { var kk = b.getAttribute('data-k'); REC.asc = REC.ord === kk ? !REC.asc : true; REC.ord = kk; return recPintar(); }
+      if (a === 'rec-sim') return recCerrar();
       if (a === 'dg-ver') return verTarea(id, { onSave: diagPintar });
       if (a === 'dg-sinc') {
         // crear sólo desde «Crear recordatorios» (no duplica: la base no deja dos abiertas); después cerrar lo que sobra

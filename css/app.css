@@ -310,3 +310,9 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 
 /* Nuevo proyecto · Carga rápida (29/10/2026) */
 .nv-card { max-width: 720px; }
+
+/* Diagnóstico · todos los recordatorios (29/10/2026) */
+.rec-tbl td { font-size: 11px; white-space: nowrap; }
+.rec-th { cursor: pointer; white-space: nowrap; user-select: none; }
+.rec-th .ico { width: 11px; height: 11px; vertical-align: -1px; }
+.rec-rep td { color: var(--rd); background: var(--rd-a); }
