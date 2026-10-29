@@ -25,14 +25,14 @@
 
    PENDIENTE: Cotizar —recotizar, renovar, editar, mejora, horas de
    soporte— sigue allá, igual que Agenda y Nuevo proyecto. La pestaña
-   Soporte (tickets) no se pasa: va a su propio módulo, Soporte. Análisis: v_analisis_clientes (= getAnalisisCliente). La vista Tareas es js/tablero-tareas.js.
+   Soporte (tickets) no se pasa: va a su propio módulo, Soporte. Análisis: v_analisis_clientes (= getAnalisisCliente). Las tareas viven en Hoy (vistas/hoy.js).
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'seg',
             seg: { fil: 'vivos', q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'empresa', abiertas: {} },
             f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'seg' };
   var CARRUSEL = 3;   // más de esto por cliente → carrusel
-  var SUBS = [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['tar', 'Tareas'], ['nuevo', 'Nuevo proyecto']];
+  var SUBS = [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']];   // Tareas vive en Hoy (29/10/2026)
 
   async function cargar() {
     var r = await Promise.all([
@@ -741,11 +741,6 @@
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     if (P.sub === 'seg') el.innerHTML = cab + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + htmlProy();
-    else if (P.sub === 'tar') {
-      el.innerHTML = cab + '<div id="pm-tablero"></div>';
-      montarTablero(document.getElementById('pm-tablero'), { titulo: 'Tareas y pendientes', actividades: true })
-        .catch(function (e) { document.getElementById('pm-tablero').innerHTML = '<div class="empty">No se pudieron cargar las tareas: ' + esc(e.message) + '</div>'; });
-    }
     else el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
   }
@@ -758,7 +753,8 @@
   VISTAS.pm = async function (el, op) {
     var leer = async function () { await cargar(); if (P.sub === 'ficha' && P.f) await cargarFicha(P.f.id); };
     var refrescar = async function () { await leer(); pintar(el); };
-    var s = subPedida(); if (SUBS.some(function (x) { return x[0] === s; })) P.sub = s;
+    var s = subPedida(); if (s === 'tar') { location.hash = '#/hoy'; return; }   // la vieja vista Tareas
+    if (SUBS.some(function (x) { return x[0] === s; })) P.sub = s;
     await abrirModulo(el, { id: 'pm', texto: 'Cargando proyectos…', forzar: op && op.forzar, cargar: leer,
       cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f]); }, pintar: function () { pintar(el); } });
     if (!el._pmBound) {                          // una vez: #vista es el mismo para todos los módulos

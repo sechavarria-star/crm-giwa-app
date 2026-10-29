@@ -14,21 +14,28 @@
    Plata: cuántos cobros vencidos y cuánto hay para facturar, de las vistas
    del dashboard de Administración (v_cobros_pendientes, v_facturar_*).
 
+   29/10/2026: se sumó lo que tenía Proyectos › Tareas (tablero-tareas.js, que
+   se borró): buscador, filtros por tipo, cliente y responsable, «Más
+   adelante» (lo que vence después de la semana o no tiene fecha) y las
+   finalizadas. Hoy es la única pantalla de tareas.
+
    PENDIENTE: la agenda (Google Calendar) llega con el puente de Google.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var H = { tareas: [], mias: false, kpi: '', plata: null };
+  var H = { tareas: [], mias: false, kpi: '', plata: null, q: '', tipo: '', cli: '', who: '', fin: false, users: [] };
 
   async function cargar() {
     var r = await Promise.all([
-      db().from('v_tareas').select('*').eq('closed', false).eq('hidden', false).not('due', 'is', null),
+      db().from('v_tareas').select('*').eq('hidden', false),
       db().from('v_cobros_pendientes').select('dias'),
       db().from('v_facturar_mensuales').select('item_id'),
       db().from('v_facturar_saldos').select('item_id'),
-      db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 })
+      db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 }),
+      db().from('usuarios').select('mail,nombre').eq('es_giwa', true).eq('activo', true).order('orden')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     H.tareas = r[0].data;
+    H.users = r[5].data.map(function (u) { return { mail: String(u.mail || '').trim().toLowerCase(), name: u.nombre || u.mail }; });
     var dv = Number(r[4].data) || 30;
     H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
                 mens: r[2].data.length, saldos: r[3].data.length };
@@ -40,19 +47,19 @@
 
   function fila(t, hoy) {
     var sub = [t.client_name, t.project_name, t.item_name].filter(Boolean).join(' · ');
-    var due = t.overdue ? 'vencida ' + corto(t.due) : t.due === hoy ? 'hoy' : corto(t.due);
+    var due = t.closed ? 'cerrada' : !t.due ? 'sin fecha' : t.overdue ? 'vencida ' + corto(t.due) : t.due === hoy ? 'hoy' : corto(t.due);
     var barra = t.overdue ? 'rd' : t.is_alert ? 'wa' : t.due === hoy ? 'bl' : '';
     var id = esc(t.id);
     var acc = function (a, icon, tip, cls) { return '<button class="btn bg xs btn-ico' + (cls || '') + '" data-hoy="' + a + '" data-id="' + id + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icon) + '</button>'; };
-    var mia = !t.is_alert && String(t.assignees || '').toLowerCase().split(',').map(function (x) { return x.trim(); }).indexOf(yo()) >= 0;
+    var mia = String(t.assignees || '').toLowerCase().split(',').map(function (x) { return x.trim(); }).indexOf(yo()) >= 0;
     return '<div class="hoy-row"><span class="hoy-bar ' + barra + '"></span>' +
       '<div class="hoy-main"><div class="hoy-t" title="' + esc(t.title) + '">' + esc(t.title) + '</div>' +
         (sub ? '<div class="hoy-t2">' + esc(sub) + '</div>' : '') + '</div>' +
       (t.is_alert ? '<span class="est"><span class="est-dot e-xw"></span><span class="t-xw">alerta</span></span>' : '') +
       '<span class="hoy-due m' + (t.overdue ? ' late' : t.due === hoy ? ' today' : '') + '">' + esc(due) + '</span>' +
       // Acciones rápidas, a la derecha: comentar · delegar · posponer · finalizar (o procesar) · abrir
-      '<span class="hoy-acc">' + acc('comentar', 'chat', 'Comentar') + (mia ? acc('delegar', 'personas', 'Delegar') : '') +
-        acc('posponer', 'calendario', 'Pasar a mañana') + acc('hecho', 'check', t.is_alert ? 'Procesar' : 'Finalizar', ' h-ok') +
+      '<span class="hoy-acc">' + (t.closed ? '' : acc('comentar', 'chat', 'Comentar') + (mia ? acc('delegar', 'personas', 'Delegar') : '') +
+        acc('posponer', 'calendario', 'Pasar a mañana') + acc('hecho', 'check', t.is_alert ? 'Procesar' : 'Finalizar', ' h-ok')) +
         acc('abrir', 'abrir', 'Abrir la tarea') + '</span>' +
     '</div>';
   }
@@ -60,12 +67,20 @@
   function pintar(el) {
     if (_montado !== 'hoy') return;               // se terminó de leer con otro módulo en pantalla
     var hoy = isoMas(0), sem = isoMas(7), me = yo();
-    var abiertas = H.tareas.filter(function (t) {
-      return !H.mias || String(t.assignees || '').indexOf(me) >= 0 || t.creator === me;
+    var q = H.q.toLowerCase();
+    var pasan = H.tareas.filter(function (t) {
+      if (H.mias && !(String(t.assignees || '').indexOf(me) >= 0 || t.creator === me)) return false;
+      if (H.tipo && String(t.type || '').toLowerCase().indexOf(H.tipo) < 0) return false;
+      if (H.cli && t.client_id !== H.cli) return false;
+      if (H.who && String(t.assignees || '').toLowerCase().indexOf(H.who) < 0) return false;
+      return !q || [t.title, t.detail, t.client_name, t.project_name, t.item_name, t.id].join(' ').toLowerCase().indexOf(q) >= 0;
     });
-    var ord = function (a, b) { return (a.overdue === b.overdue ? 0 : a.overdue ? -1 : 1) || String(a.due).localeCompare(String(b.due)); };
-    var ahora = abiertas.filter(function (t) { return t.due <= hoy; }).sort(ord);
+    var abiertas = pasan.filter(function (t) { return !t.closed; });
+    var ord = function (a, b) { return (a.overdue === b.overdue ? 0 : a.overdue ? -1 : 1) || String(a.due || '9999').localeCompare(String(b.due || '9999')); };
+    var ahora = abiertas.filter(function (t) { return t.due && t.due <= hoy; }).sort(ord);
     var semana = abiertas.filter(function (t) { return t.due > hoy && t.due <= sem; }).sort(ord);
+    var despues = abiertas.filter(function (t) { return !t.due || t.due > sem; }).sort(ord);
+    var cerradas = H.fin ? pasan.filter(function (t) { return t.closed; }).sort(function (a, b) { return String(b.due || '').localeCompare(String(a.due || '')); }) : [];
     var venc = ahora.filter(function (t) { return t.overdue; });
     var deHoy = ahora.filter(function (t) { return !t.overdue; });
     var alertas = ahora.filter(function (t) { return t.is_alert; });
@@ -92,12 +107,23 @@
       k('alertas', alertas.length ? 'k-pendiente' : 'k-neutro', 'Alertas', alertas.length, 'facturar, cobrar, renovar') +
       k('plata', nPlata ? 'k-abono' : 'k-neutro', 'Plata', nPlata, 'ver en Administración') +
       '</div>';
+    var opt = function (v, t, sel) { return '<option value="' + esc(v) + '"' + (v === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; };
+    var clis = {}; H.tareas.forEach(function (t) { if (t.client_id) clis[t.client_id] = t.client_name || t.client_id; });
+    h += '<div class="filtros hoy-fil"><div class="sw u-f1"><input class="fc" id="hoy-q" placeholder="Buscar tarea, cliente o proyecto…" value="' + esc(H.q) + '" aria-label="Buscar"></div>' +
+      '<select class="fc" data-hoyf="tipo" aria-label="Tipo">' + [['', 'Todos los tipos'], ['tarea', 'Tarea'], ['reuni', 'Reunión'], ['administr', 'Administración']].map(function (o) { return opt(o[0], o[1], H.tipo); }).join('') + '</select>' +
+      '<select class="fc" data-hoyf="cli" aria-label="Cliente">' + opt('', 'Todos los clientes', H.cli) + Object.keys(clis).sort(function (a, b) { return clis[a].localeCompare(clis[b], 'es'); }).map(function (k) { return opt(k, clis[k], H.cli); }).join('') + '</select>' +
+      '<select class="fc" data-hoyf="who" aria-label="Responsable">' + opt('', 'Todos los responsables', H.who) + H.users.map(function (u) { return opt(u.mail, u.name, H.who); }).join('') + '</select>' +
+      '<label class="u-row6 u-s12"><input type="checkbox" data-hoyf="fin"' + (H.fin ? ' checked' : '') + '> Finalizadas</label></div>';
     h += '<div class="hoy"><div>' +
       '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('alerta') + ' Ahora <span class="u-s11-mt">' + ahora.length + '</span>' +
         (H.kpi ? '<button class="hoy-go" data-hoy="kpi" data-k="">ver todo</button>' : '') + '</div>' +
         (ahora.length ? ahora.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Nada vencido ni para hoy.</div>') + '</div>' +
       '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('calendario') + ' Esta semana <span class="u-s11-mt">' + semana.length + '</span></div>' +
         (semana.length ? semana.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Semana libre.</div>') + '</div>' +
+      '<details class="hoy-sec"' + (H.q || H.cli || H.who || H.tipo ? ' open' : '') + '><summary class="hoy-sec-h">' + '<span class="chev">' + ico('derecha') + '</span> Más adelante <span class="u-s11-mt">' + despues.length + '</span></summary>' +
+        (despues.length ? despues.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Nada más adelante.</div>') + '</details>' +
+      (H.fin ? '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('check') + ' Finalizadas <span class="u-s11-mt">' + cerradas.length + '</span></div>' +
+        (cerradas.length ? cerradas.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">Ninguna.</div>') + '</div>' : '') +
       '</div><div>' +
       '<div class="hoy-sec"><div class="hoy-sec-h">' + ico('reloj') + ' Agenda de hoy</div>' +
         '<div class="hoy-vacio">La agenda de Google Calendar llega con el puente de Google.</div></div>' +
@@ -126,6 +152,15 @@
     var alGuardar = { onSave: refrescar };
     await abrirModulo(el, { id: 'hoy', texto: 'Armando el día…', forzar: op && op.forzar, cargar: cargar,
       cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata]); }, pintar: function () { pintar(el); } });
+    el.oninput = function (ev) {
+      if (ev.target.id !== 'hoy-q') return;
+      var pos = ev.target.selectionStart; H.q = ev.target.value; pintar(el);
+      var n = document.getElementById('hoy-q'); if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+    };
+    el.onchange = function (ev) {
+      var f = ev.target.getAttribute && ev.target.getAttribute('data-hoyf'); if (!f) return;
+      H[f] = f === 'fin' ? ev.target.checked : ev.target.value; pintar(el);
+    };
     el.onclick = function (ev) {
       var b = ev.target.closest('[data-hoy]'); if (!b) return;
       var a = b.getAttribute('data-hoy'), t = buscar(b.getAttribute('data-id'));

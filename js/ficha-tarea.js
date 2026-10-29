@@ -188,18 +188,21 @@
       (t.frequency && !/^[uú]nica$/i.test(t.frequency) ? '<span>' + ico('repetir') + esc(t.frequency) + '</span>' : '') +
       '<span>' + ico('personas') + esc(rs.map(nombre).join(', ') || 'Sin responsable') + '</span>';
     var a = '';
+    // Un solo botón principal (bp) por ficha; el resto, secundarios (bg) · 29/10/2026
     if (!t.closed && al) {
-      a += '<button class="btn bok sm" data-fta="procesar">' + ico('check') + ' Procesar</button>' +
-           '<button class="btn bg sm" data-fta="caja" data-caja="ftv-pos">' + ico('reloj') + ' Posponer</button>';
       // Facturación: su propio modal, Facturar o Registrar pago (cobro sin factura) · 27/10/2026
-      var item0 = String(t.item_ids || t.desarrollo_id || '').split(',')[0].trim();
-      if (/factur/i.test(t.title + ' ' + t.alert_type))
+      var item0 = String(t.item_ids || t.desarrollo_id || '').split(',')[0].trim(), fact = /factur/i.test(t.title + ' ' + t.alert_type);
+      if (fact)
         a += '<button class="btn bp sm" data-fta="cb-fact" data-id="' + esc(item0) + '">' + ico('documento') + ' Facturar</button>' +
              '<button class="btn bg sm" data-fta="cb-pago" data-id="' + esc(item0) + '">' + ico('plata') + ' Registrar pago</button>';
-      else if (/ipc/i.test(t.title + ' ' + t.alert_type))
+      a += '<button class="btn ' + (fact ? 'bg' : 'bp') + ' sm" data-fta="procesar">' + ico('check') + ' Procesar</button>' +
+           // la alerta se delega en el lugar: delegar_tarea le cambia el responsable (29/10/2026)
+           (rs.indexOf(yo()) >= 0 ? '<button class="btn bg sm" data-fta="caja" data-caja="ftv-del">' + ico('flecha') + ' Delegar</button>' : '') +
+           '<button class="btn bg sm" data-fta="caja" data-caja="ftv-pos">' + ico('reloj') + ' Posponer</button>';
+      if (!fact && /ipc/i.test(t.title + ' ' + t.alert_type))
         a += '<a class="btn bg sm" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Facturar o ajustar en el CRM actual</a>';
     } else if (!t.closed && rs.indexOf(yo()) >= 0) {
-      a += '<button class="btn bok sm" data-fta="caja" data-caja="ftv-fin">' + ico('check') + ' Finalizar</button>' +
+      a += '<button class="btn bp sm" data-fta="caja" data-caja="ftv-fin">' + ico('check') + ' Finalizar</button>' +
            '<button class="btn bg sm" data-fta="caja" data-caja="ftv-del">' + ico('flecha') + ' Delegar</button>' +
            '<button class="btn bg sm" data-fta="caja" data-caja="ftv-pos">' + ico('reloj') + ' Posponer</button>' +
            (re ? '' : '<button class="btn bg sm" data-fta="caja" data-caja="ftv-rec">' + ico('campana') + (t.channels ? ' Cambiar recordatorio' : ' Crear recordatorio') + '</button>');
@@ -268,7 +271,7 @@
   }
   function delegar() {
     var a = elegido('ftv-to'); if (!a) return toast('Elegí a quién se la delegás.', 'err');
-    hacer('delegar_tarea', { tid: T.t.id, a: a, nota: v('ftv-dnota') }, function (r) { return 'Delegada → ' + r.id; }, 'm-ftv');
+    hacer('delegar_tarea', { tid: T.t.id, a: a, nota: v('ftv-dnota') }, function (r) { return r.id === r.from ? 'Recordatorio delegado' : 'Delegada → ' + r.id; }, 'm-ftv');
   }
   function recordar() {
     var f = v('ftv-rfecha'); if (!f) return toast('Elegí la fecha del recordatorio.', 'err');

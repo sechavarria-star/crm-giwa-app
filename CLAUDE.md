@@ -34,6 +34,7 @@ Idioma: español rioplatense, informal. Respuestas cortas.
 
 - Mostrar el plan y esperar confirmación antes de cambios grandes.
 - Probar en local (`python3 -m http.server 5173`) contra la base real antes de publicar.
-- Publicar = `git push` a `main` (GitHub Pages). Volver atrás = revertir el commit.
+- Publicar = `python3 tools/versionar.py` y `git push` a `main` (GitHub Pages). Sin versionar, el navegador sigue
+  mostrando los archivos viejos. Volver atrás = revertir el commit.
 - Una pantalla vive en un solo lugar: mientras se pasa, no se cambia en el Apps Script.
 - Antes de pasar una pantalla, cada número tiene que dar igual que en el Apps Script.

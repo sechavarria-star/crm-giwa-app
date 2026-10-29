@@ -22,7 +22,7 @@ var MODULOS = [
   { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true,
     subs: [['cli', 'Clientes'], ['emp', 'Empresas'], ['con', 'Contactos']] },
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true,
-    subs: [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['tar', 'Tareas'], ['nuevo', 'Nuevo proyecto']] },
+    subs: [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']] },
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
   { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
