@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GIWA · Componentes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/componentes.css">
+</head>
+<!-- Página de muestra de C1–C16 (GIWA_identidad_visual.md). No está en el menú: sirve para revisar
+     los componentes antes de pasar las vistas. Datos de ejemplo, no lee la base. -->
+<body class="ui-base">
+<div class="ui-pag">
+  <nav class="ui-menu" id="menu"></nav>
+  <main class="ui-main" id="main"></main>
+</div>
+<div class="ui-mo" id="mo-ej"></div>
+
+<script src="js/util.js"></script>
+<script src="js/iconos.js"></script>
+<script src="js/ui.js"></script>
+<script>
+(function () {
+  // C1 · Menú lateral
+  document.getElementById('menu').innerHTML =
+    '<a class="ui-mi">' + uiIco('casa') + 'Home</a>' +
+    '<a class="ui-mi">' + uiIco('personas') + 'Clientes</a>' +
+    '<a class="ui-mi on">' + uiIco('lista') + 'Proyectos</a>' +
+    '<div class="ui-sub"><a class="ui-mi on">Seguimiento</a><a class="ui-mi">Lista</a><a class="ui-mi">Nuevo proyecto</a></div>' +
+    '<a class="ui-mi">' + uiIco('plata') + 'Administración</a>' +
+    '<a class="ui-mi">' + uiIco('tablero') + 'Estado financiero</a>' +
+    '<a class="ui-mi">' + uiIco('ajustes') + 'Configuración</a>';
+
+  var ej = function (tit, html) { return uiDesp({ t: tit, open: true }, html); };
+  var estados = ['Prospecto', 'En negociación', 'Aprobado', 'En curso', 'En garantía', 'Finalizado', 'Rechazado'];
+
+  var ficha =
+    '<div class="ui-ficha-hd">' + uiEstado('En curso') + '<span class="ui-acc-est">' + uiAcc('detener') + uiAcc('finalizar') + '</span></div>' +
+    uiMotivo('Activo porque hay un desarrollo en curso.') +
+    '<div class="ui-barra">' + uiBtn('Mejora', 'mas', 's') + uiBtn('Horas de soporte', 'reloj', 's') + uiBtn('Tarea', 'tarea', 's') + uiBtn('Comentario', 'chat', 's') + '</div>' +
+    uiTabs([['des', 'Desarrollos'], ['mod', 'Módulos'], ['tar', 'Tareas'], ['his', 'Historial']], 'des') +
+    '<div class="ui-cols"><div>' +
+      uiDev({ it: { tipo: 'IA' }, nombre: 'Agente de venta', estado: 'En curso', open: true },
+        '<span>Cuota <span class="ui-num">' + uiMonto(250000) + '</span></span><span>Inicio <span class="ui-num">01/09/2026</span></span>' + uiAcc('editar')) +
+      uiDev({ it: { tipo: 'MM', es_mantenimiento: true }, nombre: 'Mantenimiento mensual', estado: 'Aprobado' }, 'Datos del mantenimiento') +
+      uiDev({ it: { tipo: 'APP' }, nombre: 'Panel web', estado: 'En curso', detenido: true }, 'Datos del desarrollo') +
+    '</div><div>' +
+      '<div class="ui-lat-h">Desarrollos</div><div class="ui-lat-g">' +
+        uiKpi('Contratado', uiMonto(3000000), 'p-contratado') + uiKpi('Cobrado', uiMonto(1500000), 'p-cobrado') + uiKpi('Pendiente', uiMonto(1500000), 'p-pendiente') + '</div>' +
+      '<div class="ui-lat-h">Mantenimiento y soporte</div><div class="ui-lat-g">' +
+        uiKpi('Abono mensual', uiMonto(250000), 'p-abono') + uiKpi('Ya cobrado', uiMonto(500000), 'p-cobrado') +
+        uiKpi('Faltan', '10', 'p-neutro', 'cuotas') + uiKpi('Por cobrar', uiMonto(2500000), 'p-pendiente') + '</div>' +
+      '<div class="ui-kv">Tipo de cambio<span class="ui-num">' + uiMonto(1450) + '<span class="ui-usd">' + uiMonto(2068.97, true) + '</span></span></div>' +
+    '</div></div>';
+
+  var html =
+    // C2
+    uiHd('Proyectos', 'Seguimiento de proyectos activos y en negociación.', uiBtn('Proyecto', 'mas', 'p') + uiBtn('Exportar', 'subir', 's')) +
+    // C8
+    ej('C8 · Tarjetas de métrica', '<div class="ui-kpis">' + uiKpi('Contratado', uiMonto(12500000), 'p-contratado') + uiKpi('Cobrado', uiMonto(8200000), 'p-cobrado') +
+      uiKpi('Pendiente', uiMonto(4300000), 'p-pendiente') + uiKpi('MMR', uiMonto(950000), 'p-abono') + uiKpi('Vencido', uiMonto(120000), 'p-error') + '</div>') +
+    // C7
+    ej('C7 · Riel de estados', uiRiel([{ k: 'prospecto', t: 'Prospecto', n: 4 }, { k: 'negociacion', t: 'En negociación', n: 3, on: true },
+      { k: 'aprobado', t: 'Aprobado', n: 2 }, { k: 'curso', t: 'En curso', n: 6, on: true }, { k: 'garantia', t: 'En garantía', n: 1 }, { k: 'finalizado', t: 'Finalizado', n: 9 }],
+      [{ k: 'rechazado', t: 'Rechazado', n: 5 }, { k: 'detenido', t: 'Detenido', n: 1 }])) +
+    // C6 + C12
+    ej('C6 · Estado  ·  C12 · Tipo de desarrollo', '<div class="ui-fila-ic">' +
+      estados.map(function (e) { return uiEstado(e) + '&emsp;'; }).join('') + uiEstado('En curso', { detenido: true }) + '</div><br><div class="ui-fila-ic">' +
+      [{ tipo: 'IA' }, { tipo: 'APP' }, { tipo: 'MM', es_mantenimiento: true }, { tipo: 'AUT' }, { tipo: 'OTRO' }].map(function (it, i) { return uiTipo(it, estados[i + 1]) + '&emsp;'; }).join('') + '</div>') +
+    // C4 + C5
+    ej('C4 · Fila de proyecto  ·  C5 · Ficha', uiFilaProy({ emp: 'Grunwaldt', pro: 'Agente de venta', tot: '3', est: uiEstado('En curso'), open: true }, ficha) +
+      uiFilaProy({ emp: 'Prodigy', pro: 'Agente de pacientes', tot: '2', est: uiEstado('En negociación') }, 'Ficha') +
+      uiFilaProy({ emp: 'Hospital', pro: 'Turnos v2', tot: '5', est: uiEstado('Aprobado', { detenido: true }) }, 'Ficha')) +
+    // C3 anidado
+    ej('C3 · Desplegable anidado', uiDesp({ ic: 'empresa', t: 'Prune S.A.', n: 2, v: '<span class="ui-p-pendiente">' + uiMonto(1800000) + '</span>' },
+        uiDesp({ t: 'Bot 0800', n2: true, v: uiEstado('Aprobado') }, 'Contenido') + uiDesp({ t: 'PCP Consulta de entregas', n2: true, v: uiEstado('Aprobado') }, 'Contenido')) +
+      uiDesp({ ic: 'calendario', t: 'Más adelante', n: 7 }, 'Contenido')) +
+    // C9
+    ej('C9 · Tabla', '<table class="ui-tbl"><thead><tr><th>Concepto</th><th>Período</th><th class="ui-r">Cuota</th><th class="ui-r">Monto</th><th class="ui-r">USD</th></tr></thead><tbody>' +
+      '<tr class="ui-fila"><td>Mantenimiento</td><td class="ui-num">10/2026</td><td class="ui-r">3/12</td><td class="ui-r">' + uiMonto(250000) + '</td><td class="ui-r ui-p-usd">' + uiMonto(172.41, true) + '</td></tr>' +
+      '<tr class="ui-fila"><td>Saldo desarrollo</td><td class="ui-num">10/2026</td><td class="ui-r"></td><td class="ui-r">' + uiMonto(1500000) + '</td><td class="ui-r ui-p-usd">' + uiMonto(1034.48, true) + '</td></tr>' +
+      '</tbody></table>') +
+    // C10 + C11
+    ej('C10 · Botones  ·  C11 · Íconos', '<div class="ui-barra">' + uiBtn('Factura', 'factura', 'p') + uiBtn('Cobro', 'cobro', 'p') + uiBtn('Proyecto', 'ficha', 's') + uiBtn('Comentario', 'chat', 's') + '</div>' +
+      '<div class="ui-fila-ic">' + Object.keys(UI_ACC).map(function (k) { return uiAcc(k); }).join('') +
+      '&emsp;<a class="ui-ib ui-wa" title="WhatsApp">' + uiIco('whatsapp') + '</a><a class="ui-ib ui-azul" title="Mail">' + uiIco('mail') + '</a>' +
+      '&emsp;<a class="ui-lnk ui-azul">' + uiIco('carpeta') + 'Drive</a>&emsp;<a class="ui-lnk ui-gris">' + uiIco('web') + 'Web</a></div>') +
+    // C13 + Tier + C16
+    ej('C13 · Logo  ·  Tier  ·  C16 · Contactos', '<div class="ui-fila-ic">' + uiLogo('Grunwaldt') + '&emsp;' + uiLogo('Prodigy') + '&emsp;' +
+      [1, 2, 3, 4, 5].map(function (n) { return uiTier('T' + n) + '&ensp;'; }).join('') + '</div><br>' +
+      uiContactos([{ nombre: 'Ana Pérez', puesto: 'Gerenta comercial', tel: '+54 9 11 5555 0000', mail: 'ana@ejemplo.com' },
+                   { nombre: 'Luis Gómez', puesto: 'Sistemas', mail: 'luis@ejemplo.com' }, { nombre: 'Marta Ruiz', tel: '11 4444 0000' }])) +
+    // C15
+    ej('C15 · Aviso y motivo', uiAviso('El tipo de cambio se actualizó hoy.', 'info') + uiAviso('Hay 2 facturas vencidas.', 'adv') + uiMotivo('Activo porque hay un desarrollo en curso.')) +
+    // C14
+    ej('C14 · Modal', '<div class="ui-barra">' + uiBtn('Abrir modal de ejemplo', 'editar', 'p', 'onclick="openM(\'mo-ej\')"') + '</div>' +
+      '<span class="ui-guardado">' + uiIco('check') + 'Guardado</span>');
+
+  document.getElementById('main').innerHTML = html;
+
+  document.getElementById('mo-ej').innerHTML =
+    '<div class="ui-md"><div class="ui-mh">Editar desarrollo' + uiIb('cerrar', 'Cerrar', '', 'data-cerrar="mo-ej"') + '</div>' +
+    '<div class="ui-mb">' +
+      '<div class="ui-full"><label class="ui-lbl">Nombre</label><input class="ui-campo" value="Agente de venta"></div>' +
+      '<div><label class="ui-lbl">Cuota</label><input class="ui-campo ui-num" value="250.000,00"></div>' +
+      '<div><label class="ui-lbl">Inicio</label><input class="ui-campo ui-num" type="date" value="2026-09-01"></div>' +
+      '<div><label class="ui-lbl">Proyecto (informativo)</label><div class="ui-dato">P-0029</div></div>' +
+      '<div class="ui-full"><label class="ui-lbl">Nota</label><textarea class="ui-campo"></textarea></div>' +
+    '</div><div class="ui-mf">' + uiBtn('Cancelar', 'cerrar', 's', 'data-cerrar="mo-ej"') +
+      uiBtn('Guardar', 'guardar', 'p', 'onclick="closeM(\'mo-ej\')"') + '</div></div>';
+})();
+</script>
+</body>
+</html>

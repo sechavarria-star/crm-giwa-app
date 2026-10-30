@@ -95,7 +95,16 @@ Object.assign(_ICO, {
   t_ciclo:    '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
   t_ventana:  '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/><path d="M6 4v4"/><path d="M10 4v4"/>',
   t_flujo:    '<rect x="3" y="3" width="8" height="8" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
-  t_caja:     '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>'
+  t_caja:     '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+  // Estado (C6 de GIWA_identidad_visual · 30/10/2026)
+  e_rombo:    '<path d="M12 3 21 12 12 21 3 12z"/>',                                                    // Prospecto
+  e_flechas:  '<path d="M4 8h15"/><path d="m15 4 4 4-4 4"/><path d="M20 16H5"/><path d="m9 12-4 4 4 4"/>',   // En negociación
+  e_check:    '<path d="M20 6 9 17l-5-5"/>',                                                             // Aprobado
+  e_play:     '<path d="M7 4v16l13-8z"/>',                                                               // En curso
+  e_trebol:   '<circle cx="12" cy="7" r="3.5"/><circle cx="7" cy="13" r="3.5"/><circle cx="17" cy="13" r="3.5"/><path d="M12 13v8"/><path d="M9.5 21h5"/>',   // En garantía
+  e_cuadrado: '<rect x="5" y="5" width="14" height="14" rx="1" fill="currentColor"/>',                   // Finalizado
+  e_cruz:     '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',                                             // Rechazado
+  e_pausa:    '<path d="M9 5v14"/><path d="M15 5v14"/>'                                                   // Detenido
 });
 // Ícono del tipo de desarrollo: Agente IA = robot · Mantenimiento = circulación · Web App = ventana ·
 // Automatización = flujo · cualquier otro = caja

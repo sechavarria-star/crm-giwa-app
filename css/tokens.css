@@ -1,0 +1,100 @@
+/* ══════════════════════════════════════════════════════════════════════
+   tokens.css · el ÚNICO archivo con colores, tipografías, tamaños y espacios
+   ──────────────────────────────────────────────────────────────────────
+   Fuente: Claude outputs/GIWA_identidad_visual.md (30/10/2026).
+   Las vistas y componentes.css sólo leen estas variables. Control: fuera de
+   este archivo no puede haber ningún color en hexadecimal.
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Base */
+  --fondo: #060716;          /* app y desplegables */
+  --marco: #052342;          /* borde de secciones abiertas y recuadros; líneas entre filas */
+  --abierto: #0F1634;        /* encabezado de una sección abierta */
+  --caja: #0D122F;           /* recuadros de métricas y tarjetas */
+  --modal: #0B1040;          /* fondo de los modales */
+  --contorno: #1A3DB4;       /* borde de campos editables */
+  --brillo: #3AB8FF;         /* foco, hover, chevron abierto, pestaña activa */
+  --principal: #0090FF;      /* azul GIWA: botones principales, enlaces */
+  --secundaria: #A855F7;     /* violeta GIWA: botones secundarios */
+  --secundaria-txt: #C084FC; /* texto del botón secundario (legible sobre fondo) */
+  --texto: #E8EAF6;
+  --texto2: #94A3B8;         /* notas, etiquetas, íconos en reposo */
+  --blanco: #FFFFFF;
+  --logo-fondo: #121A3D;     /* recuadro del logo sin imagen */
+  --logo-claro: #FFFFFF;     /* recuadro del logo con imagen */
+
+  /* Estados (proyecto y desarrollo) */
+  --e-prospecto: #A855F7;
+  --e-negociacion: #FF9F1C;
+  --e-aprobado: #3AB8FF;
+  --e-curso: #00F0FF;
+  --e-garantia: #14B8A6;
+  --e-finalizado: #2BA07A;
+  --e-rechazado: #5A6488;
+  --e-detenido: #FACC15;
+
+  /* Plata */
+  --p-contratado: #3AB8FF;
+  --p-cobrado: #2BE28A;
+  --p-pendiente: #FF9F1C;
+  --p-abono: #A855F7;
+  --p-usd: #90D5FF;
+  --p-error: #FF4D6D;
+  --p-neutro: #94A3B8;
+
+  /* Marcas con color fijo */
+  --wa: #25D366;
+
+  /* Tonos suaves (hover, ítem activo, velo) */
+  --suave-principal: rgba(0, 144, 255, .10);
+  --suave-brillo: rgba(58, 184, 255, .08);
+  --suave-secundaria: rgba(168, 85, 247, .10);
+  --suave-cobrado: rgba(43, 226, 138, .08);
+  --suave-detenido: rgba(250, 204, 21, .08);
+  --suave-error: rgba(255, 77, 109, .08);
+  --suave-fila: rgba(58, 184, 255, .03);
+  --foco: rgba(58, 184, 255, .15);
+  --velo: rgba(6, 7, 22, .75);
+  --sombra: 0 18px 50px rgba(0, 0, 0, .5);
+
+  /* Tier: escala de azul GIWA (T1 el más intenso; decisión pendiente 2) */
+  --tier-1: rgba(0, 144, 255, 1);
+  --tier-2: rgba(0, 144, 255, .8);
+  --tier-3: rgba(0, 144, 255, .6);
+  --tier-4: rgba(0, 144, 255, .4);
+  --tier-5: rgba(0, 144, 255, .2);
+
+  /* Tipografía */
+  --f-texto: 'Montserrat', sans-serif;
+  --f-num: 'Courier New', monospace;
+  --t-xs: 11px;      /* etiquetas en mayúsculas chicas */
+  --t-s: 12px;       /* notas, contadores */
+  --t-m: 13px;       /* texto de controles y filas */
+  --t-l: 14px;       /* texto base */
+  --t-xl: 15px;      /* título de proyecto */
+  --t-num: 19px;     /* número de métrica */
+  --t-h1: 24px;      /* título de vista */
+  --peso-liviano: 300;
+  --peso-normal: 400;
+  --peso-medio: 500;
+  --espaciado: .08em;  /* letras en MAYÚSCULAS */
+
+  /* Tamaños y espacios */
+  --r: 8px;
+  --r-l: 12px;
+  --alto-btn: 34px;
+  --alto-campo: 38px;
+  --ico: 20px;
+  --ico-s: 18px;
+  --ico-xs: 14px;
+  --logo: 40px;
+  --ancho-menu: 240px;
+  --ancho-modal: 720px;
+  --ancho-lateral: 340px;
+  --e1: 4px;
+  --e2: 8px;
+  --e3: 12px;
+  --e4: 16px;
+  --e5: 24px;
+  --e6: 32px;
+}
