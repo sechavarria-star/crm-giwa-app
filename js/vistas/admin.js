@@ -22,6 +22,14 @@
   var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' }, recAbierto: false,
             gf: { cat: '', pag: '', rec: '', q: '' } };
   var SUBS = [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']];
+  var NOTAS = {   // C2: una nota propia por pantalla
+    dash: 'Lo que toca facturar, cobrar y revisar.',
+    fact: 'Facturas emitidas y cobros, por empresa.',
+    gastos: 'Gastos por tipo y por socio.',
+    idx: 'Índice IPC y tipo de cambio que usan los ajustes.',
+    imp: 'Lo facturado contra los topes del monotributo.',
+    tip: 'Tipos de desarrollo y cómo se cotizan.'
+  };
 
   async function cargar() {
     var q = [
@@ -577,8 +585,7 @@
   function pintar(el) {
     if (_montado !== 'admin') return;             // se terminó de leer con otro módulo en pantalla
     marcarSub(A.sub);
-    var cab = '<div class="page-h"><div><h2>' + (SUBS.find(function (s) { return s[0] === A.sub; }) || ['', 'Administración'])[1] + '</h2>' +
-      '<div class="page-s">Facturación, cobros y gastos.</div></div></div>';
+    var cab = uiHd((SUBS.find(function (s) { return s[0] === A.sub; }) || ['', 'Administración'])[1], NOTAS[A.sub] || NOTAS.dash);
     if (A.sub === 'fact') { el.innerHTML = cab + htmlFact(); return; }
     if (A.sub === 'gastos') { el.innerHTML = cab + htmlGastos(A.d); return; }
     if (A.sub === 'idx' && A.idx) { el.innerHTML = cab + htmlIdx(); return; }

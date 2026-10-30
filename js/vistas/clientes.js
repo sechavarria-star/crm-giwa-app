@@ -192,9 +192,9 @@
   VISTAS.clientes = async function (el, op) {
     var p = subPedida(); if (p === 'emp') pest = 'cli'; else if (PEST.indexOf(p) >= 0) pest = p;
     el.innerHTML =
-      '<div class="page-h"><div><h2 id="cli-tit">Clientes</h2><div class="page-s">Empresas, su estado y sus contactos.</div></div>' +
-        '<div class="u-row8"><input class="fc" id="cli-q" placeholder="Buscar empresa o contacto…" aria-label="Buscar">' +
-        '<button class="btn bg" id="cli-exportar">Exportar</button><button class="btn bp" id="cli-nuevo"></button></div></div>' +
+      uiHd('Clientes', 'Empresas, su estado y sus contactos.',
+        '<input class="fc" id="cli-q" placeholder="Buscar empresa o contacto…" aria-label="Buscar">' +
+        '<button class="btn bg" id="cli-exportar">Exportar</button><button class="btn bp" id="cli-nuevo"></button>') +
       '<div id="cli-cuerpo"><div class="u-s11-mt">Cargando…</div></div>';
     el.querySelector('#cli-q').value = busca;
     // con datos ya leídos pinta en el acto y relee por detrás

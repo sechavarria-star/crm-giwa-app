@@ -858,8 +858,11 @@
   function pintar(el) {
     if (_montado !== 'pm') return;                // se terminó de leer con otro módulo en pantalla
     marcarSub(P.sub === 'ficha' ? P.prev : P.sub);
-    var cab = '<div class="page-h"><div><h2>' + (SUBS.find(function (s) { return s[0] === P.sub; }) || ['', 'Proyectos'])[1] + '</h2>' +
-      '<div class="page-s">Seguimiento y estado de cada proyecto.</div></div></div>';
+    var cab = uiHd((SUBS.find(function (s) { return s[0] === P.sub; }) || ['', 'Proyectos'])[1], {
+      seg: 'Proyectos en marcha y en negociación, para revisar.',
+      proy: 'Todos los proyectos, con sus desarrollos y su estado.',
+      nuevo: 'Alta de un proyecto nuevo.'
+    }[P.sub] || 'Seguimiento y estado de cada proyecto.');
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     if (P.sub === 'seg') el.innerHTML = cab + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + htmlProy();

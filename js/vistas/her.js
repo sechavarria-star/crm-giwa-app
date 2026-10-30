@@ -271,9 +271,9 @@
   function pintar(el) {
     if (_montado !== 'her') return;
     marcarSub('meta');
-    el.innerHTML = '<div class="page-h"><div><h2>Simulador Costos Meta</h2><div class="page-s">WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.</div></div>' +
-        '<div class="u-row8"><span class="u-s11 u-c-mt">Dólar oficial ' + ars(S.tc) + '</span>' +
-        '<button class="btn bg sm" data-sim="imprimir">' + ico('documento') + ' Imprimir</button></div></div>' +
+    el.innerHTML = uiHd('Simulador Costos Meta', 'WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.',
+        '<span class="u-s11 u-c-mt">Dólar oficial ' + ars(S.tc) + '</span>' +
+        '<button class="btn bg sm" data-sim="imprimir">' + ico('documento') + ' Imprimir</button>') +
       '<div class="filtros" role="group" aria-label="Simulador">' + TABS.map(function (t) {
         return '<button class="ptab' + (t[0] === S.tab ? ' on' : '') + '" data-sim="tab" data-k="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
       ({ calc: htmlCalc, vivo: htmlVivo, mrr: htmlMrr, tg: htmlTg }[S.tab])() +

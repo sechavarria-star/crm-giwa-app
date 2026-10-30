@@ -235,7 +235,7 @@
   function pintar(el) {
     if (_montado !== 'fin') return;
     var D = F.d;
-    el.innerHTML = '<div class="page-h"><div><h2>Estado financiero</h2><div class="page-s">Cómo está parado el negocio: lo cobrado, lo contratado y lo que viene.</div></div></div>' +
+    el.innerHTML = uiHd('Estado financiero', 'Cómo está parado el negocio: lo cobrado, lo contratado y lo que viene.') +
       '<div class="kpi-grid u-mb12">' + kpis() + '</div>' +
       sec('an', 'Análisis por cliente', clientesVigentes().length, '', analisis()) +
       sec('graf', 'Cobrado vs Contratado por empresa', '', '', grafEmpresas()) +

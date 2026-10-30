@@ -58,14 +58,14 @@ function pintarBarra() {
   var act = _moduloActual(), sub = _ruta().sub;
   document.getElementById('nav-mods').innerHTML = MODULOS.map(function(m) {
     var on = m.id === act.id, subs = m.subs || [];
-    var h = '<div class="lat-grupo"><a class="lat-mod' + (on ? ' on' : '') + '" href="#/' + m.id + '"' + (on ? ' aria-current="page"' : '') + '>' +
-      ico(m.ico) + '<span class="lat-txt">' + m.nombre + '</span>' +
+    var h = '<div class="lat-grupo"><a class="lat-mod ui-mi' + (on ? ' on' : '') + '" href="#/' + m.id + '"' + (on ? ' aria-current="page"' : '') + '>' +
+      ico(m.ico, 'ui-ico') + '<span class="lat-txt">' + m.nombre + '</span>' +
       (subs.length ? '<span class="lat-chev">' + ico(on ? 'arriba' : 'abajo') + '</span>' : '') + '</a>';
     // abierto el del módulo actual; colapsado, todos salen flotando al pasar el mouse
-    h += '<div class="lat-subs' + (on ? ' abierto' : '') + '"><div class="lat-tit">' + m.nombre + '</div>' +
+    h += '<div class="lat-subs ui-sub' + (on ? ' abierto' : '') + '"><div class="lat-tit">' + m.nombre + '</div>' +
       subs.map(function(s, i) {
         var son = on && (sub ? s[0] === sub : i === 0);
-        return '<a class="lat-sub' + (son ? ' on' : '') + '" href="#/' + m.id + '/' + s[0] + '"' + (son ? ' aria-current="page"' : '') + '>' + s[1] + '</a>';
+        return '<a class="lat-sub ui-mi' + (son ? ' on' : '') + '" href="#/' + m.id + '/' + s[0] + '"' + (son ? ' aria-current="page"' : '') + '>' + s[1] + '</a>';
       }).join('') + '</div></div>';
     return h;
   }).join('');

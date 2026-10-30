@@ -33,7 +33,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-p-neutro { color: var(--p-neutro); }
 
 /* ── C1 · Menú lateral ── */
-.ui-menu { width: var(--ancho-menu); border-right: 1px solid var(--marco); padding: var(--e4) 10px; background: var(--fondo); }
+.ui-menu { border-right: 1px solid var(--marco); padding: var(--e4) 10px; background: var(--fondo); }
 .ui-mi { display: flex; align-items: center; gap: var(--e3); padding: 10px var(--e3); border-radius: var(--r); color: var(--texto2);
   font-size: var(--t-s); letter-spacing: var(--espaciado); text-transform: uppercase; text-decoration: none; cursor: pointer; }
 .ui-mi:hover { color: var(--texto); }

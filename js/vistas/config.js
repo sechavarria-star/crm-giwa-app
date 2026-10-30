@@ -361,8 +361,15 @@
   function pintar(el) {
     if (_montado !== 'config') return;            // se terminó de leer con otro módulo en pantalla
     marcarSub(C.sub);
-    var cab = '<div class="page-h"><div><h2>' + SUBS.find(function (s) { return s[0] === C.sub; })[1] + '</h2>' +
-      '<div class="page-s">Configuración: listas, valor hora, usuarios y diagnóstico.</div></div></div>';
+    var cab = uiHd(SUBS.find(function (s) { return s[0] === C.sub; })[1], {
+      listas: 'Las opciones de cada lista desplegable.',
+      vh: 'Valor hora, tiers y márgenes que usa el Cotizador.',
+      gastos: 'Los tipos para clasificar los gastos.',
+      usu: 'Quién entra al CRM y con qué permisos.',
+      telegram: 'Los avisos que llegan por Telegram.',
+      diag: 'Revisión de datos y procesos automáticos.',
+      otros: 'Otros ajustes del CRM.'
+    }[C.sub]);
     el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
     if (C.sub === 'telegram') tgPintar();
     if (C.sub === 'diag') { diagPintar(); recCargar(); }
