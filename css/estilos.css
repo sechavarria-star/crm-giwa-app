@@ -1,5 +1,4 @@
-/* GENERADO por tools/sincronizar-desde-apps-script.py desde _Estilos.html.
-   No editar a mano mientras dure la transición: se pisa. */
+/* Nació de _Estilos.html (Apps Script). Desde 30/10/2026 la única versión es ésta, la del repo. */
 /* ══════════════════════════════════════════════════════════════
    LA CASA · estilos compartidos
    Sacados de Admin_Index, que era donde vivían. Las cuatro
@@ -9,9 +8,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   color-scheme:dark;   /* diálogos nativos (confirmar/avisos) legibles sobre fondo oscuro */
-  --bg:#060716;--bg2:#0d1130;--bg3:#111840;--card:#0f1535;
-  --b:#1e2a55;--blue:#0090FF;--b2:#0070cc;--violet:#A855F7;--bv:#7c3aed;
-  --tx:#e8eaf6;--mt:#8892b0;--ok:#00c97a;--wa:#f5a623;--rd:#ff4d6d;
+  --bg:var(--fondo);--bg2:var(--caja);--bg3:var(--abierto);--card:var(--caja);
+  --b:var(--marco);--blue:var(--principal);--b2:var(--principal);--violet:var(--secundaria);--bv:var(--secundaria);
+  --tx:var(--texto);--mt:var(--texto2);--ok:var(--p-cobrado);--wa:var(--p-pendiente);--rd:var(--p-error);
   --r:10px;--mono:'Courier New',monospace;
 
   /* ══════════════════════════════════════════════════════════════════
@@ -54,12 +53,12 @@
 
   /* --teal se usaba en 5 lugares (colorEstado incluido) y NO ESTABA DEFINIDO:
      todo lo que debía ser turquesa salía sin color. */
-  --teal:#14b8a6;
+  --teal:var(--e-garantia);
   /* Superficies de modal (22/10/2026): profundidad oscura y borde de luz de la marca */
-  --sup-modal:#052342;--borde-luz:#1A3DB4;
+  --sup-modal:var(--marco);--borde-luz:var(--contorno);
   /* Amarillo, que faltaba: seguimiento. Distinto del naranja, que es advertencia. */
-  --yl:#e8c547;
-  --mt2:#5a6488;   /* gris más apagado: histórico, deshabilitado */
+  --yl:var(--e-detenido);
+  --mt2:var(--e-rechazado);   /* gris más apagado: histórico, deshabilitado */
 
   /* ── BORDES Y FONDOS TRANSLÚCIDOS ────────────────────────────────
      Eran 222 rgba() escritos a mano en las cuatro pantallas. Ahora tienen
@@ -91,7 +90,7 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
 .ni{display:flex;align-items:center;gap:8px;padding:7px 14px;color:var(--mt);cursor:pointer;font-size:12px;font-weight:500;border-left:3px solid transparent;transition:.15s}
 .ni:hover{color:var(--tx);background:rgba(0,144,255,.06)}.ni.on{color:var(--blue);background:rgba(0,144,255,.1);border-left-color:var(--blue)}
 .ni svg{width:14px;height:14px;flex-shrink:0}
-.sb-badge{background:var(--rd);color:#fff;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:500;margin-left:auto}
+.sb-badge{background:var(--rd);color:var(--blanco);border-radius:10px;padding:1px 5px;font-size:9px;font-weight:500;margin-left:auto}
 .sb-foot{padding:8px 14px;font-size:10px;color:var(--mt);flex-shrink:0;border-top:1px solid var(--b)}
 .main{margin-left:200px;width:calc(100% - 200px);min-width:0;display:flex;flex-direction:column;min-height:calc(100vh - 36px)}
 .top{background:var(--bg2);border-bottom:1px solid var(--b);padding:0 20px;min-height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:36px;z-index:50}
@@ -103,12 +102,12 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
    Agregar, guardar, facturar, nuevo: todos iguales, no hay que pensar.
    Va el azul de las pestañas (--b2), no el celeste: el celeste quedó
    reservado para CONTRATADO y el canal de acción no pisa el de la plata. */
-.bp{background:var(--b2);color:#fff}.bp:hover{background:var(--blue)}
+.bp{background:var(--b2);color:var(--blanco)}.bp:hover{background:var(--blue)}
 .bg{background:var(--b-suave);color:var(--tx)}.bg:hover{background:var(--blue-a);color:var(--blue)}
 /* .bv era el botón violeta («+ Nuevo proyecto», «+ Novedad»). Violeta pasó
    a ser de los abonos, así que .bv ES .bp: no hay que tocar las 20 llamadas
    y ningún botón puede volver a salir violeta. */
-.bv{background:var(--b2);color:#fff}.bv:hover{background:var(--blue)}
+.bv{background:var(--b2);color:var(--blanco)}.bv:hover{background:var(--blue)}
 .bok{background:var(--ok-a);color:var(--ok)}
 .bwa{background:var(--wa-a);color:var(--wa)}
 .brd{background:var(--rd-a);color:var(--rd)}
@@ -244,7 +243,7 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
 /* ── EL AVATAR ──────────────────────────────────────────────────────
    Lo generaba _avatarCircle() con 9 declaraciones inline, 20 veces. El color
    sigue siendo inline porque es de cada persona; la forma vive acá. */
-.ava{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;color:#fff;font-size:9px;font-weight:400;flex-shrink:0}
+.ava{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;color:var(--blanco);font-size:9px;font-weight:400;flex-shrink:0}
 .ava-ov{margin-left:-6px;box-shadow:0 0 0 1.5px var(--card)}   /* apilados */
 .ava-lg{width:26px;height:26px;font-size:11px}
 .rowb{border-bottom:1px solid var(--b-suave)}
@@ -302,9 +301,9 @@ textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg
 .toasts{position:fixed;bottom:16px;right:16px;z-index:300;display:flex;flex-direction:column;gap:5px}
 .toast{padding:8px 13px;border-radius:var(--r);font-size:12px;font-weight:500;min-width:190px;animation:fadein .2s}
 @keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.tok{background:#0a2a1a;border:1px solid var(--ok);color:var(--ok)}
-.terr{background:#2a0a0f;border:1px solid var(--rd);color:var(--rd)}
-.tinf{background:#0a1020;border:1px solid var(--blue);color:var(--blue)}
+.tok{background:var(--fondo);border:1px solid var(--ok);color:var(--ok)}
+.terr{background:var(--fondo);border:1px solid var(--rd);color:var(--rd)}
+.tinf{background:var(--fondo);border:1px solid var(--blue);color:var(--blue)}
 .loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--mt)}
 .spin{width:17px;height:17px;border:2px solid var(--b);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite;margin-right:7px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -333,7 +332,7 @@ textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg
 .fl2{font-size:10.5px;color:var(--mt);margin-bottom:2px}
 .ta{width:100%;background:var(--bg);border:1px solid transparent;border-radius:var(--r);padding:7px 9px;color:var(--tx);font-family:inherit;font-size:12px;resize:vertical}
 .nov-i{background:var(--bg3);border-radius:var(--r);padding:7px 10px;margin-bottom:6px;font-size:11px}
-.btn.p{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.p{background:var(--blue);border-color:var(--blue);color:var(--blanco)}
 /* ══════════════════════════════════════════════════════════════════════
    LA ESCALA DE DENSIDAD
    ──────────────────────────────────────────────────────────────────────
@@ -433,7 +432,7 @@ textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg
 .page-h h2{font-size:20px;font-weight:300;margin:0 0 4px}
 .page-s{font-size:12px;color:var(--mt)}
 .emp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.emp-logo{width:40px;height:40px;border-radius:var(--r);object-fit:contain;background:#fff;flex-shrink:0}
+.emp-logo{width:40px;height:40px;border-radius:var(--r);object-fit:contain;background:var(--blanco);flex-shrink:0}
 .emp-ini{width:40px;height:40px;border-radius:var(--r);background:var(--blue-a);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:400;flex-shrink:0}
 .emp-ini.sm{width:22px;height:22px;font-size:10px;border-radius:50%}
 .con-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:7px}
@@ -587,7 +586,7 @@ textarea.fc{resize:vertical;min-height:56px}select.fc option{background:var(--bg
    Se borraron por idénticas a _Estilos.html: .btn.p .fc:focus .fl .fl2 .nov-i .req .ta textarea.fc */
 /* El :root del Portal se borró el 30/09/2026: de 15 tokens, 13 decían
    exactamente lo mismo que _Estilos y los 2 que diferían eran el problema.
-   --card:#0d1130 es --bg2: por eso los recuadros se veían negros.
+   --card era igual a --bg2: por eso los recuadros se veían negros.
    --r:12px daba esquinas distintas al resto de la app. Manda el canónico. */
 /* El Portal es una sola columna sin menú lateral: lo único suyo es el
    padding. Tipografía, peso y colores los pone _Estilos — sin esto el body
@@ -704,13 +703,13 @@ body[data-pag="portal"]{padding:54px 20px 40px}   /* 36 de la barra + 18 */
 [data-pag="pm"] .wsteps{display:flex;gap:0;margin-bottom:14px;background:var(--bg);border:1px solid var(--b);border-radius:var(--r);padding:3px}
 [data-pag="pm"] .wstep{flex:1;text-align:center;padding:6px 4px;border-radius:var(--r);font-size:10px;font-weight:400;color:var(--mt);line-height:1.3;transition:.15s}
 [data-pag="pm"] .wstep .sn{display:block;font-size:13px;font-weight:400;margin-bottom:1px}
-[data-pag="pm"] .wstep.done{color:var(--ok)}[data-pag="pm"] .wstep.on{background:var(--blue);color:#fff}
+[data-pag="pm"] .wstep.done{color:var(--ok)}[data-pag="pm"] .wstep.on{background:var(--blue);color:var(--blanco)}
 [data-pag="pm"] .stab{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:400;color:var(--mt);cursor:pointer;border:1px solid var(--b);transition:.15s;display:inline-block}
 [data-pag="pm"] .stab:hover{color:var(--tx)}[data-pag="pm"] .stab.on{background:var(--blue-a);color:var(--blue);border-color:var(--blue)}
 /* Pestañas Tareas · Agenda: eran el mismo inline copiado en v-tar, v-nov y v-agenda. */
 [data-pag="pm"] .vtabs{display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid var(--b);padding-bottom:8px}
 [data-pag="pm"] .vtab{background:transparent;color:var(--mt);border:1px solid var(--b);border-radius:var(--r);padding:5px 14px;font-size:12px;font-weight:400;cursor:pointer}
-[data-pag="pm"] .vtab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+[data-pag="pm"] .vtab.on{background:var(--blue);color:var(--blanco);border-color:var(--blue)}
 [data-pag="pm"] .nav-proy-btn{background:var(--bg2);border:1px solid var(--b);color:var(--blue);border-radius:var(--r);padding:4px 14px;cursor:pointer;font-size:22px;line-height:1;font-weight:400;font-family:'Montserrat',sans-serif;transition:.15s}
 [data-pag="pm"] .nav-proy-btn:hover:not(:disabled){background:rgba(0,144,255,.15);border-color:var(--blue)}
 [data-pag="pm"] .nav-proy-btn:disabled{opacity:.25;cursor:not-allowed}
@@ -718,7 +717,7 @@ body[data-pag="portal"]{padding:54px 20px 40px}   /* 36 de la barra + 18 */
 /* ── PROY CARDS (estilo limpio, inspirado en Pendientes original) ── */
 [data-pag="pm"] .proy-emp-block{margin-bottom:16px}
 [data-pag="pm"] .proy-emp-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border:1px solid var(--b);border-radius:var(--r) var(--r) 0 0;border-bottom:none}
-.proy-emp-logo{width:32px;height:32px;border-radius:50%;object-fit:contain;background:#fff;flex-shrink:0}
+.proy-emp-logo{width:32px;height:32px;border-radius:50%;object-fit:contain;background:var(--blanco);flex-shrink:0}
 .proy-emp-initial{width:32px;height:32px;border-radius:50%;background:rgba(0,144,255,.18);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:400;color:var(--blue);flex-shrink:0}
 [data-pag="pm"] .proy-emp-name{font-size:12px;font-weight:400;color:var(--tx);flex:1;text-transform:uppercase;letter-spacing:.06em}
 [data-pag="pm"] .proy-emp-n{font-size:10px;font-weight:300;color:var(--mt)}
@@ -773,7 +772,7 @@ body[data-pag="portal"]{padding:54px 20px 40px}   /* 36 de la barra + 18 */
 [data-pag="pm"] .gantt-time{position:relative;flex-shrink:0}
 [data-pag="pm"] .gantt-bar{position:absolute;top:7px;height:16px;border-radius:4px;cursor:pointer;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)}
 [data-pag="pm"] .gantt-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.4)}
-[data-pag="pm"] .gantt-hito{position:absolute;top:6px;width:14px;height:14px;transform:rotate(45deg);cursor:pointer;border:1px solid #fff;border-radius:2px}
+[data-pag="pm"] .gantt-hito{position:absolute;top:6px;width:14px;height:14px;transform:rotate(45deg);cursor:pointer;border:1px solid var(--blanco);border-radius:2px}
 [data-pag="pm"] .gantt-tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--b);font-size:9px;color:var(--mt);padding-left:3px;padding-top:4px}
 [data-pag="pm"] .gantt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--violet);z-index:1;opacity:.7}
 /* ── La puerta: cinco preguntas y nada más ─────────────────────────────── */
@@ -782,7 +781,7 @@ body[data-pag="portal"]{padding:54px 20px 40px}   /* 36 de la barra + 18 */
 [data-pag="pm"] .qg-h{display:flex;align-items:center;gap:9px;padding:14px 18px;border-bottom:1px solid var(--b)}
 [data-pag="pm"] .qg-h h2{margin:0;font-size:16px}
 [data-pag="pm"] .qg-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-  border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:400;flex-shrink:0}
+  border-radius:50%;background:var(--blue);color:var(--blanco);font-size:11px;font-weight:400;flex-shrink:0}
 [data-pag="pm"] .qg-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
 [data-pag="pm"] .qg-fila{display:flex;flex-direction:column;gap:5px}
 [data-pag="pm"] .qg-l{font-size:10.5px;font-weight:400;color:var(--mt)}
@@ -820,7 +819,7 @@ body[data-pag="portal"]{padding:54px 20px 40px}   /* 36 de la barra + 18 */
 [data-pag="pm"] .sol-li.es-mant{border-left:3px solid var(--violet)}
 [data-pag="pm"] .sl-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
   border-radius:50%;background:var(--bg3);color:var(--mt);font-size:10.5px;font-weight:400;flex-shrink:0}
-[data-pag="pm"] .sol-li:hover .sl-n{background:var(--blue);color:#fff}
+[data-pag="pm"] .sol-li:hover .sl-n{background:var(--blue);color:var(--blanco)}
 [data-pag="pm"] .sl-txt{flex:1;min-width:0}
 [data-pag="pm"] .sl-tit{font-size:13px;font-weight:400;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [data-pag="pm"] .sl-sub{font-size:11px;color:var(--mt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
@@ -1284,7 +1283,7 @@ background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;
 [data-pag="cot"] .cn-r1-n span{font-size:10.5px;color:var(--mt)}
 [data-pag="cot"] .cn-r1-n b{text-align:right;font-size:14px}
 [data-pag="cot"] .cn-r1-b{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:auto}
-[data-pag="cot"] .cn-acc:hover,[data-pag="cot"] .cn-acc:focus-visible{background:var(--blue);color:#fff}
+[data-pag="cot"] .cn-acc:hover,[data-pag="cot"] .cn-acc:focus-visible{background:var(--blue);color:var(--blanco)}
 [data-pag="cot"] .cn-campos{display:grid;gap:8px;max-width:380px}
 [data-pag="cot"] .cn-campos .fg{margin:0}
 [data-pag="cot"] .cn-ent{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--b);max-width:640px}
@@ -1298,10 +1297,10 @@ background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;
 [data-pag="cot"] .cn-i{width:26px;height:26px;border-radius:50%;border:1px solid var(--b);background:transparent;color:var(--mt);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 [data-pag="cot"] .cn-i .ico{width:13px;height:13px}
 [data-pag="cot"] .cn-i:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
-[data-pag="cot"] .cn-i.on.xg{background:var(--ok);border-color:var(--ok);color:#fff}
-[data-pag="cot"] .cn-i.on.xm{background:var(--mt);border-color:var(--mt);color:#fff}
-[data-pag="cot"] .cn-i.on.xw{background:var(--wa);border-color:var(--wa);color:#fff}
-[data-pag="cot"] .cn-i.on.xv{background:var(--violet);border-color:var(--violet);color:#fff}
+[data-pag="cot"] .cn-i.on.xg{background:var(--ok);border-color:var(--ok);color:var(--blanco)}
+[data-pag="cot"] .cn-i.on.xm{background:var(--mt);border-color:var(--mt);color:var(--blanco)}
+[data-pag="cot"] .cn-i.on.xw{background:var(--wa);border-color:var(--wa);color:var(--blanco)}
+[data-pag="cot"] .cn-i.on.xv{background:var(--violet);border-color:var(--violet);color:var(--blanco)}
 [data-pag="cot"] .cn-nota{margin-top:4px;font-size:11px;font-weight:200;padding:4px 8px}
 [data-pag="cot"] #cn-preg .u-s11{font-weight:200}
 [data-pag="cot"] .cn-r-mod{padding:4px 0 6px;cursor:pointer}

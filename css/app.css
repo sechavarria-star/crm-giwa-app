@@ -341,13 +341,13 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 /* ══ Paleta GIWA · fuente única de estados y dinero (29/10/2026, punto 9) ══════
    Un color por estado, el mismo en el listado, la ficha, Desarrollo, Seguimiento
    y las barras. Los usa estados.js (_PALETA_EST); ninguna pantalla pone colores a mano.
-   Familia fría con brillo, sobre el fondo #060716. El rojo queda para errores y
+   Familia fría con brillo, sobre el fondo (--fondo). El rojo queda para errores y
    vencimientos críticos; Rechazado es gris. */
 :root {
-  --e-nueva: #A855F7;  --e-negoc: #FF9F1C;  --e-aprob: #3AB8FF;  --e-curso: #00F0FF;
-  --e-garan: #14B8A6;  --e-final: #2BA07A;  --e-rech: #5A6488;   --e-deten: #FACC15;
-  --d-contr: #3AB8FF;  --d-cobr: #2BE28A;   --d-pend: #FF9F1C;   --d-abono: #A855F7;
-  --d-neutro: #94A3B8; --d-usd: #90D5FF;
+  --e-nueva: var(--secundaria);  --e-negoc: var(--p-pendiente);  --e-aprob: var(--brillo);  
+  --e-garan: var(--e-garantia);  --e-final: var(--e-finalizado);  --e-rech: var(--e-rechazado);   --e-deten: var(--e-detenido);
+  --d-contr: var(--brillo);  --d-cobr: var(--p-cobrado);   --d-pend: var(--p-pendiente);   --d-abono: var(--secundaria);
+  --d-neutro: var(--texto2); --d-usd: var(--p-usd);
 }
 .e-xn { background: var(--e-nueva); } .t-xn { color: var(--e-nueva); }
 .e-xw { background: var(--e-negoc); } .t-xw { color: var(--e-negoc); }
@@ -380,19 +380,19 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 
 /* ══ Modales: un solo componente (29/10/2026, punto 10.B.5) ═════════════════
    Todos iguales, con el modelo de Nueva Tarea: 720 px, sin scroll interno (se
-   mueve la ventana entera con su título), fondo #052342, campos sobre #060716
-   con contorno #1A3DB4 y foco #3AB8FF. Sin fondos verdes. Pie: Cancelar y Guardar. */
-.md, .md.md-sm { width: 100%; max-width: 720px; background: #052342; border-color: #1A3DB4; }
-.md .mh, .md .mf { background: #052342; }
+   mueve la ventana entera con su título), fondo var(--marco), campos sobre var(--fondo)
+   con contorno var(--contorno) y foco var(--brillo). Sin fondos verdes. Pie: Cancelar y Guardar. */
+.md, .md.md-sm { width: 100%; max-width: 720px; background: var(--modal); border-color: var(--contorno); }
+.md .mh, .md .mf { background: var(--modal); }
 .md .mb2 { max-height: none; overflow: visible; }
-.mo .fc { background: #060716; border: 1px solid #1A3DB4; }
-.mo .fc:focus { border-color: #3AB8FF; box-shadow: 0 0 0 2px rgba(58,184,255,.18); }
+.mo .fc { background: var(--fondo); border: 1px solid var(--contorno); }
+.mo .fc:focus { border-color: var(--brillo); box-shadow: 0 0 0 2px rgba(58,184,255,.18); }
 .mo .fc:disabled { opacity: .55; }
 
 /* ══ Proyectos (29/10/2026, puntos 5 y 10.B.7) ═════════════════════════════ */
 /* Seguimiento: el título abre la ficha; a la derecha el estado y, debajo, sus acciones */
 .seg-nom-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.seg-nom-btn:hover { color: #3AB8FF; }
+.seg-nom-btn:hover { color: var(--brillo); }
 .seg-der { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
 .seg-der-est { display: flex; gap: 6px; }
 .seg-der-acc { display: flex; gap: 1px; }
@@ -403,20 +403,20 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .seg-riel .riel-paso { cursor: default; }
 /* Vista general: cliente → proyecto → ficha debajo */
 .proy-tog { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-.proy-tog:hover { color: #3AB8FF; }
+.proy-tog:hover { color: var(--brillo); }
 .proy-tog .chev.on { transform: rotate(90deg); color: var(--blue); }
 .proy-inline { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--b); }
 
 /* ══ Íconos y Tier (29/10/2026, punto 10.C) ═══════════════════════════════
    Íconos de acción: gris en reposo, celeste con brillo al pasar el mouse (con tooltip);
    borrar/quitar, rojo. Sólo las señales (alerta, pausa de Detenido) llevan color fijo. */
-.btn-ico { color: #94A3B8; }
-.btn-ico:hover, .btn-ico:focus-visible { color: #3AB8FF; filter: drop-shadow(0 0 4px rgba(58,184,255,.55)); }
+.btn-ico { color: var(--texto2); }
+.btn-ico:hover, .btn-ico:focus-visible { color: var(--brillo); filter: drop-shadow(0 0 4px rgba(58,184,255,.55)); }
 .btn-ico[data-tip^="Eliminar"]:hover, .btn-ico[data-tip^="Borrar"]:hover, .btn-ico[data-tip^="Quitar"]:hover,
-.btn-ico[aria-label^="Eliminar"]:hover, .btn-ico[aria-label^="Quitar"]:hover { color: #FF4D6D; filter: drop-shadow(0 0 4px rgba(255,77,109,.5)); }
+.btn-ico[aria-label^="Eliminar"]:hover, .btn-ico[aria-label^="Quitar"]:hover { color: var(--p-error); filter: drop-shadow(0 0 4px rgba(255,77,109,.5)); }
 .btn-ico:active { transform: scale(.92); }
 /* Tier: relleno de azul GIWA del 20 % al 100 % según el multiplicador (T1 el más intenso), número en Courier */
-.tier-chip { display: inline-block; padding: 1px 7px; border-radius: 4px; font-family: var(--mono); font-size: 10.5px; color: #E6F4FF; background: rgba(0,144,255,.2); }
+.tier-chip { display: inline-block; padding: 1px 7px; border-radius: 4px; font-family: var(--mono); font-size: 10.5px; color: var(--texto); background: rgba(0,144,255,.2); }
 .tier-1 { background: rgba(0,144,255,1); }  .tier-2 { background: rgba(0,144,255,.8); }  .tier-3 { background: rgba(0,144,255,.6); }
 .tier-4 { background: rgba(0,144,255,.4); } .tier-5 { background: rgba(0,144,255,.2); }
 /* Contactos en la tarjeta de la empresa */
@@ -433,7 +433,7 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .seg-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 14px; border: 1px solid var(--b); background: none; color: var(--mt); font: inherit; font-size: 11.5px; cursor: pointer; }
 .seg-chip .m { color: inherit; opacity: .8; }
 .seg-chip:hover { border-color: var(--b-fuerte); color: var(--tx); }
-.seg-chip.on { color: var(--tx); border-color: #3AB8FF; background: rgba(58,184,255,.10); }
+.seg-chip.on { color: var(--tx); border-color: var(--brillo); background: rgba(58,184,255,.10); }
 .seg-chip.c-xc.on { border-color: var(--e-curso); background: rgba(0,240,255,.10); }
 .seg-chip.c-xt.on { border-color: var(--e-garan); background: rgba(20,184,166,.12); }
 .seg-chip.c-xv.on { border-color: var(--violet); background: rgba(168,85,247,.12); }
@@ -501,50 +501,50 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 /* ══ «Íconos GIWA» (Claude outputs/iconos_giwa.html · 29/10/2026) ══════════
    Línea fina 1,5 px · 20 px · sin relleno. Hover por acción: celeste por defecto, verde
    Finalizar, amarillo Detener, azul Editar, violeta Comentar/Agregar tarea, rojo Borrar. */
-.btn-ico { width: 36px; height: 36px; border-radius: 8px; color: #94A3B8; transition: .15s; }
+.btn-ico { width: 36px; height: 36px; border-radius: 8px; color: var(--texto2); transition: .15s; }
 .btn-ico .ico { width: 20px; height: 20px; }
-.btn-ico:hover, .btn-ico:focus-visible { color: #3AB8FF; background: rgba(58,184,255,.08); filter: drop-shadow(0 0 6px rgba(58,184,255,.5)); }
-.btn-ico[data-tip^="Finaliz"]:hover, .btn-ico[data-tip^="Cerrar"]:hover, .btn-ico.h-ok:hover { color: #2BE28A; background: rgba(43,226,138,.08); filter: drop-shadow(0 0 6px rgba(43,226,138,.5)); }
-.btn-ico[data-tip^="Deten"]:hover, .btn-ico[data-tip^="Paus"]:hover { color: #FACC15; background: rgba(250,204,21,.08); filter: drop-shadow(0 0 6px rgba(250,204,21,.5)); }
-.btn-ico[data-tip^="Editar"]:hover { color: #0090FF; background: rgba(0,144,255,.08); filter: drop-shadow(0 0 6px rgba(0,144,255,.5)); }
-.btn-ico[data-tip^="Comentar"]:hover, .btn-ico[data-tip^="Agregar tarea"]:hover { color: #A855F7; background: rgba(168,85,247,.1); filter: drop-shadow(0 0 6px rgba(168,85,247,.55)); }
-.btn-ico[data-tip^="Eliminar"]:hover, .btn-ico[data-tip^="Borrar"]:hover, .btn-ico[data-tip^="Quitar"]:hover { color: #FF4D6D; background: rgba(255,77,109,.08); filter: none; }
+.btn-ico:hover, .btn-ico:focus-visible { color: var(--brillo); background: rgba(58,184,255,.08); filter: drop-shadow(0 0 6px rgba(58,184,255,.5)); }
+.btn-ico[data-tip^="Finaliz"]:hover, .btn-ico[data-tip^="Cerrar"]:hover, .btn-ico.h-ok:hover { color: var(--p-cobrado); background: rgba(43,226,138,.08); filter: drop-shadow(0 0 6px rgba(43,226,138,.5)); }
+.btn-ico[data-tip^="Deten"]:hover, .btn-ico[data-tip^="Paus"]:hover { color: var(--e-detenido); background: rgba(250,204,21,.08); filter: drop-shadow(0 0 6px rgba(250,204,21,.5)); }
+.btn-ico[data-tip^="Editar"]:hover { color: var(--principal); background: rgba(0,144,255,.08); filter: drop-shadow(0 0 6px rgba(0,144,255,.5)); }
+.btn-ico[data-tip^="Comentar"]:hover, .btn-ico[data-tip^="Agregar tarea"]:hover { color: var(--secundaria); background: rgba(168,85,247,.1); filter: drop-shadow(0 0 6px rgba(168,85,247,.55)); }
+.btn-ico[data-tip^="Eliminar"]:hover, .btn-ico[data-tip^="Borrar"]:hover, .btn-ico[data-tip^="Quitar"]:hover { color: var(--p-error); background: rgba(255,77,109,.08); filter: none; }
 /* Contacto y enlaces: WhatsApp siempre verde, Mail azul GIWA; WEB y DRIVE como link con texto */
-a[href*="wa.me"] .ico, a[href*="wa.me"].btn-ico { color: #25D366; }
-a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: #0090FF; }
-.lnk { display: inline-flex; align-items: center; gap: 6px; color: #94A3B8; font-size: 12px; letter-spacing: .08em; text-decoration: none; }
+a[href*="wa.me"] .ico, a[href*="wa.me"].btn-ico { color: var(--wa); }
+a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
+.lnk { display: inline-flex; align-items: center; gap: 6px; color: var(--texto2); font-size: 12px; letter-spacing: .08em; text-decoration: none; }
 .lnk .ico { width: 16px; height: 16px; }
 .lnk:hover { filter: brightness(1.3); }
-.lnk.lnk-dr { color: #0090FF; }
+.lnk.lnk-dr { color: var(--principal); }
 /* Señales con color fijo */
-.hoy-alertas .hoy-sec-h .ico { color: #FF9F1C; }
+.hoy-alertas .hoy-sec-h .ico { color: var(--p-pendiente); }
 .badge-crit .ico { color: inherit; }
 /* Tipo de desarrollo: ícono en lugar de la viñeta, con el color del estado */
 .ico-tipo { width: 18px; height: 18px; flex-shrink: 0; vertical-align: middle; }
 /* Estado del desarrollo: etiqueta con borde (En curso, rellena en cian) */
 .dev-est { font-size: 11px; padding: 2px 9px; border-radius: 6px; border: 1px solid currentColor; white-space: nowrap; }
-.dev-est.et-xn { color: #C084FC; border-color: #A855F7; background: rgba(168,85,247,.16); }
+.dev-est.et-xn { color: var(--secundaria-txt); border-color: var(--secundaria); background: rgba(168,85,247,.16); }
 .dev-est.et-xw { color: var(--e-negoc); border-color: rgba(255,159,28,.6); }
 .dev-est.et-xb { color: var(--e-aprob); border-color: var(--e-aprob); }
-.dev-est.et-xc { color: #060716; background: var(--e-curso); border-color: var(--e-curso); }
+.dev-est.et-xc { color: var(--fondo); background: var(--e-curso); border-color: var(--e-curso); }
 .dev-est.et-xt { color: var(--e-garan); border-color: rgba(20,184,166,.6); }
 .dev-est.et-xg { color: var(--e-final); border-color: rgba(43,160,122,.4); }
 .dev-est.et-xz { color: var(--e-rech); border-color: rgba(90,100,136,.5); }
 .dev-est.et-xd { color: var(--e-deten); border-color: rgba(250,204,21,.5); }
 /* Botones: todos con ícono y con contorno. Principal = contorno azul GIWA; secundario = contorno violeta */
-.btn.bp { background: transparent; color: #0090FF; border: 1px solid #0090FF; }
-.btn.bp:hover { background: rgba(0,144,255,.12); color: #0090FF; }
-.btn.bsec { background: transparent; color: #C084FC; border: 1px solid #A855F7; }
+.btn.bp { background: transparent; color: var(--principal); border: 1px solid var(--principal); }
+.btn.bp:hover { background: rgba(0,144,255,.12); color: var(--principal); }
+.btn.bsec { background: transparent; color: var(--secundaria-txt); border: 1px solid var(--secundaria); }
 .btn.bsec:hover { background: rgba(168,85,247,.12); }
 .btn .ico { width: 18px; height: 18px; }
 .btn.xs .ico, .btn.sm .ico { width: 16px; height: 16px; }
-.seg-acc .btn[data-est="finalizado"]:hover { color: #2BE28A; border-color: #2BE28A; }
-.seg-acc .btn.acc-det:hover { color: #FACC15; border-color: #FACC15; }
+.seg-acc .btn[data-est="finalizado"]:hover { color: var(--p-cobrado); border-color: var(--p-cobrado); }
+.seg-acc .btn.acc-det:hover { color: var(--e-detenido); border-color: var(--e-detenido); }
 /* Expandir y contraer: cerrado gris; abierto el chevron gira celeste y un sombreado muy suave */
-.desp > summary { text-transform: uppercase; letter-spacing: .06em; color: #94A3B8; }
+.desp > summary { text-transform: uppercase; letter-spacing: .06em; color: var(--texto2); }
 .desp > summary .btn, .desp > summary .m, .desp > summary .adm-total { text-transform: none; letter-spacing: 0; }
 .desp[open] { background: rgba(58,184,255,.05); }
 .desp[open] > summary { color: var(--tx); }
-.desp > summary .chev { color: #94A3B8; }
-.desp[open] > summary .chev { color: #3AB8FF; }
-.desp .cnt { font-family: var(--mono); color: #94A3B8; }
+.desp > summary .chev { color: var(--texto2); }
+.desp[open] > summary .chev { color: var(--brillo); }
+.desp .cnt { font-family: var(--mono); color: var(--texto2); }

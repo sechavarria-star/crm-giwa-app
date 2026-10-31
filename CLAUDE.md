@@ -15,11 +15,11 @@ Idioma: español rioplatense, informal. Respuestas cortas.
   después lo puede cambiar Vicky con su usuario `vicky_crm`.
 - **La lógica de plata vive en SQL** (vistas y funciones). El navegador no calcula
   importes: muestra lo que devuelve una vista. Un número, una vista.
-- **Diseño:** `css/estilos.css`, `js/base.js`, `js/iconos.js`, `js/dialogo.js`,
-  `js/calculos.js` y `js/estados.js` se GENERAN desde el Apps Script con
-  `tools/sincronizar-desde-apps-script.py` (desde una copia fresca de HEAD). No editarlos
-  a mano mientras dure la transición. Lo propio de la app va en `css/app.css`, sólo
-  tokens. Reglas visuales: skill `design-giwa`.
+- **Diseño (30/10/2026):** la única versión de los estilos es la de este repo. Fuente de
+  verdad: `GIWA_identidad_visual.md`. Todos los colores, tipografías y tamaños viven en
+  `css/tokens.css` (único archivo con hexadecimales); los componentes C1–C16 en
+  `css/componentes.css` + `js/ui.js`. `estilos.css` y `app.css` sólo leen tokens. Ya no se
+  sincroniza nada desde el Apps Script.
 - **Vistas:** `js/vistas/<modulo>.js` define `VISTAS['<modulo>']`; en `js/app.js` se marca
   el módulo `listo:true`. Lo que no está listo abre el CRM actual.
 

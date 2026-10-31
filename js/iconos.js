@@ -1,5 +1,4 @@
-/* GENERADO por tools/sincronizar-desde-apps-script.py desde _Iconos.html.
-   No editar a mano mientras dure la transición: se pisa. */
+/* Nació de _Iconos.html (Apps Script). Desde 30/10/2026 la única versión es ésta, la del repo. */
 /* ══════════════════════════════════════════════════════════════
    LOS ÍCONOS · un solo set de línea para todas las pantallas
    Se incluye con: <?!= include("_Iconos") ?>  (después de _Estilos)

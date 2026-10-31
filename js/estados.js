@@ -1,5 +1,4 @@
-/* GENERADO por tools/sincronizar-desde-apps-script.py desde _Estados.html.
-   No editar a mano mientras dure la transición: se pisa. */
+/* Nació de _Estados.html (Apps Script). Desde 30/10/2026 la única versión es ésta, la del repo. */
 /* ══════════════════════════════════════════════════════════════════════
    LOS ESTADOS · quién es qué, en un solo lugar
    ──────────────────────────────────────────────────────────────────────

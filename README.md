@@ -12,12 +12,13 @@ js/config.js          URL de Supabase y clave PUBLICABLE
 js/sb.js              login (Supabase Auth con Google) y db() → schema crm_giwa
 js/app.js             módulos, rutas (#/hoy, #/pm…), barra y arranque
 js/util.js            esc() y ayudas comunes
-js/base.js            set, fmt, ff, velo… (generado)
-js/iconos.js          ico('nombre') (generado)
-js/dialogo.js         ask / say / pedir, en vez de alert/confirm (generado)
+js/base.js            set, fmt, ff, velo…
+js/iconos.js          ico('nombre')
+js/dialogo.js         ask / say / pedir, en vez de alert/confirm
 js/vistas/*.js        una por módulo, a medida que pasan
 supabase/migrations/  cada cambio de la base, en orden
-tools/                sincronizar-desde-apps-script.py
+css/tokens.css        colores, tipografías y tamaños (único archivo con hex)
+css/componentes.css   componentes C1–C16 (los arma js/ui.js)
 ```
 
 ## Probar en local
