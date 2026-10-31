@@ -11,7 +11,7 @@
   --marco: #052342;          /* borde de secciones abiertas y recuadros; líneas entre filas */
   --abierto: #0F1634;        /* encabezado de una sección abierta */
   --caja: #0D122F;           /* recuadros de métricas y tarjetas */
-  --modal: #0B1040;          /* fondo de los modales */
+  --modal: #0D122F;          /* fondo de los modales (= caja, 30/10/2026) */
   --contorno: #1A3DB4;       /* borde de campos editables */
   --brillo: #3AB8FF;         /* foco, hover, chevron abierto, pestaña activa */
   --principal: #0090FF;      /* azul GIWA: botones principales, enlaces */
@@ -67,7 +67,8 @@
   /* Tipografía */
   --f-texto: 'Montserrat', sans-serif;
   --f-num: 'Courier New', monospace;
-  --t-xs: 11px;      /* etiquetas en mayúsculas chicas */
+  --t-xxs: 10px;     /* submenú lateral */
+  --t-xs: 11px;      /* etiquetas en mayúsculas chicas; menú lateral */
   --t-s: 12px;       /* notas, contadores */
   --t-m: 13px;       /* texto de controles y filas */
   --t-l: 14px;       /* texto base */

@@ -35,12 +35,12 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 /* ── C1 · Menú lateral ── */
 .ui-menu { border-right: 1px solid var(--marco); padding: var(--e4) 10px; background: var(--fondo); }
 .ui-mi { display: flex; align-items: center; gap: var(--e3); padding: 10px var(--e3); border-radius: var(--r); color: var(--texto2);
-  font-size: var(--t-s); letter-spacing: var(--espaciado); text-transform: uppercase; text-decoration: none; cursor: pointer; }
+  font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; text-decoration: none; cursor: pointer; }
 .ui-mi:hover { color: var(--texto); }
 .ui-mi.on { color: var(--principal); background: var(--suave-principal); }
 .ui-mi .ui-ico { width: var(--ico-s); height: var(--ico-s); }
 .ui-sub { margin: 2px 0 var(--e2) 22px; border-left: 1px solid var(--marco); padding-left: 10px; }
-.ui-sub .ui-mi { padding: var(--e2) 10px; font-size: var(--t-xs); }
+.ui-sub .ui-mi { padding: var(--e2) 10px; font-size: var(--t-xxs); }
 
 /* ── C2 · Encabezado de vista ── */
 .ui-hd { display: flex; align-items: flex-start; gap: var(--e4); margin-bottom: var(--e5); }
@@ -49,6 +49,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-hd .ui-acc { margin-left: auto; display: flex; gap: 10px; }
 
 /* ── C3 · Desplegable (uno solo para todo) ── */
+.ui-d .ui-logo { width: 28px; height: 28px; font-size: var(--t-s); }
 .ui-d { display: grid; grid-template-columns: var(--ico-s) auto auto auto 1fr auto; align-items: center; gap: var(--e3);
   padding: 14px var(--e2); border-bottom: 1px solid var(--marco); cursor: pointer; user-select: none; }
 .ui-ch { color: var(--texto2); display: flex; transition: transform .15s, color .15s; }
@@ -94,6 +95,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-lat-g .ui-kpi-v { font-size: var(--t-xl); margin-top: 6px; }
 .ui-kv { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); color: var(--texto2); }
 .ui-kv .ui-num { font-size: var(--t-l); text-align: right; color: var(--texto); }
+.ui-kv .ui-num > span { display: inline; }
 .ui-kv .ui-usd { display: block; font-size: var(--t-xs); color: var(--p-usd); margin-top: 2px; }
 /* desarrollo dentro de la ficha: C3 anidado con C12 + nombre + C6 */
 .ui-dev { display: grid; grid-template-columns: var(--ico-s) var(--ico) 1fr auto; gap: var(--e3); align-items: center;
@@ -102,9 +104,11 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-dev.open .ui-ch { color: var(--brillo); transform: rotate(90deg); }
 .ui-dev .ui-dev-n { font-size: var(--t-l); }
 .ui-dev + .ui-devc { display: none; }
-.ui-dev.open + .ui-devc { display: flex; }
-.ui-devc { padding: var(--e2) var(--e1) 14px 56px; border: 1px solid var(--marco); border-top: 0; border-radius: 0 0 var(--r) var(--r);
-  font-size: var(--t-m); color: var(--texto2); gap: 22px; align-items: center; flex-wrap: wrap; margin-bottom: var(--e2); }
+.ui-dev.open + .ui-devc { display: block; }
+.ui-devc { padding: var(--e2) var(--e3) 14px 56px; border: 1px solid var(--marco); border-top: 0; border-radius: 0 0 var(--r) var(--r);
+  font-size: var(--t-m); color: var(--texto2); margin-bottom: var(--e2); }
+.ui-devc .ui-linea-sub { padding-left: 0; align-items: center; }
+.ui-dev .ui-fila-ic { justify-content: flex-end; }
 
 /* ── C6 · Estado: ícono + nombre, sin pill ni relleno ── */
 .ui-st { display: inline-flex; align-items: center; gap: var(--e2); font-size: var(--t-m); white-space: nowrap; }
@@ -121,15 +125,17 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-riel-sep { width: 1px; align-self: stretch; background: var(--marco); margin: 0 var(--e2); }
 
 /* ── C8 · Tarjeta de métrica ── */
-.ui-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.ui-kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 22px; }
 .ui-kpi { border: 1px solid var(--marco); border-top: 2px solid var(--k, var(--texto2)); border-radius: var(--r); padding: 14px var(--e4); background: var(--caja); }
 .ui-kpi-k { font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); }
 .ui-kpi-v { font-family: var(--f-num); font-size: var(--t-num); margin-top: var(--e2); color: var(--k, var(--texto)); white-space: nowrap; }
 .ui-kpi-s { font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); }
+@media (max-width: 720px) { .ui-kpis { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
 /* color de la línea de arriba y del número: uiKpi(…, 'p-cobrado') */
 .ui-k-p-contratado { --k: var(--p-contratado); } .ui-k-p-cobrado { --k: var(--p-cobrado); } .ui-k-p-pendiente { --k: var(--p-pendiente); }
 .ui-k-p-abono { --k: var(--p-abono); } .ui-k-p-usd { --k: var(--p-usd); } .ui-k-p-error { --k: var(--p-error); } .ui-k-p-neutro { --k: var(--p-neutro); }
 .ui-k-principal { --k: var(--principal); }
+.ui-k-e-curso { --k: var(--e-curso); } .ui-k-e-detenido { --k: var(--e-detenido); }
 
 /* ── C9 · Tabla ── */
 .ui-tbl { width: 100%; border-collapse: collapse; }
@@ -140,6 +146,30 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-tbl td.ui-r { font-family: var(--f-num); }
 .ui-tbl tr.ui-fila { cursor: pointer; }
 .ui-tbl tr.ui-fila:hover td { background: var(--suave-fila); }
+
+/* ── Tarjeta (Seguimiento, empresas): fondo caja, borde marco ── */
+.ui-tarjeta { background: var(--caja); border: 1px solid var(--marco); border-radius: var(--r-l); padding: var(--e4) 18px; min-width: 0; }
+.ui-tarjeta.ui-apagada { opacity: .6; }
+.ui-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: var(--e3); }
+.ui-tarjeta-hd { display: grid; grid-template-columns: 1fr auto; gap: var(--e4); align-items: start; }
+.ui-tarjeta-der { text-align: right; }
+.ui-sub-t { font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); }
+/* Carrusel de tarjetas (más de CARRUSEL proyectos por cliente) */
+.ui-tarjetas.ui-carr { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
+.ui-tarjetas.ui-carr .ui-tarjeta { flex: 0 0 420px; scroll-snap-align: start; }
+/* Filtros de pantalla (buscador, orden) */
+.ui-filtros { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.ui-filtros .ui-campo { width: auto; }
+.ui-filtros .ui-f1 { flex: 1; min-width: 200px; }
+/* Datos de solo lectura en grilla: etiqueta + valor */
+.ui-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--e3) var(--e4); margin-bottom: var(--e3); font-size: var(--t-m); }
+.ui-rapido { margin-top: var(--e3); }
+/* Fila simple: ícono, texto, acciones (desarrollos y tareas dentro de una tarjeta o ficha) */
+.ui-linea { display: flex; align-items: center; gap: 10px; padding: var(--e2) 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); min-width: 0; }
+.ui-linea:last-child { border-bottom: 0; }
+.ui-linea .ui-f1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-linea-sub { font-size: var(--t-s); color: var(--texto2); padding: 0 0 var(--e2) 30px; display: flex; gap: var(--e4); flex-wrap: wrap; }
+.ui-nota-t { font-size: var(--t-s); color: var(--texto2); }
 
 /* ── C10 · Botón: siempre ícono + contorno ── */
 .ui-btn { display: inline-flex; align-items: center; gap: var(--e2); height: var(--alto-btn); padding: 0 14px; border-radius: var(--r);
@@ -160,6 +190,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-ib.ui-edi:hover { color: var(--principal); background: var(--suave-principal); }
 .ui-ib.ui-bor:hover { color: var(--p-error); background: var(--suave-error); }
 .ui-ib.ui-vio:hover { color: var(--secundaria); background: var(--suave-secundaria); }
+.ui-ib.on { color: var(--brillo); }
 .ui-ib.ui-wa { color: var(--wa); }
 .ui-ib.ui-azul { color: var(--principal); }
 .ui-lnk { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-s); letter-spacing: var(--espaciado); text-transform: uppercase; text-decoration: none; cursor: pointer; }
@@ -215,3 +246,7 @@ textarea.ui-campo { height: auto; min-height: 80px; padding: 10px var(--e3); res
   font-family: var(--f-num); font-size: var(--t-s); color: var(--blanco); }
 .ui-tier-1 { background: var(--tier-1); } .ui-tier-2 { background: var(--tier-2); } .ui-tier-3 { background: var(--tier-3); }
 .ui-tier-4 { background: var(--tier-4); } .ui-tier-5 { background: var(--tier-5); }
+
+/* Ficha abierta como página (desde «Proyecto» en Seguimiento) */
+.ui-ficha.ui-ficha-sola { border-top: 1px solid var(--marco); border-radius: var(--r); }
+.ui-ficha-hd .ui-motivo { margin: 0; }

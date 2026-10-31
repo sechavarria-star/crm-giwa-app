@@ -38,7 +38,7 @@ function set(id, v) {
 function fmt(v, m) {
   var n = Number(v || 0);
   var sym = (m === 'USD' || m === 'U$') ? 'USD' : '$';   // USD 1.250,50 (22/10/2026)
-  return sym + ' ' + n.toLocaleString('es-AR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  return sym + ' ' + Math.round(n).toLocaleString('es-AR')   // sin decimales (30/10/2026);
 }
 // Fecha dd/mm/aaaa, siempre con dos dígitos. Antes devolvía «19 de ago de
 // 2026», que ocupa el triple y no se puede ordenar de un vistazo.

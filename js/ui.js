@@ -8,10 +8,10 @@
 
 function uiIco(n) { return ico(n, 'ui-ico'); }
 
-// Importe con dos decimales y formato local; USD con su prefijo
+// Importe sin decimales, con «.» de miles; USD con su prefijo (30/10/2026)
 function uiMonto(n, usd) {
   var v = Number(n) || 0;
-  return (usd ? 'USD ' : '$ ') + v.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (usd ? 'USD ' : '$ ') + Math.round(v).toLocaleString('es-AR');
 }
 
 // ── C6 · Estado ──
@@ -41,7 +41,7 @@ function uiClaveEst(texto, detenido) {
 function uiEstado(texto, op) {
   op = op || {};
   var k = uiClaveEst(texto, op.detenido), d = _UI_EST[k];
-  var nombre = op.detenido ? d[0] : (op.nombre || texto || d[0]);
+  var nombre = op.nombre || (op.detenido ? d[0] : (texto || d[0]));   // nombre: p. ej. «Pausado» en un desarrollo
   return '<span class="ui-st ui-e-' + k + '">' + uiIco(d[1]) + esc(nombre) + '</span>';
 }
 
@@ -52,8 +52,10 @@ function uiTipo(it, estado, detenido) {
 
 // ── C13 · Logo ──
 function uiLogo(nombre, url) {
-  if (url) return '<span class="ui-logo ui-img"><img src="' + esc(url) + '" alt="' + esc(nombre || '') + '"></span>';
-  return '<span class="ui-logo">' + esc(String(nombre || '?').trim().charAt(0).toUpperCase()) + '</span>';
+  var ini = esc(String(nombre || '?').trim().charAt(0).toUpperCase());
+  if (url) return '<span class="ui-logo ui-img"><img src="' + esc(url) + '" alt="" referrerpolicy="no-referrer" ' +
+    'onerror="this.parentNode.classList.remove(\'ui-img\');this.parentNode.textContent=\'' + ini + '\'"></span>';
+  return '<span class="ui-logo">' + ini + '</span>';
 }
 
 // ── C10 · Botón (tipo 'p' principal azul · 's' secundario violeta) ──
@@ -87,12 +89,12 @@ function uiHd(titulo, nota, acciones) {
          (acciones ? '<div class="ui-acc">' + acciones + '</div>' : '') + '</div>';
 }
 
-// ── C3 · Desplegable · o: { ic, t, n, v (HTML), open, n2, attrs } ──
+// ── C3 · Desplegable · o: { ic | logo (HTML), t | th (HTML), n, v (HTML), open, n2, attrs } ──
 function uiDesp(o, cuerpo) {
   return '<div class="ui-d' + (o.open ? ' open' : '') + (o.n2 ? ' ui-n2' : '') + '" ' + (o.attrs || '') + '>' +
            '<span class="ui-ch">' + uiIco('derecha') + '</span>' +
-           (o.ic ? '<span class="ui-d-ic">' + uiIco(o.ic) + '</span>' : '<span></span>') +
-           '<span class="ui-d-t">' + esc(o.t) + '</span>' +
+           (o.logo || (o.ic ? '<span class="ui-d-ic">' + uiIco(o.ic) + '</span>' : '<span></span>')) +
+           '<span class="ui-d-t">' + (o.th || esc(o.t)) + '</span>' +
            '<span class="ui-d-n">' + (o.n != null && o.n !== '' ? esc(String(o.n)) : '') + '</span><span></span>' +
            '<span class="ui-d-v">' + (o.v || '') + '</span>' +
          '</div><div class="ui-cuerpo">' + (cuerpo || '') + '</div>';
@@ -115,17 +117,18 @@ function uiDev(o, cuerpo) {
          '</div><div class="ui-devc">' + (cuerpo || '') + '</div>';
 }
 
-// ── C5 · Pestañas · tabs: [[clave, etiqueta]] ──
+// ── C5 · Pestañas · tabs: [[clave, etiqueta, attrs]] ──
 function uiTabs(tabs, activa, attrs) {
   return '<div class="ui-tabs" ' + (attrs || '') + '>' + tabs.map(function (t) {
-    return '<button type="button" class="ui-tab' + (t[0] === activa ? ' on' : '') + '" data-tab="' + esc(t[0]) + '">' + esc(t[1]) + '</button>';
+    return '<button type="button" class="ui-tab' + (t[0] === activa ? ' on' : '') + '" data-tab="' + esc(t[0]) + '" ' + (t[2] || '') + '>' + esc(t[1]) + '</button>';
   }).join('') + '</div>';
 }
 
-// ── C7 · Riel de estados · etapas y aparte: [{ k, t, n, on }] (k = clave de color) ──
+// ── C7 · Riel de estados · etapas y aparte: [{ k, t, n, on, c, attrs }]
+//    k = clave de estado (da el color); c = otra clase de color (p. ej. 'p-abono') ──
 function uiRiel(etapas, aparte, attrs) {
   var seg = function (s) {
-    return '<button type="button" class="ui-seg ui-e-' + s.k + (s.on ? ' on' : '') + '" data-k="' + esc(s.k) + '">' +
+    return '<button type="button" class="ui-seg ui-' + (s.c || 'e-' + s.k) + (s.on ? ' on' : '') + '" data-k="' + esc(s.k) + '" ' + (s.attrs || '') + '>' +
            '<div class="ui-seg-b"></div><div class="ui-seg-l">' + esc(s.t) + ' <span class="ui-num">' + (Number(s.n) || 0) + '</span></div></button>';
   };
   return '<div class="ui-riel" ' + (attrs || '') + '>' + etapas.map(seg).join('') +
@@ -133,9 +136,11 @@ function uiRiel(etapas, aparte, attrs) {
 }
 
 // ── C8 · Tarjeta de métrica (color: clave de plata o de estado, p. ej. 'p-cobrado') ──
-function uiKpi(k, v, color, sub) {
+// usd: el monto en dólares de referencia, en celeste claro, debajo del número
+function uiKpi(k, v, color, sub, usd) {
   return '<div class="ui-kpi' + (color ? ' ui-k-' + color : '') + '"><div class="ui-kpi-k">' + esc(k) + '</div>' +
-         '<div class="ui-kpi-v">' + esc(v) + '</div>' + (sub ? '<div class="ui-kpi-s">' + esc(sub) + '</div>' : '') + '</div>';
+         '<div class="ui-kpi-v">' + esc(v) + '</div>' + (usd ? '<div class="ui-kpi-s"><span class="ui-num ui-p-usd">' + esc(usd) + '</span></div>' : '') +
+         (sub ? '<div class="ui-kpi-s">' + esc(sub) + '</div>' : '') + '</div>';
 }
 
 // ── C15 · Aviso (tipo 'info' celeste · 'adv' ámbar) y motivo en gris ──
@@ -167,7 +172,11 @@ document.addEventListener('click', function (ev) {
   var t = ev.target;
   if (!t.closest) return;
   var fila = t.closest('.ui-d, .ui-fp, .ui-dev');
-  if (fila && !t.closest('button, a, input, select, textarea')) { fila.classList.toggle('open'); return; }
+  if (fila && !t.closest('button, a, input, select, textarea')) {
+    fila.classList.toggle('open');
+    fila.dispatchEvent(new CustomEvent('ui-toggle', { bubbles: true, detail: { open: fila.classList.contains('open') } }));
+    return;
+  }
   var tab = t.closest('.ui-tab');
   if (tab) { tab.parentNode.querySelectorAll('.ui-tab').forEach(function (b) { b.classList.toggle('on', b === tab); }); return; }
   var seg = t.closest('.ui-seg');
