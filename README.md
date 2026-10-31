@@ -6,7 +6,7 @@ El CRM interno de GIWA como una sola página: GitHub Pages + Supabase.
 
 ```
 index.html            la cáscara: acceso, barra superior, #vista
-css/estilos.css       Design System (generado desde _Estilos.html del Apps Script)
+css/estilos.css       estilos heredados; sólo leen tokens
 css/app.css           lo propio de esta app (acceso, contenedor)
 js/config.js          URL de Supabase y clave PUBLICABLE
 js/sb.js              login (Supabase Auth con Google) y db() → schema crm_giwa
