@@ -706,7 +706,7 @@
                 ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
-    var motivo = '<div class="ui-motivo ui-fuerte ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</div>';
+    var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
     var acc = '<span class="ui-acc-est ui-fila-ic">' + accionesYAlerta(p) + '</span>';
     var cab = enLista
       ? '<div class="ui-ficha-hd">' + motivo + (av ? ' ' + av : '') + acc + '</div>'

@@ -136,8 +136,9 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-kpi-k { font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); }
 .ui-kpi-v { font-family: var(--f-num); font-size: var(--t-num); margin-top: var(--e2); color: var(--k, var(--texto)); white-space: nowrap; }
 .ui-kpi-s { font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); }
-.ui-kpi-par { display: flex; justify-content: space-between; gap: var(--e2); font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); white-space: nowrap; }
-.ui-kpi-par .ui-num { font-size: var(--t-xl); }
+.ui-kpi { min-width: 0; }
+.ui-kpi-par { display: flex; justify-content: space-between; flex-wrap: wrap; column-gap: var(--e2); font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); }
+.ui-kpi-par .ui-num { font-size: var(--t-l); white-space: nowrap; }
 @media (max-width: 720px) { .ui-kpis { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
 /* color de la línea de arriba y del número: uiKpi(…, 'p-cobrado') */
 .ui-k-p-contratado { --k: var(--p-contratado); } .ui-k-p-cobrado { --k: var(--p-cobrado); } .ui-k-p-pendiente { --k: var(--p-pendiente); }
