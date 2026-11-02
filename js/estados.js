@@ -192,24 +192,16 @@ var _PALETA_EST = {          // paleta GIWA del 29/10/2026 (punto 9): fría, con
   rechazada:  { cls:'xz', color:'var(--e-rech)'   }    // gris azulado: histórico, nunca rojo
 };
 var _COLOR_DETENIDO = { cls:'xd', color:'var(--e-deten)' };   // amarillo + pausa: hay que revisar qué pasa
+// Un solo criterio de color para toda la app (02/11/2026): la clave sale de uiClaveEst (ui.js),
+// la misma que usan los componentes nuevos; acá sólo se traduce a la clase vieja.
+var _CLAVE_A_PALETA = { prospecto:'nueva', negociacion:'negociacion', aprobado:'aprobada', curso:'curso',
+                        garantia:'garantia', finalizado:'finalizada', rechazado:'rechazada' };
 function colorEstado(e) {
-  return _PALETA_EST[_canonSol(e)] || _PALETA_EST.nueva;
+  return _PALETA_EST[_CLAVE_A_PALETA[uiClaveEst(e)]] || _PALETA_EST.nueva;
 }
 
-// El del proyecto, que tiene Negociación y Prospecto además.
-// Va por _canonProy: así Vendido y Aprobado no pueden pintarse distinto,
-// que era lo que pasaba cuando eran dos ramas separadas del if.
-// Misma paleta que el desarrollo: las dos escalas son paralelas.
-var _COLOR_PROY = {
-  prospecto:  _PALETA_EST.nueva,        // violeta
-  negociacion:_PALETA_EST.negociacion,  // ámbar
-  aprobado:   _PALETA_EST.aprobada,     // celeste
-  activo:     _PALETA_EST.curso,        // cian
-  finalizado: _PALETA_EST.finalizada,   // verde
-  rechazado:  _PALETA_EST.rechazada     // gris azulado
-};
-
-function colorEstadoProy(e) { return _COLOR_PROY[_canonProy(e)] || _PALETA_EST.nueva; }
+// El del proyecto: mismo criterio (Activo = En curso, Vendido = Aprobado)
+function colorEstadoProy(e) { return colorEstado(e); }
 
 // Un desarrollo es de cobro MENSUAL según su modelo de pago, no según su nombre
 // Espejo de _esMant() en Estados.gs. El navegador NO puede leer Modelos_Pago,

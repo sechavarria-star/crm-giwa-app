@@ -294,7 +294,7 @@ textarea.fc{resize:vertical;min-height:56px}
 .md.md-sm{width:100%;max-width:560px}
 .md.md-xl{width:96vw;max-width:1240px}
 /* Un modal abierto encima de otro (openM le pone .n2): otra superficie, más profunda */
-.mo.n2 .md{background:var(--bg);border-color:var(--blue)}
+.mo.n2 .md{background:var(--modal);border-color:var(--contorno)}
 .mh{padding:13px 18px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:1;border-radius:var(--r) var(--r) 0 0}
 .mt2{font-size:13px;font-weight:600}.mb2{padding:14px 18px;max-height:calc(100vh - 150px);overflow-y:auto}
 .mf{padding:11px 18px;border-top:1px solid var(--b);display:flex;justify-content:flex-end;gap:7px;position:sticky;bottom:0;background:var(--bg2);border-radius:0 0 var(--r) var(--r)}
@@ -1193,9 +1193,7 @@ background:transparent;color:var(--mt);border:1px solid var(--b);cursor:pointer;
 .btn-ico.h-ok:hover,.btn-ico.h-ok:focus-visible{color:var(--ok)}
 .btn-ico.h-mt:hover,.btn-ico.h-mt:focus-visible{color:var(--tx)}
 .btn-ico.seg-rev-on,.btn-ico.seg-rev-on:hover{color:var(--ok)}   /* revisado: estado fijo, no hover */
-.btn-ico[data-tip]:hover::after,.btn-ico[data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);right:0;z-index:60;
-  background:var(--bg3);color:var(--tx);font-size:11px;font-weight:400;line-height:1.35;padding:6px 9px;border-radius:var(--r);
-  white-space:normal;width:max-content;max-width:240px;text-align:left;pointer-events:none}
+/* El globo de data-tip es uno solo para toda la app: .ui-tip (componentes.css + ui.js) */
 .seg-porque{font-size:10px;font-weight:300;color:var(--mt);margin-top:-4px}
 .seg-s{margin:6px 0 0}
 .est-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}

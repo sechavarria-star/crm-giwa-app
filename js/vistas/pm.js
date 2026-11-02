@@ -1036,6 +1036,7 @@
         case 'rechazado': return corte(p, 'rechazar');
         case 'activo': return toast('«Activo» se calcula solo: arrancá un desarrollo desde su fila', 'inf');
       }
+      if (!(await ask('«' + (p.nombre || p.id) + '» pasa a ' + nombreProy(canon) + '.', 'Cambiar estado', { ok: 'Cambiar' }))) return;
       return hacer('cambiar_estado_proyecto', { pid: p.id, estado: nombreProy(canon) }, 'Estado: ' + nombreProy(canon));
     };
     el.onchange = function (ev) {
@@ -1083,11 +1084,12 @@
         ev.preventDefault();
         var pd = proy(id);
         if (!pd.detenido) return corte(pd, 'detener');
-        return ask('¿Reanudar el proyecto?').then(function (ok) { if (ok) hacer('detener_proyecto', { pid: id, detener: false }); });
+        return ask('¿Reanudar «' + (pd.nombre || id) + '»?', 'Reanudar proyecto', { ok: 'Reanudar' }).then(function (ok) { if (ok) hacer('detener_proyecto', { pid: id, detener: false }); });
       }
       if (a === 'edit-des') { ev.preventDefault(); return abrirDesarrollo(id, { onSave: refrescar }); }
       if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id);
-        return ask(dd.detenido ? '¿Reanudar este desarrollo?' : '¿Pausar este desarrollo? No cambia el estado del proyecto.', dd.detenido ? 'Reanudar' : 'Pausar').then(function (ok) {
+        var ddn = '«' + (dd.titulo || id) + '»';
+        return ask(dd.detenido ? '¿Reanudar ' + ddn + '?' : '¿Pausar ' + ddn + '? No cambia el estado del proyecto.', dd.detenido ? 'Reanudar' : 'Pausar', { ok: dd.detenido ? 'Reanudar' : 'Pausar' }).then(function (ok) {
           if (ok) hacer('detener_desarrollo', { did: id, detener: !dd.detenido }, dd.detenido ? 'Desarrollo reanudado' : 'Desarrollo pausado'); }); }
       if (a === 'inline') {
         ev.preventDefault();
@@ -1108,8 +1110,10 @@
             var mants = ((pp && pp.items) || []).filter(function (y) { return esMant(y) && _canonSol(y.estado) === 'aprobada' && (y.mant_de_ids || []).indexOf(id) >= 0; });
             if (mants.length) arrancar(pp, mants.map(function (y) { return y.id; }), '¿Arranca el mantenimiento?');
           }); };
-        if (acc === 'rechazar') return ask('¿Rechazar este desarrollo? Se puede recotizar después.', 'Rechazar desarrollo', { peligro: true }).then(function (ok) { if (ok) go(); });
-        return go();
+        var itA = itemDe(id), dn = '«' + ((itA && itA.titulo) || id) + '»';
+        if (acc === 'rechazar') return ask('¿Rechazar ' + dn + '? Se puede recotizar después.', 'Rechazar desarrollo', { peligro: true }).then(function (ok) { if (ok) go(); });
+        var full = b.getAttribute('aria-label') || acc, etq = full.split(':')[0];   // «Finalizar: Se cumplieron las cuotas»
+        return ask(etq + ' ' + dn + (itA && itA.estado ? ' (hoy ' + itA.estado + ').' : '.') + (full !== etq ? '\n\n' + full.slice(etq.length + 1).trim() : ''), etq + ' desarrollo', { ok: etq }).then(function (ok) { if (ok) go(); });
       }
       if (a === 'cerrar-mod') { ev.preventDefault(); return hacer('cerrar_modulo_horas', { hid: id, cerrar: true }, function (r) { return 'Módulo cerrado (' + r.n + ')'; }); }
       if (a === 'post-ini' || a === 'post-fin') {

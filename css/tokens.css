@@ -43,7 +43,7 @@
   --p-neutro: #94A3B8;
 
   /* Marcas con color fijo */
-  --wa: #25D366;
+  --whatsapp: #25D366;   /* sólo el ícono de WhatsApp («--wa» es el ámbar de pendiente, alias de estilos.css) */
 
   /* Tonos suaves (hover, ítem activo, velo) */
   --suave-principal: rgba(0, 144, 255, .10);

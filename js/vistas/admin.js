@@ -643,7 +643,8 @@
       if (a === 'cb-fact') return abrirFactura({ item_id: id || '' }, { onSave: refrescar });
       if (a === 'cb-pago') return abrirPago({ item_id: id || '' }, { onSave: refrescar });
       if (a === 'idx-bcra') {
-        var rb = await db().rpc('actualizar_indices'); if (rb.error) return toast(rb.error.message, 'err');
+        if (!(await ask('Se piden al BCRA los índices de IPC y tipo de cambio que falten y se guardan en la tabla de índices.', 'Actualizar índices', { ok: 'Actualizar' }))) return;
+        var rb =await db().rpc('actualizar_indices'); if (rb.error) return toast(rb.error.message, 'err');
         toast(rb.data && rb.data.pedido ? 'Pedido al BCRA: los meses nuevos aparecen en unos minutos' : 'Índices al día', 'ok'); await cargarExtra('idx'); return pintar(el);
       }
       if (a === 'gas-nuevo' || a === 'gas-edit' || a === 'gas-dup') return abrirGasto(a === 'gas-nuevo' ? null : id, a === 'gas-dup', refrescar);

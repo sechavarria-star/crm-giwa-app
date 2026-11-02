@@ -477,6 +477,7 @@
       if (a === 'dg-ver') return verTarea(id, { onSave: diagPintar });
       if (a === 'dg-sinc') {
         // crear sólo desde «Crear recordatorios» (no duplica: la base no deja dos abiertas); después cerrar lo que sobra
+        if (!(await ask('Se crean los recordatorios que faltan en todos los desarrollos y se cierran las alertas de facturación que ya no corresponden.', 'Sincronizar alertas', { ok: 'Sincronizar' }))) return;
         var rc = await db().rpc('crear_recordatorios', { ventanas: {}, solo_item: null });
         if (rc.error) return toast(rc.error.message, 'err');
         var rs = await db().rpc('sincronizar_alertas_facturacion');

@@ -14,16 +14,16 @@ function uiMonto(n, usd) {
   return (usd ? 'USD ' : '$ ') + Math.round(v).toLocaleString('es-AR');
 }
 
-// ── C6 · Estado ──
+// ── C6 · Estado: nombre, ícono y qué significa (va en el hover) ──
 var _UI_EST = {
-  prospecto:   ['Prospecto', 'e_rombo'],
-  negociacion: ['En negociación', 'e_flechas'],
-  aprobado:    ['Aprobado', 'e_check'],
-  curso:       ['En curso', 'e_play'],
-  garantia:    ['En garantía', 'e_trebol'],
-  finalizado:  ['Finalizado', 'e_cuadrado'],
-  rechazado:   ['Rechazado', 'e_cruz'],
-  detenido:    ['Detenido', 'e_pausa']
+  prospecto:   ['Prospecto', 'e_rombo', 'Todavía no se envió la propuesta'],
+  negociacion: ['En negociación', 'e_flechas', 'Propuesta enviada: esperando la respuesta del cliente'],
+  aprobado:    ['Aprobado', 'e_check', 'El cliente lo aprobó; todavía no arrancó y no se factura'],
+  curso:       ['En curso', 'e_play', 'En ejecución: se factura'],
+  garantia:    ['En garantía', 'e_trebol', 'Entregado: en período de garantía'],
+  finalizado:  ['Finalizado', 'e_cuadrado', 'Terminado y cerrado'],
+  rechazado:   ['Rechazado', 'e_cruz', 'El cliente no lo aceptó'],
+  detenido:    ['Detenido', 'e_pausa', 'Frenado: hay que revisar qué pasa']
 };
 // Texto del estado (de proyecto o de desarrollo) → clave de color. Detenido es una marca aparte y manda.
 function uiClaveEst(texto, detenido) {
@@ -42,15 +42,16 @@ function uiEstado(texto, op) {
   op = op || {};
   var k = uiClaveEst(texto, op.detenido), d = _UI_EST[k];
   var nombre = op.nombre || (op.detenido ? d[0] : (texto || d[0]));   // nombre: p. ej. «Pausado» en un desarrollo
-  return '<span class="ui-st ui-e-' + k + '">' + uiIco(d[1]) + esc(nombre) + '</span>';
+  return '<span class="ui-st ui-e-' + k + '" data-tip="' + esc(d[2]) + '">' + uiIco(d[1]) + esc(nombre) + '</span>';
 }
 
 // Detenido (proyecto) o Pausado (desarrollo): una marca chica al lado del estado, no lo reemplaza (02/11/2026)
-function uiMarcaDet(tit) { return '<span class="ui-marca ui-e-detenido" title="' + esc(tit || 'Detenido') + '" aria-label="' + esc(tit || 'Detenido') + '">' + uiIco('e_pausa') + '</span>'; }
+function uiMarcaDet(tit) { return '<span class="ui-marca ui-e-detenido" data-tip="' + esc(tit || 'Detenido') + '" aria-label="' + esc(tit || 'Detenido') + '">' + uiIco('e_pausa') + '</span>'; }
 
 // ── C12 · Ícono de tipo de desarrollo, en el color de su estado ──
 function uiTipo(it, estado, detenido) {
-  return '<span class="ui-tipo ui-e-' + uiClaveEst(estado, detenido) + '">' + icoTipoDes(it).replace('class="ico ico-tipo"', 'class="ui-ico"') + '</span>';
+  var tip = (it && (it.tipo_nombre || it.tipo)) || '';
+  return '<span class="ui-tipo ui-e-' + uiClaveEst(estado, detenido) + '"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + '>' + icoTipoDes(it).replace('class="ico ico-tipo"', 'class="ui-ico"') + '</span>';
 }
 
 // ── C13 · Logo ──
@@ -70,7 +71,7 @@ function uiBtn(txt, icono, tipo, attrs) {
 // ── C11 · Ícono de acción con tooltip ──
 // clase: fin (verde) · det (amarillo) · edi (azul) · bor (rojo) · vio (violeta) · '' (celeste)
 function uiIb(icono, titulo, clase, attrs) {
-  return '<button type="button" class="ui-ib' + (clase ? ' ui-' + clase : '') + '" title="' + esc(titulo) + '" aria-label="' + esc(titulo) + '" ' + (attrs || '') + '>' + uiIco(icono) + '</button>';
+  return '<button type="button" class="ui-ib' + (clase ? ' ui-' + clase : '') + '" data-tip="' + esc(titulo) + '" aria-label="' + esc(titulo) + '" ' + (attrs || '') + '>' + uiIco(icono) + '</button>';
 }
 var UI_ACC = {     // un ícono = un significado
   finalizar: ['check', 'Finalizar', 'fin'],
@@ -132,7 +133,8 @@ function uiTabs(tabs, activa, attrs) {
 //    k = clave de estado (da el color); c = otra clase de color (p. ej. 'p-abono') ──
 function uiRiel(etapas, aparte, attrs) {
   var seg = function (s) {
-    return '<button type="button" class="ui-seg ui-' + (s.c || 'e-' + s.k) + (s.on ? ' on' : '') + '" data-k="' + esc(s.k) + '" ' + (s.attrs || '') + '>' +
+    var tip = s.tip || (_UI_EST[s.k] || [])[2];
+    return '<button type="button" class="ui-seg ui-' + (s.c || 'e-' + s.k) + (s.on ? ' on' : '') + '" data-k="' + esc(s.k) + '"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + ' ' + (s.attrs || '') + '>' +
            '<div class="ui-seg-b"></div><div class="ui-seg-l">' + esc(s.t) + ' <span class="ui-num">' + (Number(s.n) || 0) + '</span></div></button>';
   };
   return '<div class="ui-riel" ' + (attrs || '') + '>' + etapas.map(seg).join('') +
@@ -141,15 +143,16 @@ function uiRiel(etapas, aparte, attrs) {
 
 // ── C8 · Tarjeta de métrica (color: clave de plata o de estado, p. ej. 'p-cobrado') ──
 // usd: el monto en dólares de referencia, en celeste claro, debajo del número
-function uiKpi(k, v, color, sub, usd) {
-  return '<div class="ui-kpi' + (color ? ' ui-k-' + color : '') + '"><div class="ui-kpi-k">' + esc(k) + '</div>' +
+// tip: qué mide la métrica (hover), en vez de un texto fijo dentro del recuadro
+function uiKpi(k, v, color, sub, usd, tip) {
+  return '<div class="ui-kpi' + (color ? ' ui-k-' + color : '') + '"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + '><div class="ui-kpi-k">' + esc(k) + '</div>' +
          '<div class="ui-kpi-v">' + esc(v) + '</div>' + (usd ? '<div class="ui-kpi-s"><span class="ui-num ui-p-usd">' + esc(usd) + '</span></div>' : '') +
          (sub ? '<div class="ui-kpi-s">' + esc(sub) + '</div>' : '') + '</div>';
 }
 
 // C8 con dos importes (p. ej. Proyectado: Desarrollos y Mantenimiento) · filas: [[etiqueta, valor, color]]
-function uiKpiDoble(k, filas, sub) {
-  return '<div class="ui-kpi"><div class="ui-kpi-k">' + esc(k) + '</div>' + filas.map(function (f) {
+function uiKpiDoble(k, filas, sub, tip) {
+  return '<div class="ui-kpi"' + (tip ? ' data-tip="' + esc(tip) + '"' : '') + '><div class="ui-kpi-k">' + esc(k) + '</div>' + filas.map(function (f) {
     return '<div class="ui-kpi-par"><span>' + esc(f[0]) + '</span><span class="ui-num ui-' + f[2] + '">' + esc(f[1]) + '</span></div>'; }).join('') +
     (sub ? '<div class="ui-kpi-s">' + esc(sub) + '</div>' : '') + '</div>';
 }
@@ -193,6 +196,30 @@ document.addEventListener('click', function (ev) {
   var seg = t.closest('.ui-seg');
   if (seg) seg.classList.toggle('on');
 });
+
+// ── Hover informativo: un solo globo para todo lo que tenga data-tip (02/11/2026) ──
+// Flota sobre la página (no lo corta ningún contenedor) y es igual en todas las vistas.
+var _uiTip = null;
+function _uiTipVer(ev) {
+  var el = ev.target.closest && ev.target.closest('[data-tip]');
+  if (!el) return;
+  if (!_uiTip) { _uiTip = document.createElement('div'); _uiTip.className = 'ui-tip'; document.body.appendChild(_uiTip); }
+  _uiTip.textContent = el.getAttribute('data-tip'); _uiTip.hidden = false;
+  var r = el.getBoundingClientRect(), w = _uiTip.offsetWidth, h = _uiTip.offsetHeight;
+  var x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8), y = r.bottom + 6;
+  if (y + h > innerHeight - 8) y = r.top - h - 6;
+  _uiTip.style.left = x + 'px'; _uiTip.style.top = y + 'px';
+}
+function _uiTipOcultar(ev) {
+  if (!_uiTip) return;
+  var el = ev.target.closest && ev.target.closest('[data-tip]');
+  if (ev.type === 'click' || !el || !el.contains(ev.relatedTarget)) _uiTip.hidden = true;
+}
+document.addEventListener('mouseover', _uiTipVer);
+document.addEventListener('focusin', _uiTipVer);
+document.addEventListener('mouseout', _uiTipOcultar);
+document.addEventListener('focusout', _uiTipOcultar);
+document.addEventListener('click', _uiTipOcultar, true);
 
 // ══ Campos de carga (30/10/2026 · 02/11/2026) ══════════════════════════════
 // Se aplican solos a todo lo que se dibuja, sin tocar cada pantalla:

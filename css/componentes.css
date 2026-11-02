@@ -201,7 +201,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-ib.ui-bor:hover { color: var(--p-error); background: var(--suave-error); }
 .ui-ib.ui-vio:hover { color: var(--secundaria); background: var(--suave-secundaria); }
 .ui-ib.on { color: var(--brillo); }
-.ui-ib.ui-wa { color: var(--wa); }
+.ui-ib.ui-wa { color: var(--whatsapp); }
 .ui-ib.ui-azul { color: var(--principal); }
 .ui-lnk { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-s); letter-spacing: var(--espaciado); text-transform: uppercase; text-decoration: none; cursor: pointer; }
 .ui-lnk .ui-ico { width: var(--ico-s); height: var(--ico-s); }
@@ -292,3 +292,10 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .ui-tl-f { font-family: var(--f-num); color: var(--texto); align-self: center; }
 .ui-tl-t { align-self: center; }
 .ui-tl-n { font-size: var(--t-s); color: var(--texto2); }
+
+/* Hover informativo (data-tip): un solo globo para toda la app (02/11/2026) */
+.ui-tip { position: fixed; z-index: 9500; max-width: 260px; padding: 6px 9px; border-radius: var(--r); border: 1px solid var(--marco);
+  background: var(--modal); color: var(--texto); font-family: var(--f-texto); font-size: var(--t-s); font-weight: var(--peso-normal);
+  line-height: 1.35; pointer-events: none; box-shadow: var(--sombra); }
+/* «{IA}» de la marca: Courier New (reemplaza a Codec Pro, 02/11/2026) */
+.nav-marca .u-c-vi { font-family: var(--f-num); }

@@ -21,7 +21,7 @@
 /* Desplegables (<select>): uno solo para toda la app. Fondo de la app, borde visible, opciones compactas */
 select.fc, select.ui-campo { background-color: var(--fondo); border: 1px solid var(--marco); }
 select.fc:focus, select.ui-campo:focus { border-color: var(--brillo); }
-select.fc option, select.ui-campo option { background: var(--fondo); color: var(--texto); padding: 2px 6px; }
+select.fc option, select.ui-campo option { background: var(--modal); color: var(--texto); padding: 2px 6px; }
 /* Tablas de pocas columnas (hasta 4): no se estiran a todo el ancho en monitores grandes */
 .tbl:not(:has(th:nth-child(5))), .ui-tbl:not(:has(th:nth-child(5))) { max-width: 960px; }
 
@@ -331,7 +331,7 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .hoy-nota { font-size: 12px; }
 .hoy-acc .btn-ico:hover { color: var(--blue); }
 .hoy-acc .btn-ico.h-ok:hover { color: var(--ok); }
-.hoy-alertas .hoy-sec-h { color: var(--wa); }
+.hoy-alertas .hoy-sec-h { color: var(--p-pendiente); }   /* título e ícono del mismo ámbar */
 /* En pantallas angostas la columna no se estiraba más allá del ancho y los íconos quedaban afuera */
 @media (max-width: 980px) { .hoy { grid-template-columns: minmax(0, 1fr); } }
 
@@ -524,7 +524,7 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .btn-ico[data-tip^="Comentar"]:hover, .btn-ico[data-tip^="Agregar tarea"]:hover { color: var(--secundaria); background: rgba(168,85,247,.1); filter: drop-shadow(0 0 6px rgba(168,85,247,.55)); }
 .btn-ico[data-tip^="Eliminar"]:hover, .btn-ico[data-tip^="Borrar"]:hover, .btn-ico[data-tip^="Quitar"]:hover { color: var(--p-error); background: rgba(255,77,109,.08); filter: none; }
 /* Contacto y enlaces: WhatsApp siempre verde, Mail azul GIWA; WEB y DRIVE como link con texto */
-a[href*="wa.me"] .ico, a[href*="wa.me"].btn-ico { color: var(--wa); }
+a[href*="wa.me"] .ico, a[href*="wa.me"].btn-ico { color: var(--whatsapp); }
 a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .lnk { display: inline-flex; align-items: center; gap: 6px; color: var(--texto2); font-size: 12px; letter-spacing: .08em; text-decoration: none; }
 .lnk .ico { width: 16px; height: 16px; }
