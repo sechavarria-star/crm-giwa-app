@@ -7,9 +7,17 @@
    Es una calculadora para reuniones comerciales: todo se calcula acá con los
    números que se tipean; de la base sólo se lee el TC de hoy (v_tipo_cambio_hoy),
    en lugar de DolarAPI. No guarda nada. Mismas fórmulas que el original.
+
+     NDA (02/11/2026)        = el convenio de confidencialidad en Word, con la
+                               plantilla plantillas/NDA_GIWA.docx. Se elige
+                               cliente, contacto, socio y fecha; todo queda
+                               editable. Se reemplazan los {{CAMPOS}} de la
+                               plantilla con JSZip (se carga sólo al descargar).
+                               No guarda nada. DNI y cargo del socio salen de
+                               Configuración › Usuarios.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var SUBS = [['meta', 'Simulador Costos Meta']];
+  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA']];
   var TABS = [['calc', 'Calculadora'], ['vivo', 'Probalo en vivo'], ['mrr', 'MRR y conveniencia'], ['tg', 'Comparativa con Telegram']];
   var META_USD = 0.026, UTIL_USD = 0.026, FRANQ = 1000, SEM = 4.33, ESCALA = [2, 5, 10, 20, 40, 80, 120];
 
@@ -268,8 +276,117 @@
         ['Veredicto', 'Útil para avisos internos del equipo; inviable como canal principal de turnos.']]) + '</div>';
   }
 
+  // ── NDA ──────────────────────────────────────────────────────
+  var N = { ok: false, emp: [], rz: [], cont: [], usu: [] };
+  async function cargarNda() {
+    var r = await Promise.all([
+      db().from('empresas').select('id,nombre,rubro,direccion_fiscal,localidad,provincia').order('nombre'),
+      db().from('razones_sociales').select('id,empresa_id,nombre,cuit,direccion,por_defecto').order('por_defecto', { ascending: false }),
+      db().from('contactos').select('id,empresa_id,nombre,apellido,puesto').order('nombre'),
+      db().from('usuarios').select('*').eq('es_giwa', true).eq('activo', true).order('orden')]);
+    r.forEach(function (x) { if (x.error) throw new Error(x.error.message); });
+    N.emp = r[0].data; N.rz = r[1].data; N.cont = r[2].data; N.usu = r[3].data; N.ok = true;
+  }
+  function vNda(id) { var e = $(id); return e ? String(e.value || '').trim() : ''; }
+  function opc(L, txt, vacio) { return '<option value="">' + esc(vacio) + '</option>' + L.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(txt(x)) + '</option>'; }).join(''); }
+  function campo(id, l, cls) { return '<div class="fg' + (cls ? ' ' + cls : '') + '"><label class="fl" for="' + id + '">' + l + '</label><input class="fc" id="' + id + '"></div>'; }
+  function nomCont(c) { return [c.nombre, c.apellido].filter(Boolean).join(' '); }
+
+  function htmlNda() {
+    return '<div class="card u-mb12"><div class="card-t">Cliente</div>' +
+        '<div class="g2 u-mt10"><div class="fg"><label class="fl" for="nd-emp">Empresa</label><select class="fc" id="nd-emp">' + opc(N.emp, function (e) { return e.nombre; }, 'Elegí la empresa') + '</select></div>' +
+          '<div class="fg"><label class="fl" for="nd-cont">Firma por el cliente</label><select class="fc" id="nd-cont"><option value="">Elegí primero la empresa</option></select></div></div>' +
+        '<div class="g2">' + campo('nd-rz', 'Razón social / Nombre') + campo('nd-cuit', 'DNI / CUIT') + '</div>' +
+        '<div class="g2">' + campo('nd-dom', 'Domicilio') + campo('nd-act', 'Actividad') + '</div>' +
+        '<div class="g2">' + campo('nd-rep', 'Representante') + campo('nd-car', 'Cargo') + '</div></div>' +
+      '<div class="card u-mb12"><div class="card-t">Proveedor (GIWA)</div>' +
+        '<div class="g3 u-mt10"><div class="fg"><label class="fl" for="nd-soc">Socio que firma</label><select class="fc" id="nd-soc">' + opc(N.usu, function (u) { return u.nombre; }, 'Elegí el socio') + '</select></div>' +
+          campo('nd-sdni', 'DNI del socio') + campo('nd-scar', 'Cargo del socio') + '</div>' +
+        '<div class="hint" id="nd-shint"></div></div>' +
+      '<div class="card"><div class="card-t">Condiciones</div>' +
+        '<div class="g3 u-mt10"><div class="fg"><label class="fl" for="nd-fec">Fecha de firma</label><input class="fc" type="date" id="nd-fec" value="' + _hoyLocal() + '"></div></div>' +
+        '<div class="fg"><label class="fl" for="nd-pro">Propósito</label><textarea class="fc" id="nd-pro" rows="3" placeholder="Ej.: evaluar la automatización de la atención por WhatsApp"></textarea></div>' +
+        '<div class="hint">Plazos, tipo de acuerdo y jurisdicción son los de la plantilla: mutuo, 1 año de vigencia y 5 de confidencialidad.</div></div>';
+  }
+  function elegirEmp(id) {
+    var e = N.emp.find(function (x) { return x.id === id; }) || {};
+    var rz = N.rz.find(function (x) { return x.empresa_id === id; }) || {};
+    var cs = N.cont.filter(function (x) { return x.empresa_id === id; });
+    put('nd-cont', id ? opc(cs, function (c) { return nomCont(c) + (c.puesto ? ' · ' + c.puesto : ''); }, cs.length ? 'Elegí el contacto' : 'Sin contactos: completalo a mano') : '<option value="">Elegí primero la empresa</option>');
+    set('nd-rz', rz.nombre || e.nombre || '');
+    set('nd-cuit', rz.cuit ? 'CUIT ' + rz.cuit : '');
+    set('nd-dom', rz.direccion || [e.direccion_fiscal, e.localidad, e.provincia].filter(Boolean).join(', '));
+    set('nd-act', e.rubro || '');
+    set('nd-rep', ''); set('nd-car', '');
+  }
+  function elegirCont(id) {
+    var c = N.cont.find(function (x) { return x.id === id; }) || {};
+    set('nd-rep', nomCont(c)); set('nd-car', c.puesto || '');
+  }
+  function elegirSoc(id) {
+    var u = N.usu.find(function (x) { return x.id === id; }) || {};
+    set('nd-sdni', u.dni || ''); set('nd-scar', u.cargo || '');
+    put('nd-shint', id && (!u.dni || !u.cargo) ? 'Faltan datos de ' + esc(u.nombre) + ': completalos acá o cargalos una vez en Configuración › Usuarios.' : '');
+  }
+
+  var _jszip = null;
+  function cargarJSZip() {
+    if (window.JSZip) return Promise.resolve();
+    return _jszip || (_jszip = new Promise(function (ok, mal) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = ok; s.onerror = function () { _jszip = null; mal(new Error('No pude cargar JSZip')); };
+      document.head.appendChild(s);
+    }));
+  }
+  function xml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  async function descargarNda(b) {
+    var u = N.usu.find(function (x) { return x.id === vNda('nd-soc'); }), fec = $('nd-fec') ? $('nd-fec').value : '';
+    var falta = [['nd-rz', 'la razón social'], ['nd-rep', 'el representante'], ['nd-pro', 'el propósito']]
+      .filter(function (x) { return !vNda(x[0]); }).map(function (x) { return x[1]; });
+    if (!u) falta.push('el socio');
+    if (!fec) falta.push('la fecha');
+    if (falta.length) return toast('Falta ' + falta.join(', '), 'err');
+    var d = new Date(fec + 'T12:00:00');
+    var V = { CLIENTE_RAZON_SOCIAL: vNda('nd-rz'), CLIENTE_DNI_CUIT: vNda('nd-cuit'), CLIENTE_DOMICILIO: vNda('nd-dom'), CLIENTE_ACTIVIDAD: vNda('nd-act'),
+      CLIENTE_REPRESENTANTE: vNda('nd-rep'), CLIENTE_CARGO: vNda('nd-car'), PROPOSITO: vNda('nd-pro'),
+      SOCIO_NOMBRE: u.nombre, SOCIO_DNI: vNda('nd-sdni'), SOCIO_CARGO: vNda('nd-scar'),
+      DIA: String(d.getDate()), MES: d.toLocaleString('es-AR', { month: 'long' }), ANIO: String(d.getFullYear()), FECHA: ff(fec) };
+    b.disabled = true;
+    try {
+      await cargarJSZip();
+      var r = await fetch('plantillas/NDA_GIWA.docx');
+      if (!r.ok) throw new Error('No encontré la plantilla del NDA');
+      var z = await JSZip.loadAsync(await r.arrayBuffer());
+      var doc = await z.file('word/document.xml').async('string');
+      Object.keys(V).forEach(function (k) { doc = doc.split('{{' + k + '}}').join(xml(V[k])); });
+      z.file('word/document.xml', doc);
+      var blob = await z.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'NDA_GIWA_' + V.CLIENTE_RAZON_SOCIAL.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_') + '.docx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      toast('NDA descargado', 'ok');
+    } catch (e) { toast(e.message || String(e), 'err'); }
+    finally { b.disabled = false; }
+  }
+
+  async function pintarNda(el) {
+    marcarSub('nda');
+    if (!N.ok) {
+      el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando clientes…</div>';
+      try { await cargarNda(); } catch (e) { el.innerHTML = '<div class="card">No pude cargar los datos: ' + esc(e.message || e) + '</div>'; return; }
+      if (_montado !== 'her' || S.sub !== 'nda') return;
+    }
+    el.innerHTML = uiHd('NDA', 'Convenio de confidencialidad con los datos del cliente, el socio y la fecha. Sale en Word para revisar y firmar.',
+        '<button class="btn bp sm" data-nda="descargar">' + ico('documento') + ' Descargar NDA</button>') + htmlNda();
+  }
+
   function pintar(el) {
     if (_montado !== 'her') return;
+    if (S.sub === 'nda') return pintarNda(el);
     marcarSub('meta');
     el.innerHTML = uiHd('Simulador Costos Meta', 'WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.',
         '<span class="u-s11 u-c-mt">Dólar oficial ' + ars(S.tc) + '</span>' +
@@ -284,6 +401,8 @@
 
   VISTAS.her = async function (el, op) {
     if (!S.mix.length) sector('odontologia');
+    S.sub = subPedida() === 'nda' ? 'nda' : 'meta';
+    if (op && op.forzar) N.ok = false;
     await abrirModulo(el, { id: 'her', texto: 'Cargando Herramientas…', forzar: op && op.forzar, cargar: cargar,
       cargado: function () { return S.tc > 0; }, firma: function () { return String(S.tc); }, pintar: function () { pintar(el); } });
     el.oninput = function (ev) {
@@ -295,9 +414,16 @@
       if (t.id === 'sm-mrr') { S.mrr = parseFloat(t.value) || 0; return calcMrr(); }
       if (t.id === 'sm-cli') { S.cli = t.value.trim() || 'Centro Médico Vida'; return put('sm-cli-t', esc(S.cli)); }
     };
-    el.onchange = function (ev) { if (ev.target.id === 'sm-franq') { S.franq = ev.target.checked; calcular(); } };
+    el.onchange = function (ev) {
+      var id = ev.target.id;
+      if (id === 'sm-franq') { S.franq = ev.target.checked; calcular(); }
+      if (id === 'nd-emp') elegirEmp(ev.target.value);
+      if (id === 'nd-cont') elegirCont(ev.target.value);
+      if (id === 'nd-soc') elegirSoc(ev.target.value);
+    };
     el.onclick = function (ev) {
       if (_montado !== 'her') return;
+      var nb = ev.target.closest('[data-nda="descargar"]'); if (nb) return descargarNda(nb);
       var b = ev.target.closest('[data-sim]'); if (!b) return;
       var a = b.getAttribute('data-sim'), k = b.getAttribute('data-k');
       if (a === 'tab') { S.tab = k; return pintar(el); }
@@ -310,6 +436,6 @@
       if (a === 'imprimir') return window.print();
     };
   };
-  VISTAS.her.irA = function (s) { if (SUBS.some(function (x) { return x[0] === s; })) pintar(document.getElementById('vista')); };
+  VISTAS.her.irA = function (s) { S.sub = s === 'nda' ? 'nda' : 'meta'; pintar(document.getElementById('vista')); };
   VISTAS.her.precargar = cargar;
 })();

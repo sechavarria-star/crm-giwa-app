@@ -227,12 +227,14 @@
       '<div class="fg"><label class="fl" for="us-mail">Mail <span class="req">*</span></label><input class="fc" id="us-mail" type="email" value="' + esc(u.mail || '') + '"></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="us-tg">Chat de Telegram</label><input class="fc" id="us-tg" placeholder="123456789" value="' + esc(u.telegram || '') + '"></div>' +
       '<div class="fg"><label class="fl" for="us-cal">Calendario</label><input class="fc" id="us-cal" placeholder="mail del calendario" value="' + esc(u.calendario || '') + '"></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="us-dni">DNI (para el NDA)</label><input class="fc" id="us-dni" placeholder="DNI 12.345.678" value="' + esc(u.dni || '') + '"></div>' +
+      '<div class="fg"><label class="fl" for="us-cargo">Cargo (para el NDA)</label><input class="fc" id="us-cargo" value="' + esc(u.cargo || '') + '"></div></div>' +
       '<div class="u-row8 u-mt6">' + chk('factura', 'Factura') + chk('es_giwa', 'Es del equipo GIWA') + chk('activo', 'Activo') + '</div>' +
       '</div><div class="mf"><button class="btn bg" data-cerrar="m-usu">Cancelar</button><button class="btn bp" id="us-ok">Guardar</button></div></div>';
     var v = function (i) { return document.getElementById(i).value.trim(); }, c = function (i) { return document.getElementById(i).checked; };
     document.getElementById('us-ok').onclick = async function () {
       var r = await db().rpc('guardar_usuario', { p: { id: id || null, nombre: v('us-nom'), mail: v('us-mail'), rol: v('us-rol'), telegram: v('us-tg'),
-        calendario: v('us-cal'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo') } });
+        calendario: v('us-cal'), dni: v('us-dni'), cargo: v('us-cargo'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo') } });
       if (r.error) return toast(r.error.message, 'err');
       closeM('m-usu'); toast('Usuario guardado', 'ok'); alGuardar();
     };
