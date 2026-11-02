@@ -69,33 +69,34 @@
   --f-num: 'Courier New', monospace;
   --t-xxs: 10px;     /* submenú lateral */
   --t-xs: 11px;      /* etiquetas en mayúsculas chicas; menú lateral */
-  --t-s: 12px;       /* notas, contadores */
-  --t-m: 13px;       /* texto de controles y filas */
-  --t-l: 14px;       /* texto base */
-  --t-xl: 15px;      /* título de proyecto */
-  --t-num: 19px;     /* número de métrica */
-  --t-h1: 24px;      /* título de vista */
+  --t-s: 11px;       /* notas, contadores */
+  --t-m: 12px;       /* texto de controles y filas */
+  --t-l: 13px;       /* texto base */
+  --t-xl: 14px;      /* título de proyecto */
+  --t-num: 17px;     /* número de métrica */
+  --t-h1: 21px;      /* título de vista */
   --peso-liviano: 300;
   --peso-normal: 400;
   --peso-medio: 500;
   --espaciado: .08em;  /* letras en MAYÚSCULAS */
 
-  /* Tamaños y espacios */
+  /* Tamaños y espacios (escala compacta, 02/11/2026) */
   --r: 8px;
   --r-l: 12px;
-  --alto-btn: 34px;
-  --alto-campo: 38px;
-  --ico: 20px;
-  --ico-s: 18px;
-  --ico-xs: 14px;
-  --logo: 40px;
+  --alto-btn: 30px;
+  --alto-ib: 28px;      /* botón de ícono (C11) */
+  --alto-campo: 32px;
+  --ico: 18px;
+  --ico-s: 16px;
+  --ico-xs: 12px;
+  --logo: 34px;
   --ancho-menu: 240px;
   --ancho-modal: 720px;
   --ancho-lateral: 340px;
   --e1: 4px;
-  --e2: 8px;
-  --e3: 12px;
-  --e4: 16px;
-  --e5: 24px;
-  --e6: 32px;
+  --e2: 7px;
+  --e3: 10px;
+  --e4: 14px;
+  --e5: 20px;
+  --e6: 28px;
 }
