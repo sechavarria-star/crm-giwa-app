@@ -227,7 +227,7 @@
     var lista = function (L) { return L.map(function (x) { return '<div class="sim-paso"><div><div class="u-fw6 u-s12">' + x[0] + '</div><div class="hint">' + x[1] + '</div></div></div>'; }).join(''); };
     return '<div class="card u-mb12"><div class="card-t">Estimación de MRR y costo integral para el cliente</div>' +
         '<div class="hint">Definí tu abono mensual para contrastarlo con el costo proyectado de WhatsApp y ver cómo le queda la inversión final a <span id="sm-cli-m">' + esc(S.cli) + '</span>.</div>' +
-        '<div class="g3 u-mt10"><div class="fg"><label class="fl" for="sm-mrr">Abono mensual (MRR en ARS)</label><input class="fc" type="number" min="0" step="10000" id="sm-mrr" value="' + S.mrr + '">' +
+        '<div class="g3 u-mt10"><div class="fg"><label class="fl" for="sm-mrr">Abono mensual (MRR en ARS)</label><input class="fc" type="number" min="0" step="10000" id="sm-mrr" data-monto value="' + S.mrr + '">' +
         '<div class="hint u-mt4" id="sm-mrr-eq"></div></div></div>' +
         '<div class="kpi-grid u-mt10"><div class="kpi k-abono"><div class="kpi-lbl">Mi abono (GIWA {IA})</div><div class="kpi-val" id="sm-k1"></div><div class="kpi-sub" id="sm-k1u"></div></div>' +
           '<div class="kpi k-pendiente"><div class="kpi-lbl">Costo WhatsApp (Meta)</div><div class="kpi-val" id="sm-k2"></div><div class="kpi-sub" id="sm-k2u"></div></div>' +

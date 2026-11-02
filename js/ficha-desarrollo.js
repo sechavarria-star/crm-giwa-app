@@ -31,14 +31,14 @@
         '<div class="fg"><label class="fl" for="fd-desc">Descripción</label><textarea class="fc" id="fd-desc" rows="2"></textarea></div>' +
         '<div class="sec u-mt10">Precio</div>' +
         '<div class="g3"><div class="fg"><label class="fl" for="fd-moneda">Moneda</label><select class="fc" id="fd-moneda"><option>ARS</option><option>USD</option></select></div>' +
-          campo('fd-total-ars', 'Total ARS') + campo('fd-total-usd', 'Total USD') + '</div>' +
+          campo('fd-total-ars', 'Total ARS', 'type="number" min="0" data-monto') + campo('fd-total-usd', 'Total USD', 'type="number" min="0" data-monto') + '</div>' +
         '<div class="g3">' + campo('fd-tc', 'TC') + campo('fd-cuotas', 'Cuotas', 'type="number" min="1"') +
           '<div class="fg"><label class="fl" for="fd-modelo">Modelo de pago</label><select class="fc" id="fd-modelo"></select></div></div>' +
         '<div class="ft-info" id="fd-sug"></div>' +
         '<div class="sec u-mt10">Abono y soporte</div>' +
-        '<div class="g3">' + campo('fd-cuota', 'Cuota por mes') + campo('fd-mant-hs', 'Horas incluidas') +
+        '<div class="g3">' + campo('fd-cuota', 'Cuota por mes', 'type="number" min="0" data-monto') + campo('fd-mant-hs', 'Horas incluidas') +
           '<div class="fg"><label class="fl" for="fd-ajuste">Ajuste</label><select class="fc" id="fd-ajuste"><option value="Sin Ajuste">Sin Ajuste</option><option value="Ajuste">Con Ajuste IPC</option></select></div></div>' +
-        '<div class="g3">' + campo('fd-garantia', 'Días de garantía') + campo('fd-sop-ars', 'Soporte · valor hora ARS') + campo('fd-sop-usd', 'Soporte · valor hora USD') + '</div>' +
+        '<div class="g3">' + campo('fd-garantia', 'Días de garantía') + campo('fd-sop-ars', 'Soporte · valor hora ARS', 'type="number" min="0" data-monto') + campo('fd-sop-usd', 'Soporte · valor hora USD', 'type="number" min="0" data-monto') + '</div>' +
         '<div class="sec u-mt10">Módulos</div>' +
         '<div id="fd-mods"></div>' +
       '</div>' +

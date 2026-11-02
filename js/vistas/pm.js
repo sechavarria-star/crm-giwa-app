@@ -701,17 +701,17 @@
   // El Cotizador completo (funcionalidades, horas, costos) sigue en el CRM actual.
   var NV = { moneda: 'ARS' };
   function htmlNuevo() {
-    var mon = function (m) { return '<button type="button" class="ptab' + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
+    var mon = function (m) { return '<button type="button" class="ui-mon-b ui-mon-' + m.toLowerCase() + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
     return '<div class="card nv-card"><div class="card-t">Carga rápida</div><div class="hint">Cliente, desarrollo y plata. Se guarda como Prospecto y se abre su ficha.</div>' +
       '<div class="g2 u-mt10"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
         '<div class="fg"><label class="fl" for="nv-sp">Sponsor</label><select class="fc" id="nv-sp"><option value="">Elegí la empresa</option></select></div></div>' +
       '<div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="nv-tipo">Desarrollo <span class="req">*</span></label><select class="fc" id="nv-tipo"></select></div>' +
         '<div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el tipo"></div></div>' +
-      '<div class="g2"><div class="fg"><span class="fl">Moneda</span><div class="filtros u-mb0" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</div></div>' +
-        '<div class="fg"><label class="fl" for="nv-monto">Monto <span class="req">*</span> <span class="u-s10-mt m" id="nv-eq"></span></label><input class="fc u-tr m" type="number" min="0" step="0.01" id="nv-monto"></div></div>' +
+      '<div class="g2"><div class="fg"><span class="fl">Moneda</span><div><span class="ui-mon" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</span></div></div>' +
+        '<div class="fg"><label class="fl" for="nv-monto">Monto <span class="req">*</span> <span class="u-s10-mt m" id="nv-eq"></span></label><input class="fc u-tr m" type="number" min="0" id="nv-monto" data-monto></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div>' +
-        '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" step="0.01" id="nv-mm"></div></div>' +
+        '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" id="nv-mm" data-monto></div></div>' +
       '<div class="u-c-rd u-s11" id="nv-err"></div>' +
       '<div class="u-row8 u-mt10"><button class="btn bp" data-pm="nv-ok">' + ico('guardar') + ' Guardar</button>' +
         '<a class="btn bg sm u-mla" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Funcionalidades, horas y costos">' + ico('abrir') + ' Cotizador completo en el CRM actual</a></div></div>';

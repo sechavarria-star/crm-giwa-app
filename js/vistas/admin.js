@@ -502,7 +502,7 @@
           '<div class="fg"><label class="fl" for="ga-cat">Categoría</label><select class="fc" id="ga-cat"></select></div></div>' +
         '<div class="fg"><label class="fl" for="ga-desc">Descripción <span class="req">*</span></label><input class="fc" id="ga-desc"></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ga-mon">Moneda</label><select class="fc" id="ga-mon"><option>ARS</option><option>USD</option></select></div>' +
-          '<div class="fg"><label class="fl" for="ga-monto">Monto</label><input class="fc u-tr" type="number" min="0" id="ga-monto"></div></div>' +
+          '<div class="fg"><label class="fl" for="ga-monto">Monto</label><input class="fc u-tr" type="number" min="0" id="ga-monto" data-monto></div></div>' +
         '<div class="ft-info u-mb6">La otra moneda se calcula sola, al TC del día del gasto.</div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ga-pag">Pagador (socio)</label><select class="fc" id="ga-pag"></select></div>' +
           '<div class="fg"><label class="fl" for="ga-frec">Frecuencia</label><select class="fc" id="ga-frec"><option>Mensual</option><option>Anual</option><option>Único</option></select></div></div>' +

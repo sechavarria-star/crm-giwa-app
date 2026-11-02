@@ -250,3 +250,16 @@ textarea.ui-campo { height: auto; min-height: 80px; padding: 10px var(--e3); res
 /* Ficha abierta como página (desde «Proyecto» en Seguimiento) */
 .ui-ficha.ui-ficha-sola { border-top: 1px solid var(--marco); border-radius: var(--r); }
 .ui-ficha-hd .ui-motivo { margin: 0; }
+
+/* ── Campos de fecha, monto y moneda (los arma js/ui.js sobre cualquier pantalla) ── */
+.ui-fecha { display: inline-flex; align-items: center; gap: var(--e1); position: relative; width: 100%; }
+.ui-fecha > input:first-child { flex: 1; min-width: 0; font-family: var(--f-num); }
+.ui-fecha-nat { position: absolute; right: 0; bottom: 0; width: 0; height: 0; opacity: 0; border: 0; padding: 0; pointer-events: none; }
+input.ui-invalido { border-color: var(--p-error) !important; }
+input.ui-monto { text-align: right; font-family: var(--f-num); }
+.ui-mon-sel { display: none !important; }
+.ui-mon { display: inline-flex; border: 1px solid var(--contorno); border-radius: var(--r); overflow: hidden; height: var(--alto-campo); }
+.ui-mon-b { background: var(--fondo); border: 0; padding: 0 var(--e4); font-family: var(--f-num); font-size: var(--t-m); color: var(--texto2); cursor: pointer; }
+.ui-mon-b + .ui-mon-b { border-left: 1px solid var(--contorno); }
+.ui-mon-b.ui-mon-ars.on { background: var(--suave-principal); color: var(--principal); }
+.ui-mon-b.ui-mon-usd.on { background: var(--suave-brillo); color: var(--p-usd); }

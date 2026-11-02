@@ -182,3 +182,92 @@ document.addEventListener('click', function (ev) {
   var seg = t.closest('.ui-seg');
   if (seg) seg.classList.toggle('on');
 });
+
+// ══ Campos de carga (30/10/2026 · 02/11/2026) ══════════════════════════════
+// Se aplican solos a todo lo que se dibuja, sin tocar cada pantalla:
+//  · <input type="date">   → se escribe dd/mm/aaaa (con el calendario al lado). .value sigue
+//                            leyendo y recibiendo 'yyyy-mm-dd', así no cambia nada al guardar.
+//  · <input data-monto>     → «.» de miles mientras se tipea, sin decimales, a la derecha.
+//                            .value devuelve sólo los dígitos.
+//  · <select> ARS / USD     → recuadro ARS | USD, cada moneda con su color; el select sigue
+//                            debajo (oculto) y es el que leen las pantallas.
+var _UI_VAL = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+function _uiIsoADmy(v) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ''); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; }
+function _uiDmyAIso(t) {
+  var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(t || '').trim()); if (!m) return '';
+  var d = +m[1], mo = +m[2], y = +m[3], x = new Date(y, mo - 1, d);
+  if (x.getFullYear() !== y || x.getMonth() !== mo - 1 || x.getDate() !== d) return '';
+  return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+function _uiMiles(dig) { return dig ? Number(dig).toLocaleString('es-AR') : ''; }
+
+function _uiFecha(inp) {
+  if (inp._ui) return; inp._ui = 1;
+  var iso = _UI_VAL.get.call(inp), min = inp.min;
+  inp.type = 'text'; inp.setAttribute('inputmode', 'numeric'); inp.placeholder = 'dd/mm/aaaa'; inp.maxLength = 10;
+  inp.removeAttribute('min'); inp.classList.add('ui-num');
+  Object.defineProperty(inp, 'value', { configurable: true,
+    get: function () { return _uiDmyAIso(_UI_VAL.get.call(this)); },
+    set: function (v) { _UI_VAL.set.call(this, /^\d{4}-/.test(String(v || '')) ? _uiIsoADmy(v) : String(v || '')); } });
+  inp.value = iso;
+  inp.addEventListener('input', function (ev) {
+    if (ev.inputType && ev.inputType.indexOf('delete') === 0) return;
+    var d = _UI_VAL.get.call(inp).replace(/\D/g, '').slice(0, 8);
+    _UI_VAL.set.call(inp, d.slice(0, 2) + (d.length > 2 ? '/' + d.slice(2, 4) : '') + (d.length > 4 ? '/' + d.slice(4) : ''));
+    inp.classList.remove('ui-invalido');
+  });
+  // Una fecha a medio escribir no se guarda: se avisa y no sigue el «change»
+  inp.addEventListener('change', function (ev) {
+    if (_UI_VAL.get.call(inp).trim() && !inp.value) {
+      ev.stopImmediatePropagation(); inp.classList.add('ui-invalido');
+      if (typeof toast === 'function') toast('Fecha inválida: usá dd/mm/aaaa', 'err');
+    }
+  });
+  var nat = document.createElement('input'); nat.type = 'date'; nat.className = 'ui-fecha-nat'; nat.tabIndex = -1; nat.setAttribute('aria-hidden', 'true'); if (min) nat.min = min;
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'ui-ib'; b.title = 'Elegir en el calendario'; b.setAttribute('aria-label', 'Elegir en el calendario'); b.innerHTML = uiIco('calendario');
+  var w = document.createElement('span'); w.className = 'ui-fecha';
+  inp.parentNode.insertBefore(w, inp); w.appendChild(inp); w.appendChild(nat); w.appendChild(b);
+  b.onclick = function () { _UI_VAL.set.call(nat, inp.value || ''); try { nat.showPicker(); } catch (e) { nat.focus(); } };
+  nat.onchange = function () {
+    inp.value = _UI_VAL.get.call(nat); inp.classList.remove('ui-invalido');
+    inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+}
+function _uiMonto(inp) {
+  if (inp._ui) return; inp._ui = 1;
+  var v0 = _UI_VAL.get.call(inp);
+  inp.type = 'text'; inp.setAttribute('inputmode', 'numeric'); inp.removeAttribute('step'); inp.classList.add('ui-monto');
+  Object.defineProperty(inp, 'value', { configurable: true,
+    get: function () { return _UI_VAL.get.call(this).replace(/\D/g, ''); },
+    set: function (v) { var n = String(v == null ? '' : v).trim(); _UI_VAL.set.call(this, n === '' ? '' : _uiMiles(String(Math.round(Number(n.replace(/\./g, '').replace(',', '.')) || 0)))); } });
+  inp.value = v0;
+  inp.addEventListener('input', function () { _UI_VAL.set.call(inp, _uiMiles(_UI_VAL.get.call(inp).replace(/\D/g, ''))); });
+}
+function _uiMoneda(sel) {
+  if (sel._ui) return; sel._ui = 1;
+  var w = document.createElement('span'); w.className = 'ui-mon'; w.setAttribute('role', 'group'); w.setAttribute('aria-label', 'Moneda');
+  var pinta = function () { w.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-m') === sel.value); }); };
+  ['ARS', 'USD'].forEach(function (m) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'ui-mon-b ui-mon-' + m.toLowerCase(); b.textContent = m; b.setAttribute('data-m', m);
+    b.onclick = function () { if (sel.value === m) return; sel.value = m; pinta(); sel.dispatchEvent(new Event('change', { bubbles: true })); };
+    w.appendChild(b);
+  });
+  sel.classList.add('ui-mon-sel'); sel.parentNode.insertBefore(w, sel.nextSibling);
+  sel.addEventListener('change', pinta);
+  var d = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');   // si una pantalla cambia el valor por código
+  Object.defineProperty(sel, 'value', { configurable: true, get: function () { return d.get.call(this); }, set: function (v) { d.set.call(this, v); pinta(); } });
+  pinta();
+}
+function _uiCampos(raiz) {
+  if (!raiz.querySelectorAll) return;
+  raiz.querySelectorAll('input[type="date"]:not(.ui-fecha-nat)').forEach(_uiFecha);
+  raiz.querySelectorAll('input[data-monto]').forEach(_uiMonto);
+  raiz.querySelectorAll('select').forEach(function (s) {
+    var o = Array.prototype.map.call(s.options, function (x) { return x.value; }).join('|');
+    if (o === 'ARS|USD') _uiMoneda(s);
+  });
+}
+new MutationObserver(function (ms) {
+  ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) _uiCampos(n.parentNode || n); }); });
+}).observe(document.documentElement, { childList: true, subtree: true });
+document.addEventListener('DOMContentLoaded', function () { _uiCampos(document); });

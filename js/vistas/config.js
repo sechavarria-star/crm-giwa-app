@@ -108,8 +108,8 @@
   function htmlVh() {
     var p = C.vh, h = '<div class="gauto">';
     h += '<div class="card"><div class="card-t">Valor hora de soporte</div><div class="hint">Lo que se cobra cada hora de soporte.</div>' +
-      '<label class="fl" for="cf-hs-ars">ARS por hora</label><input class="fc" type="number" id="cf-hs-ars" value="' + esc(C.cfg.valor_hora_soporte_ars || '') + '">' +
-      '<label class="fl u-mt10" for="cf-hs-usd">USD por hora</label><input class="fc" type="number" id="cf-hs-usd" value="' + esc(C.cfg.valor_hora_soporte_usd || '') + '">' +
+      '<label class="fl" for="cf-hs-ars">ARS por hora</label><input class="fc" type="number" id="cf-hs-ars" data-monto value="' + esc(C.cfg.valor_hora_soporte_ars || '') + '">' +
+      '<label class="fl u-mt10" for="cf-hs-usd">USD por hora</label><input class="fc" type="number" id="cf-hs-usd" data-monto value="' + esc(C.cfg.valor_hora_soporte_usd || '') + '">' +
       '<div class="hint u-mt10" id="cf-hs-hint">' + hsHint() + '</div>' +
       '<button class="btn bg sm u-mt10" data-cfg="hs">' + ico('guardar') + ' Guardar valor de soporte</button></div>';
     h += '<div class="card"><div class="card-t">Márgenes</div><div class="hint">El valor de mercado sale del catálogo. Sobre ese se calcula el resto.</div>' +
@@ -184,8 +184,8 @@
       '<div class="fg"><label class="fl">Unidad</label><select class="fc" id="ct-uni">' + opts(UNIS, r.unidad || 'Hora') + '</select></div></div>' +
       '<div class="fg"><label class="fl">Nombre <span class="req">*</span></label><input class="fc" id="ct-nom" value="' + esc(r.producto || '') + '"></div>' +
       '<div class="fg"><label class="fl">Nivel</label><input class="fc" id="ct-niv" placeholder="Senior, Mid, Junior..." value="' + esc(r.nivel || '') + '"></div>' +
-      '<div class="g2"><div class="fg"><label class="fl">Costo USD</label><input class="fc" type="number" id="ct-usd" value="' + (Number(r.costo_usd) || 0) + '"></div>' +
-      '<div class="fg"><label class="fl">Costo ARS <small class="u-c-mt">(auto)</small></label><input class="fc" type="number" id="ct-ars" value="' + (Number(r.costo_ars) || 0) + '"></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl">Costo USD</label><input class="fc" type="number" id="ct-usd" data-monto value="' + (Number(r.costo_usd) || 0) + '"></div>' +
+      '<div class="fg"><label class="fl">Costo ARS <small class="u-c-mt">(auto)</small></label><input class="fc" type="number" id="ct-ars" data-monto value="' + (Number(r.costo_ars) || 0) + '"></div></div>' +
       '</div><div class="mf"><button class="btn bg" data-cerrar="m-cont">Cancelar</button><button class="btn bp" id="ct-ok">Guardar</button></div></div>';
     var v = function (i) { return document.getElementById(i).value; };
     document.getElementById('ct-usd').oninput = function () { var u = _nFront(v('ct-usd')); if (u > 0 && C.tc > 0) document.getElementById('ct-ars').value = Math.round(u * C.tc); };

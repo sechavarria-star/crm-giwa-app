@@ -58,7 +58,7 @@
       var on = item ? f.item_id === item : L.length === 1;
       return '<div class="cb-fila"><span class="u-f1m"><span class="dev-tit">' + esc(f.titulo || f.item_id) + '</span>' +
         '<span class="u-s10-mt"> · ' + esc(f.det) + ' · sugerido <span class="m">' + fmt(f.sug) + '</span></span></span>' +
-        '<input class="fc u-tr cb-monto" type="number" min="0" step="0.01" data-i="' + C.filas.indexOf(f) + '" value="' + (on ? f.sug : '') + '" aria-label="Monto de ' + esc(f.titulo || '') + '"></div>';
+        '<input class="fc u-tr cb-monto" type="number" min="0" data-monto data-i="' + C.filas.indexOf(f) + '" value="' + (on ? f.sug : '') + '" aria-label="Monto de ' + esc(f.titulo || '') + '"></div>';
     }).join('') : '<div class="empty">Este cliente no tiene nada para facturar.</div>';
     total();
   }
