@@ -52,8 +52,9 @@
     return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : 'hace ' + n + ' días';
   }
   function pasaFiltro(g) {
-    if (filtro === 'abono') return g.estado === 'abono activo';
-    if (filtro === 'deuda') return g.estado === 'deuda vencida';
+    // por los datos, no por la etiqueta: un cliente detenido o con deuda puede tener abono (02/11/2026)
+    if (filtro === 'abono') return !!g.abono;
+    if (filtro === 'deuda') return !!g.deuda;
     if (filtro === 'prospecto') return g.estado === 'prospecto';
     return true;
   }
