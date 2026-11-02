@@ -15,6 +15,13 @@
 /* Escala global en los estilos heredados (02/11/2026): leen los tokens de tokens.css */
 .fg input.fc, .fg select.fc { height: var(--alto-campo); }          /* campos de formulario; los de una fila o tabla quedan en su alto */
 .btn:not(.sm):not(.xs):not(.btn-ico) { min-height: var(--alto-btn); }
+/* Tablas sobre fondo oscuro (Contactos, Facturación): sin tarjeta clara, sólo divisores y hover sutil (A2 · 02/11/2026) */
+.card.card-tabla { background: var(--fondo); border: 1px solid var(--marco); }
+.card.card-tabla .card-h { background: var(--abierto); border-bottom: 1px solid var(--marco); }
+/* Desplegables (<select>): uno solo para toda la app. Fondo de la app, borde visible, opciones compactas */
+select.fc, select.ui-campo { background-color: var(--fondo); border: 1px solid var(--marco); }
+select.fc:focus, select.ui-campo:focus { border-color: var(--brillo); }
+select.fc option, select.ui-campo option { background: var(--fondo); color: var(--texto); padding: 2px 6px; }
 /* Tablas de pocas columnas (hasta 4): no se estiran a todo el ancho en monitores grandes */
 .tbl:not(:has(th:nth-child(5))), .ui-tbl:not(:has(th:nth-child(5))) { max-width: 960px; }
 
@@ -96,7 +103,7 @@ button.hoy-go{background:none;border:0;padding:0;font-family:inherit}
 /* Administración · conteo en el título de una sección (rectángulo, no pill) */
 .cnt{background:var(--bg3);border-radius:var(--r);padding:1px 7px;font-size:10px;font-weight:600;font-family:var(--mono)}
 /* Pendiente de cobrar: fila de empresa, concepto recortado y barra de la selección */
-.pc-emp-f{background:var(--blue-a)}
+.pc-emp-f{background:var(--abierto)}
 .pc-concepto{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pc-barra{position:sticky;bottom:0;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--b-tenue);background:var(--bg2)}
 
@@ -338,7 +345,7 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .ag-mail { color: var(--blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
 .ag-sin { width: 28px; }
 .con-fila { cursor: pointer; }
-.con-fila:hover td { background: var(--bg3); }
+.con-fila:hover td { background: var(--suave-fila); }
 .con-tbl td { font-size: 12px; }
 .con-kv { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--b-suave); font-size: 12px; }
 

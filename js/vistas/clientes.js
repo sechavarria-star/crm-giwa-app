@@ -137,7 +137,7 @@
         return CON.asc ? r : -r;
       });
     if (!L.length) return '<div class="empty">Ningún contacto coincide.</div>';
-    return '<div class="card u-p0 u-ovx"><table class="tbl con-tbl"><thead><tr>' + CON_COL.map(function (c) {
+    return '<div class="card card-tabla u-p0 u-ovx"><table class="tbl con-tbl"><thead><tr>' + CON_COL.map(function (c) {
         return '<th class="rec-th" data-cord="' + c[0] + '">' + c[1] + (CON.ord === c[0] ? ' ' + ico(CON.asc ? 'arriba' : 'abajo') : '') + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
       L.map(function (c) {
         var wp = String(c.telefono || '').replace(/[^0-9]/g, ''), id = esc(c.id);

@@ -384,7 +384,7 @@
     var porE = {}; list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
     Object.keys(porE).sort().forEach(function (emp) {
       var cs = porE[emp], e0 = cs[0], logo = e0.empresa_id && A.f.logos[e0.empresa_id];
-      h += '<div class="card u-p0 u-mb10"><div class="card-h u-row8">' +
+      h += '<div class="card card-tabla u-p0 u-mb10"><div class="card-h u-row8">' +
         // logo de Drive; si no se puede ver (archivo sin compartir: 403), la inicial
         (logo ? '<img class="proy-emp-logo" src="' + esc(logo) + '" referrerpolicy="no-referrer" alt="" onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' +
                 esc('<div class="proy-emp-initial">' + esc(emp.charAt(0).toUpperCase()) + '</div>') + '">'
