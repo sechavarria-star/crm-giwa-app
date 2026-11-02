@@ -228,11 +228,10 @@
         (e.logo ? '<img class="emp-logo" src="' + esc(e.logo) + '" referrerpolicy="no-referrer" alt="">' : '<div class="emp-ini">' + esc((e.nombre || '?').charAt(0).toUpperCase()) + '</div>') +
         '<div class="u-f1m"><div class="emp-n">' + esc(e.nombre) + (e.alias ? ' <span class="u-s11-mt">(' + esc(e.alias) + ')</span>' : '') + '</div>' +
         '<div class="u-s11-mt">' + esc([e.rubro, e.localidad, e.provincia].filter(Boolean).join(' · ') || '—') + '</div></div>' +
+        (e.drive_interno ? '<a class="ui-lnk ui-azul" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + 'Drive</a>' : '') +
+        (web ? '<a class="ui-lnk ui-gris" href="' + esc(web) + '" target="_blank" rel="noopener">' + uiIco('web') + 'Web</a>' : '') +
         '<button class="btn bp sm" data-acc="editar" data-id="' + esc(e.id) + '">' + ico('editar') + ' Editar</button></div>';
       h += '<div class="fe-datos">' + (e.tier_id ? '<div class="fe-dato"><div class="sec">Tier</div><div>' + tierChip(e.tier_id) + '</div></div>' : '') + dato('Proyectos', d.nProy ? String(d.nProy) : '') + '</div>';
-      if (e.drive_interno || web) h += '<div class="u-row6 u-mt6">' +
-        (e.drive_interno ? '<a class="btn bg xs" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + ico('carpeta') + ' Drive</a>' : '') +
-        (web ? '<a class="btn bg xs" href="' + esc(web) + '" target="_blank" rel="noopener">' + ico('link') + ' Web</a>' : '') + '</div>';
       h += '<div class="sec u-mt10">Razones sociales (' + d.razones.length + ')</div>' +
         (d.razones.map(function (x) {
           return '<div class="fe-linea"><div class="emp-n">' + esc(x.nombre) + (x.por_defecto ? ' <span class="est"><span class="est-dot e-xg"></span><span class="t-xg">por defecto</span></span>' : '') + '</div>' +
@@ -241,7 +240,7 @@
       h += '<div class="u-row8 u-mt10"><span class="sec">Contactos (' + d.contactos.length + ')</span>' +
            '<button class="btn bsec xs u-mla" data-acc="contacto" data-id="' + esc(e.id) + '">' + ico('contacto') + ' Contacto</button></div>' +
         (d.contactos.map(function (c) {
-          var wp = String(c.telefono || '').replace(/[^0-9]/g, '');
+          var wp = telWa(c.telefono);
           return '<div class="fe-linea u-row8"><div class="u-f1m"><div class="emp-n">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim()) + '</div>' +
                  '<div class="u-s11-mt">' + esc([c.puesto, c.area_trabajo, c.email, c.telefono].filter(Boolean).join(' · ') || '—') + '</div></div>' +
                  (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="Mail" aria-label="Mail">' + ico('mail') + '</a>' : '') +

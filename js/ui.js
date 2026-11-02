@@ -152,7 +152,7 @@ function uiMotivo(txt) { return '<div class="ui-motivo">' + esc(txt) + '</div>';
 // ── C16 · Contactos · [{ nombre, puesto, tel, mail }] · cada ícono sólo si el dato existe ──
 function uiContactos(cs) {
   return '<ul class="ui-ctcs">' + (cs || []).map(function (c) {
-    var tel = String(c.tel || '').replace(/\D/g, '');
+    var tel = telWa(c.tel);
     return '<li class="ui-ctc"><div class="ui-ctc-l"><span>' + esc(c.nombre) + (c.puesto ? ' <span class="ui-ps">· ' + esc(c.puesto) + '</span>' : '') + '</span>' +
            '<span class="ui-ics">' +
              (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" title="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +

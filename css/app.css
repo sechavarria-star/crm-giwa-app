@@ -301,7 +301,7 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 
 /* Clientes · tarjetas (29/10/2026): logo fijo de 48px sin deformar, Tier en bloque gris */
 .emp-grid .emp-logo, .emp-grid .emp-ini { width: 48px; height: 48px; }
-.emp-grid .emp-logo { object-fit: contain; padding: 4px; background: var(--bg3); border: 1px solid var(--b); }
+.emp-grid .emp-logo { object-fit: contain; padding: 4px; background: var(--logo-claro); border: 1px solid var(--b); }
 .emp-tier { padding: 1px 7px; border-radius: 4px; background: var(--bg3); color: var(--mt); font-family: var(--mono); font-size: 10.5px; }
 
 /* Filtros (.ptab): salían en Arial 13px, la letra por defecto del botón. Misma letra que la app (29/10/2026) */
@@ -345,6 +345,8 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .ag-mail { color: var(--blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
 .ag-sin { width: 28px; }
 .con-fila { cursor: pointer; }
+.con-ico { display: inline-flex; vertical-align: -3px; margin-right: 6px; color: var(--texto2); }
+.con-ico .ico { width: var(--ico-accion); height: var(--ico-accion); }
 .con-fila:hover td { background: var(--suave-fila); }
 .con-tbl td { font-size: 12px; }
 .con-kv { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--b-suave); font-size: 12px; }

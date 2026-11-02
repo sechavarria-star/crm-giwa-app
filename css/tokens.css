@@ -21,7 +21,7 @@
   --texto2: #8892B0;         /* notas, etiquetas, íconos en reposo */
   --blanco: #FFFFFF;
   --logo-fondo: #121A3D;     /* recuadro del logo sin imagen */
-  --logo-claro: #FFFFFF;     /* recuadro del logo con imagen */
+  --logo-claro: #000000;     /* recuadro del logo con imagen: negro (02/11/2026) */
 
   /* Estados (proyecto y desarrollo) */
   --e-prospecto: #A855F7;

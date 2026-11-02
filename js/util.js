@@ -56,6 +56,21 @@ function isoMas(n) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// Teléfono → número para wa.me (Argentina por defecto): sólo dígitos, con 54 y el 9 de celular,
+// sin el 0 del área ni el 15 de Buenos Aires. Si ya trae otro código de país, queda como está (02/11/2026).
+// La misma regla está en la base: crm_giwa.normalizar_telefono().
+function telWa(t) {
+  var s = String(t || '').trim(), d = s.replace(/\D/g, ''), orig = d;
+  if (!d) return '';
+  if (s.charAt(0) === '+' && d.indexOf('54') !== 0) return d;            // otro país, tal cual
+  if (d.indexOf('00') === 0) { d = d.slice(2); if (d.indexOf('54') !== 0) return d; }
+  if (d.indexOf('54') === 0) d = d.slice(2);
+  d = d.replace(/^9/, '').replace(/^0/, '');
+  if (d.length === 12) for (var a = 2; a <= 4; a++) if (d.substr(a, 2) === '15') { d = d.slice(0, a) + d.slice(a + 2); break; }   // área + 15
+  if (d.length === 10 && d.indexOf('15') === 0) d = '11' + d.slice(2);  // 15 sin área: Buenos Aires
+  return d.length === 10 ? '549' + d : orig;                              // si no se entiende, el número como vino
+}
+
 // Tier de la empresa: etiqueta con relleno, escala de azul GIWA que se intensifica con
 // el multiplicador (T1 = el más intenso). La misma en Clientes y la ficha (29/10/2026).
 function tierChip(t) {

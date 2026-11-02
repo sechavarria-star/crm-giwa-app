@@ -493,7 +493,7 @@
     h += uiDesp({ t: 'Contactos · ' + (p.empresa || ''), n: F.cons.length,
       v: _canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'contacto', 's', 'data-pm="contacto"') },
       F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
-        var tel = String(c.telefono || '').replace(/[^0-9]/g, ''), tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
+        var tel = telWa(c.telefono), tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
         return '<div class="ui-linea"><button type="button" class="ui-ib' + (mio(c) ? ' on' : '') + '" data-pm="estrella" data-id="' + esc(c.id) + '" title="' + tip + '" aria-label="' + tip + '">' + (mio(c) ? '★' : '☆') + '</button>' +
           '<span class="ui-f1">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim() || '—') + ' <span class="ui-nota-t">· ' + esc(c.puesto || c.area_trabajo || c.email || '') + '</span></span>' +
           (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +

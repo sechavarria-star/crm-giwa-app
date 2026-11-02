@@ -103,10 +103,9 @@
         '<div class="u-row8 u-mt6">' + tierChip(e.tier_id) + estado(g.estado) + '</div>' +
         (g.estado === 'prospecto' ? '' : '<div class="emp-plata u-mt6"><span>Contratado <b class="m m-contratado">' + fmt(g.contratado) + '</b></span>' +
           '<span>Saldo <b class="m m-pendiente">' + fmt(g.saldo) + '</b></span></div>') +
-        '<div class="u-s11-mt u-mt6">Último contacto: ' + hace(g.ultimo) + '</div>' +
         // Los contactos, en viñetas: nombre · puesto con WhatsApp y mail (cada ícono sólo si hay dato)
         (n ? '<ul class="emp-cons">' + consDe(e).map(function (c) {
-          var wp = String(c.telefono || '').replace(/[^0-9]/g, '');
+          var wp = telWa(c.telefono);
           return '<li><span class="u-f1m">' + esc([((c.nombre || '') + ' ' + (c.apellido || '')).trim(), c.puesto].filter(Boolean).join(' · ')) + '</span>' +
             (wp ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') +
             (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + ico('mail') + '</a>' : '') + '</li>';
@@ -137,11 +136,12 @@
         return CON.asc ? r : -r;
       });
     if (!L.length) return '<div class="empty">Ningún contacto coincide.</div>';
-    return '<div class="card card-tabla u-p0 u-ovx"><table class="tbl con-tbl"><thead><tr>' + CON_COL.map(function (c) {
+    return '<div class="u-row8 u-mb8"><span class="u-f1"></span><button class="btn bg sm" id="con-norm">' + ico('whatsapp') + ' Normalizar teléfonos</button></div>' +
+      '<div class="card card-tabla u-p0 u-ovx"><table class="tbl con-tbl"><thead><tr>' + CON_COL.map(function (c) {
         return '<th class="rec-th" data-cord="' + c[0] + '">' + c[1] + (CON.ord === c[0] ? ' ' + ico(CON.asc ? 'arriba' : 'abajo') : '') + '</th>'; }).join('') + '<th></th></tr></thead><tbody>' +
       L.map(function (c) {
-        var wp = String(c.telefono || '').replace(/[^0-9]/g, ''), id = esc(c.id);
-        return '<tr class="con-fila" data-cver="' + id + '"><td class="u-fw6">' + esc(c.apellido || '') + '</td><td>' + esc(c.nombre || '') + '</td>' +
+        var wp = telWa(c.telefono), id = esc(c.id);
+        return '<tr class="con-fila" data-cver="' + id + '"><td class="u-fw6"><span class="con-ico">' + ico('persona') + '</span>' + esc(c.apellido || '') + '</td><td>' + esc(c.nombre || '') + '</td>' +
           '<td>' + esc(c.empresa) + '</td><td class="u-c-mt">' + esc(c.puesto || '') + '</td>' +
           '<td>' + (c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '<button class="btn bg xs" data-cadd="fe-c-e" data-id="' + id + '">' + ico('mas') + ' Mail</button>') + '</td>' +
           '<td class="m">' + (c.telefono ? esc(c.telefono) : '<button class="btn bg xs" data-cadd="fe-c-tel" data-id="' + id + '">' + ico('mas') + ' Teléfono</button>') + '</td>' +
@@ -152,7 +152,7 @@
   function verContacto(c, alGuardar) {
     var m = document.getElementById('m-con-ver');
     if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-con-ver'; document.body.appendChild(m); }
-    var e = D.emps.find(function (x) { return x.id === c.empresa_id; }), wp = String(c.telefono || '').replace(/[^0-9]/g, '');
+    var e = D.emps.find(function (x) { return x.id === c.empresa_id; }), wp = telWa(c.telefono);
     var kv = function (l, v) { return '<div class="con-kv"><span class="u-s11-mt">' + l + '</span><span>' + (v || '<span class="u-c-mt">—</span>') + '</span></div>'; };
     m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim() || 'Contacto') + '</span>' +
       '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-con-ver">' + ico('cerrar') + '</button></div><div class="mb2">' +
@@ -204,9 +204,16 @@
     var alGuardar = { onSave: async function () { await cargar(); pintar(el); } };
     el.onclick = function (ev) {
       if (ev.target.closest('a')) return;            // mail y WhatsApp: el link, sin abrir la ficha
-      var b = ev.target.closest('[data-filtro],[data-pest],[data-ver],[data-ed],[data-con],[data-addcon],[data-addrs],[data-cord],[data-cadd],[data-cver],#cli-exportar,#cli-nuevo');
+      var b = ev.target.closest('[data-filtro],[data-pest],[data-ver],[data-ed],[data-con],[data-addcon],[data-addrs],[data-cord],[data-cadd],[data-cver],#cli-exportar,#cli-nuevo,#con-norm');
       if (!b) return;
       if (b.id === 'cli-exportar') return exportar();
+      // Deja los teléfonos listos para WhatsApp (+549…). Lo hace la base: crm_giwa.normalizar_telefonos()
+      if (b.id === 'con-norm') return ask('¿Normalizar los teléfonos de todos los contactos?\n\nQuedan como +54 9 área número, sin espacios ni símbolos. Los de otro país no se tocan.', 'Normalizar teléfonos').then(async function (ok) {
+        if (!ok) return;
+        var r = await db().rpc('normalizar_telefonos');
+        if (r.error) return toast(r.error.message, 'err');
+        toast((r.data && r.data.cambiados || 0) + ' teléfono(s) normalizado(s)', 'ok'); alGuardar.onSave();
+      });
       if (b.id === 'cli-nuevo') return pest === 'con' ? abrirContacto(null, alGuardar) : abrirFichaEmpresa('', alGuardar);
       if (b.hasAttribute('data-ver')) return verFichaEmpresa(b.getAttribute('data-ver'), alGuardar);
       if (b.hasAttribute('data-ed')) return abrirFichaEmpresa(b.getAttribute('data-ed'), alGuardar);
