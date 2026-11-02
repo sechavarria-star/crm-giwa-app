@@ -11,7 +11,12 @@
 [hidden] { display: none !important; }
 
 /* La barra es fixed (36px) y el menú lateral también: la vista arranca debajo y a su derecha */
-.vista { padding: 52px 18px 24px; max-width: 1400px; margin: 0 auto 0 220px; box-sizing: border-box; min-width: 0; }
+.vista { padding: 52px 18px 24px; max-width: 1920px; margin: 0 auto 0 220px; box-sizing: border-box; min-width: 0; }   /* aprovecha el ancho; sólo frena en monitores muy anchos */
+/* Escala global en los estilos heredados (02/11/2026): leen los tokens de tokens.css */
+.fg input.fc, .fg select.fc { height: var(--alto-campo); }          /* campos de formulario; los de una fila o tabla quedan en su alto */
+.btn:not(.sm):not(.xs):not(.btn-ico) { min-height: var(--alto-btn); }
+/* Tablas de pocas columnas (hasta 4): no se estiran a todo el ancho en monitores grandes */
+.tbl:not(:has(th:nth-child(5))), .ui-tbl:not(:has(th:nth-child(5))) { max-width: 960px; }
 
 /* Menú lateral (opción A): módulos en acordeón; el del módulo actual muestra sus subpantallas.
    El aspecto es el C1 (.ui-menu / .ui-mi / .ui-sub de componentes.css); acá sólo la ubicación y el colapsado. */
@@ -536,7 +541,7 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .btn.bp:hover { background: rgba(0,144,255,.12); color: var(--principal); }
 .btn.bsec { background: transparent; color: var(--secundaria-txt); border: 1px solid var(--secundaria); }
 .btn.bsec:hover { background: rgba(168,85,247,.12); }
-.btn .ico { width: 18px; height: 18px; }
+.btn .ico { width: var(--ico-accion); height: var(--ico-accion); }
 .btn.xs .ico, .btn.sm .ico { width: 16px; height: 16px; }
 .seg-acc .btn[data-est="finalizado"]:hover { color: var(--p-cobrado); border-color: var(--p-cobrado); }
 .seg-acc .btn.acc-det:hover { color: var(--e-detenido); border-color: var(--e-detenido); }

@@ -6,11 +6,11 @@
    este archivo no puede haber ningún color en hexadecimal.
    ══════════════════════════════════════════════════════════════════════ */
 :root {
-  /* Base */
+  /* Base (paleta vigente 02/11/2026: tarjetas, bordes y secundario de la identidad original) */
   --fondo: #060716;          /* app y desplegables */
-  --marco: #052342;          /* borde de secciones abiertas y recuadros; líneas entre filas */
+  --marco: #1E2A55;          /* borde de secciones abiertas y recuadros; líneas entre filas */
   --abierto: #0F1634;        /* encabezado de una sección abierta */
-  --caja: #0D122F;           /* recuadros de métricas y tarjetas */
+  --caja: #0F1535;           /* recuadros de métricas y tarjetas */
   --modal: #0D122F;          /* fondo de los modales (= caja, 30/10/2026) */
   --contorno: #1A3DB4;       /* borde de campos editables */
   --brillo: #3AB8FF;         /* foco, hover, chevron abierto, pestaña activa */
@@ -18,7 +18,7 @@
   --secundaria: #A855F7;     /* violeta GIWA: botones secundarios */
   --secundaria-txt: #C084FC; /* texto del botón secundario (legible sobre fondo) */
   --texto: #E8EAF6;
-  --texto2: #94A3B8;         /* notas, etiquetas, íconos en reposo */
+  --texto2: #8892B0;         /* notas, etiquetas, íconos en reposo */
   --blanco: #FFFFFF;
   --logo-fondo: #121A3D;     /* recuadro del logo sin imagen */
   --logo-claro: #FFFFFF;     /* recuadro del logo con imagen */
@@ -85,7 +85,9 @@
   --r-l: 12px;
   --alto-btn: 30px;
   --alto-ib: 28px;      /* botón de ícono (C11) */
-  --alto-campo: 32px;
+  --alto-campo: 34px;    /* campos de formulario (los de una fila o tabla quedan en su alto, ~30) */
+  --alto-fila: 35px;     /* referencia de fila de tabla: alto mínimo, nunca corta */
+  --ico-accion: 16px;    /* íconos de acción (C11) */
   --ico: 18px;
   --ico-s: 16px;
   --ico-xs: 12px;

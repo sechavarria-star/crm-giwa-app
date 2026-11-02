@@ -141,7 +141,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-tbl { width: 100%; border-collapse: collapse; }
 .ui-tbl th { font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); font-weight: var(--peso-normal);
   text-align: left; padding: 10px var(--e2); border-bottom: 1px solid var(--marco); }
-.ui-tbl td { padding: var(--e2); border-bottom: 1px solid var(--marco); font-size: var(--t-m); vertical-align: middle; }
+.ui-tbl td { height: var(--alto-fila); padding: var(--e1) var(--e2); border-bottom: 1px solid var(--marco); font-size: var(--t-m); vertical-align: middle; }
 .ui-tbl .ui-r { text-align: right; }
 .ui-tbl td.ui-r { font-family: var(--f-num); }
 .ui-tbl tr.ui-fila { cursor: pointer; }
@@ -184,6 +184,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 /* ── C11 · Íconos de acción (hover según su significado) ── */
 .ui-ib { width: var(--alto-ib); height: var(--alto-ib); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r);
   color: var(--texto2); cursor: pointer; background: none; border: 0; padding: 0; transition: color .15s, background .15s; text-decoration: none; }
+.ui-ib .ui-ico { width: var(--ico-accion); height: var(--ico-accion); }
 .ui-ib:hover { color: var(--brillo); background: var(--suave-brillo); }
 .ui-ib.ui-fin:hover { color: var(--p-cobrado); background: var(--suave-cobrado); }
 .ui-ib.ui-det:hover { color: var(--e-detenido); background: var(--suave-detenido); }
