@@ -67,7 +67,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-d.ui-n2 .ui-d-t { text-transform: none; letter-spacing: 0; font-size: var(--t-l); }   /* anidado: empresa › proyecto › desarrollo */
 
 /* ── C4 · Fila de proyecto ── */
-.ui-fp { display: grid; grid-template-columns: var(--ico-s) var(--logo) 1fr 160px 140px; align-items: center; gap: var(--e4);
+.ui-fp { display: grid; grid-template-columns: var(--ico-s) var(--logo) 1fr auto; align-items: center; gap: var(--e4);
   padding: var(--e3) var(--e2); border-bottom: 1px solid var(--marco); cursor: pointer; }
 .ui-fp.open { background: var(--abierto); border: 1px solid var(--marco); border-radius: var(--r) var(--r) 0 0; }
 .ui-fp.open .ui-ch { color: var(--brillo); transform: rotate(90deg); }
@@ -75,7 +75,9 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-fp.open + .ui-ficha { display: block; }
 .ui-emp { font-size: var(--t-xs); letter-spacing: var(--espaciado); color: var(--texto2); text-transform: uppercase; }
 .ui-pro { font-size: var(--t-xl); font-weight: var(--peso-medio); margin-top: 3px; }
-.ui-fp .ui-tot { text-align: right; font-family: var(--f-num); font-size: var(--t-l); }
+.ui-fp .ui-emp { margin-top: 3px; }
+.ui-fp .ui-pro { margin-top: 0; }
+.ui-fp-est { display: inline-flex; align-items: center; gap: var(--e2); }
 
 /* ── C5 · Ficha ── */
 .ui-ficha { background: var(--fondo); border: 1px solid var(--marco); border-top: 0; border-radius: 0 0 var(--r) var(--r);
@@ -114,6 +116,10 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-st { display: inline-flex; align-items: center; gap: var(--e2); font-size: var(--t-m); white-space: nowrap; }
 .ui-st .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
 
+/* Marca de Detenido / Pausado: chica, al lado del estado */
+.ui-marca { display: inline-flex; align-items: center; }
+.ui-marca .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
+
 /* ── C7 · Riel de estados (filtro de pantalla) ── */
 .ui-riel { display: flex; gap: 6px; align-items: flex-start; margin-bottom: var(--e3); }
 .ui-seg { flex: 1; cursor: pointer; background: none; border: 0; padding: 0; text-align: left; font-family: inherit; }
@@ -130,6 +136,8 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-kpi-k { font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); }
 .ui-kpi-v { font-family: var(--f-num); font-size: var(--t-num); margin-top: var(--e2); color: var(--k, var(--texto)); white-space: nowrap; }
 .ui-kpi-s { font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); }
+.ui-kpi-par { display: flex; justify-content: space-between; gap: var(--e2); font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); white-space: nowrap; }
+.ui-kpi-par .ui-num { font-size: var(--t-xl); }
 @media (max-width: 720px) { .ui-kpis { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
 /* color de la línea de arriba y del número: uiKpi(…, 'p-cobrado') */
 .ui-k-p-contratado { --k: var(--p-contratado); } .ui-k-p-cobrado { --k: var(--p-cobrado); } .ui-k-p-pendiente { --k: var(--p-pendiente); }
@@ -233,6 +241,7 @@ textarea.ui-campo { height: auto; min-height: 80px; padding: 10px var(--e3); res
 .ui-aviso.ui-info { border-color: var(--brillo); color: var(--brillo); }
 .ui-aviso.ui-adv { border-color: var(--p-pendiente); color: var(--p-pendiente); }
 .ui-motivo { color: var(--texto2); font-size: var(--t-s); margin: var(--e2) 0 var(--e3); }
+.ui-motivo.ui-fuerte { font-size: var(--t-l); }   /* motivo del estado en la ficha: en el color del estado */
 
 /* ── C16 · Contactos ── */
 .ui-ctcs { list-style: disc; margin: 0; padding-left: 18px; }
@@ -264,3 +273,21 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .ui-mon-b + .ui-mon-b { border-left: 1px solid var(--contorno); }
 .ui-mon-b.ui-mon-ars.on { background: var(--suave-principal); color: var(--principal); }
 .ui-mon-b.ui-mon-usd.on { background: var(--suave-brillo); color: var(--p-usd); }
+
+/* ── Desarrollo dentro de la ficha (02/11/2026): barra de color del estado antes del chevron;
+      a la derecha el estado y, debajo, sus acciones ── */
+.ui-dev { grid-template-columns: 3px var(--ico-s) var(--ico) 1fr auto; }
+.ui-dev-barra { align-self: stretch; width: 3px; border-radius: 2px; background: currentColor; }
+.ui-dev-der { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.ui-dev-plata { font-size: var(--t-s); color: var(--texto2); margin-top: 2px; display: flex; gap: var(--e3); flex-wrap: wrap; }
+
+/* ── Cronograma: línea de tiempo vertical ── */
+.ui-tl { list-style: none; margin: 0; padding: 0 0 0 var(--e1); }
+.ui-tl-i { position: relative; display: grid; grid-template-columns: 14px 92px 1fr; gap: var(--e3); padding: var(--e2) 0; font-size: var(--t-m); }
+.ui-tl-i::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 1px; background: var(--marco); }
+.ui-tl-i:first-child::before { top: 50%; } .ui-tl-i:last-child::before { bottom: 50%; }
+.ui-tl-p { position: relative; z-index: 1; width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; background: var(--fondo); align-self: center; }
+.ui-tl-i.hecho .ui-tl-p { background: currentColor; }
+.ui-tl-f { font-family: var(--f-num); color: var(--texto); align-self: center; }
+.ui-tl-t { align-self: center; }
+.ui-tl-n { font-size: var(--t-s); color: var(--texto2); }

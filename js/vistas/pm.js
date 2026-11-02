@@ -28,11 +28,11 @@
    Soporte (tickets) no se pasa: va a su propio módulo, Soporte. Análisis: v_analisis_clientes (= getAnalisisCliente). Las tareas viven en Hoy (vistas/hoy.js).
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var P = { proys: [], emps: {}, users: {}, sub: 'seg',
+  var P = { proys: [], emps: {}, users: {}, sub: 'proy', tareas: {}, tst: TareasUI.estado(),
             seg: { fil: [], q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
-            f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'seg' };
+            f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'proy' };
   var CARRUSEL = 3;   // más de esto por cliente → carrusel
-  var SUBS = [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']];   // Tareas vive en Hoy (29/10/2026)
+  var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento'], ['nuevo', 'Nuevo proyecto']];   // entra directo a Proyectos (02/11/2026)   // Tareas vive en Hoy (29/10/2026)
 
   async function cargar() {
     var r = await Promise.all([
@@ -41,7 +41,8 @@
       db().from('empresas').select('id,nombre,logo,drive_interno'),
       db().from('usuarios').select('mail,nombre'),
       db().rpc('estados_spec'),
-      db().from('v_tipo_cambio_hoy').select('valor').maybeSingle()
+      db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
+      db().from('v_tareas').select('*').eq('closed', false)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     initEstadosSpec(r[4].data);
@@ -54,6 +55,7 @@
       p.tareas = x.tareas || []; p.comentarios = x.comentarios || []; p.modulos = x.modulos || [];
       return p;
     });
+    P.tareas = {}; (r[6].data || []).forEach(function (t) { (t.project_ids || []).forEach(function (pid) { (P.tareas[pid] = P.tareas[pid] || []).push(t); }); });
     P.ok = true;
   }
 
@@ -96,6 +98,7 @@
     if (!e.logo) return ini;
     return '<img class="' + cls + '" src="' + esc(e.logo) + '" referrerpolicy="no-referrer" alt="" onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' + esc(ini) + '">';
   }
+  function depende(it) { return !!it.bloque || (it.mant_de_ids || []).length > 0; }
   function vivosDe(p) { return (p.items || []).filter(function (it) { var c = _canonSol(it.estado); return !it.detenido && (c === 'curso' || c === 'garantia'); }); }
   // Por qué está en ese estado: sólo con datos que existen
   function porQue(p, can) {
@@ -163,8 +166,9 @@
   // Filtros de Seguimiento (29/10/2026): los estados reales del proyecto, más dos condiciones
   // de Activo (En garantía / En mantenimiento) y Detenido. Rechazado y Finalizado van en Proyectos.
   // [clave, etiqueta, color, tramo]: 'c' = el camino del proyecto (en orden), 'x' = condiciones aparte
+  // 02/11/2026: sin «En garantía» ni «En mantenimiento»; Detenido (y Rechazado en Proyectos) son marcas del proyecto, aparte
   var SEG_FIL = [['prospecto', 'Prospecto', 'xn', 'c'], ['negociacion', 'Negociación', 'xw', 'c'], ['aprobado', 'Aprobado', 'xb', 'c'], ['activo', 'Activo', 'xc', 'c'],
-                 ['det', 'Detenido', 'xd', 'x'], ['garantia', 'En garantía', 'xt', 'x'], ['mant', 'En mantenimiento', 'xv', 'x']];
+                 ['det', 'Detenido', 'xd', 'x']];
   // La barra de filtros es la barrita de estados (la misma que la del proyecto): un tramo por estado,
   // con su color y su número; tocarlo filtra, tocarlo de nuevo vuelve a todos (29/10/2026).
   // Selección múltiple: se suman los tramos tocados; tocar uno elegido lo quita (fil = lista de claves)
@@ -211,7 +215,7 @@
       (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
     h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div>' +
       (p.owner ? '<div class="ui-sub-t">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="ui-tarjeta-der">' + uiEstado(e, { detenido: p.detenido }) + (iconos ? '<div class="ui-fila-ic ui-tarjeta-der">' + iconos + '</div>' : '') + '</div></div>';
+      '<div class="ui-tarjeta-der">' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + (iconos ? '<div class="ui-fila-ic ui-tarjeta-der">' + iconos + '</div>' : '') + '</div></div>';
     var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
     var pq = porQue(p, can); if (pq) h += uiMotivo(pq);
     // Las otras acciones del estado (enviar, aprobar, rechazar) siguen como botones, con su confirmación
@@ -234,7 +238,7 @@
         // El proyecto se DETIENE; el desarrollo se PAUSA (independiente: ej. un abono que todavía no arranca)
         var mant = esMant(it), m = '', pd = p.detenido || it.detenido;
         h += '<div class="ui-linea">' + uiTipo(it, it.estado, pd) + '<span class="ui-f1" title="' + esc(it.titulo || '') + '">' + esc(it.titulo || it.tipo || '—') + '</span>' +
-          (pd ? '' : botonesDes(it, true)) + uiEstado(it.estado || '—', { detenido: pd, nombre: p.detenido ? 'Detenido' : it.detenido ? 'Pausado' : null }) + '</div>';
+          (pd ? '' : botonesDes(it, true)) + uiEstado(it.estado || '—') + (pd ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</div>';
         if (esGanado(it.estado)) {
           if (!mant) {
             var tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
@@ -271,22 +275,15 @@
     }
     // Tareas abiertas: primero qué hay que hacer, después lo que comentó la gente.
     // Los comentarios automáticos (delegada, procesada, IPC…) van aparte, en «Historial».
-    var ta = tareasAbiertas(p).sort(function (a, b) { return String(a.fecha_vencimiento || '9999').localeCompare(String(b.fecha_vencimiento || '9999')); });
-    var nv = ta.filter(vencida).length, cs = p.comentarios || [], vistos = {}, th = '';
+    // Tareas con la forma de HOY (js/tareas.js). Los comentarios automáticos van aparte, en «Historial».
+    var ta = (P.tareas[p.id] || []).slice().sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
+    var nv = ta.filter(function (t) { return t.overdue; }).length, cs = p.comentarios || [], vistos = {};
     var auto = cs.filter(esAuditoria); auto.forEach(function (c) { vistos[c.id] = 1; });
-    ta.slice(0, 3).forEach(function (x) {
-      var f = _pd(x.fecha_vencimiento), xid = esc(x.id);
-      th += '<div class="ui-linea"><span class="ui-f1" title="' + esc(x.titulo || '') + '">' + esc(x.titulo || '—') +
-        (x.descripcion ? '<div class="ui-nota-t" title="' + esc(x.descripcion) + '">' + esc(x.descripcion) + '</div>' : '') + '</span>' +
-        (f ? '<span class="ui-num ' + (vencida(x) ? 'ui-p-error' : 'ui-nota-t') + '">' + ff(f) + '</span>' : '') +
-        uiIb('chat', 'Ver, comentar, finalizar o delegar', 'vio', 'data-pm="tarea" data-id="' + xid + '"') + '</div>';
-      cs.filter(function (c) { return !vistos[c.id] && c.tarea_id && c.tarea_id === x.id; }).slice(0, 2).forEach(function (c) { vistos[c.id] = 1; th += '<div class="ui-linea-sub">' + comLinea(c) + '</div>'; });
-    });
-    if (ta.length > 3) th += '<div class="ui-nota-t">+' + (ta.length - 3) + ' más</div>';
-    if (!ta.length) th += '<div class="ui-nota-t">Sin tareas pendientes.</div>';
+    cs.forEach(function (c) { if (c.tarea_id && ta.some(function (t) { return t.id === c.tarea_id; })) vistos[c.id] = 1; });
     var s = function (n) { return n > 1 ? 's' : ''; };
     sec += desp(p, 'tar', { th: 'Tareas', n: ta.length || '',
-      v: '<span class="ui-fila-ic">' + (nv ? '<span class="ui-p-error">' + nv + ' vencida' + s(nv) + '</span>' : '') + uiAcc('tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</span>' }, th);
+      v: '<span class="ui-fila-ic">' + (nv ? '<span class="ui-p-error">' + nv + ' vencida' + s(nv) + '</span>' : '') + uiAcc('tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</span>' },
+      ta.length ? TareasUI.html(ta, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>');
     var otros = cs.filter(function (c) { return !vistos[c.id]; }).slice(0, 3);
     sec += desp(p, 'otros', { th: 'Otros comentarios', n: otros.length }, otros.length ? otros.map(comLinea).join('') : '<div class="ui-nota-t">Sin comentarios.</div>');
     if (auto.length) sec += desp(p, 'hist', { th: 'Historial', n: auto.length }, auto.map(comLinea).join(''));
@@ -324,30 +321,36 @@
   function htmlKpis(list) {
     var activos = list.filter(esProyActivo), detenidos = list.filter(esProyDetenido), finaliz = list.filter(esProyFinalizado);
     var vivos = list.filter(function (p) { return !esProyFinalizado(p); });
-    var contratado = sum(list, mTotal), cobradoDev = sum(list, mCobradoDev), abono = sum(list, mRecurrente);
-    var pct = contratado > 0 ? Math.round(cobradoDev / contratado * 100) : 0;
+    var contratado = sum(list, mTotal), abono = sum(list, mRecurrente);
+    // Proyectado: lo que está en Prospecto o En negociación. Desarrollos (total) y Mantenimiento (abono mensual)
+    var pipe = list.filter(function (p) { var c = _canonProy(p.estado_proyecto); return (c === 'prospecto' || c === 'negociacion') && !p.detenido; });
+    var pDev = 0, pMant = 0;
+    pipe.forEach(function (p) { (p.items || []).forEach(function (it) {
+      if (_canonSol(it.estado) === 'rechazada') return;
+      if (esMant(it)) pMant += Number(it.cuota_act) || Number(it.valor_cuota) || 0; else pDev += Number(it.total_ars) || 0;
+    }); });
     // C8: una sola fila, informativa (no filtra)
     return '<div class="ui-kpis">' +
       uiKpi('Proyectos', String(list.length), '', vivos.length + ' sin cerrar') +
       uiKpi('Activos', String(activos.length), 'e-curso', 'aprobados y en curso') +
       uiKpi('Detenidos', String(detenidos.length), detenidos.length ? 'e-detenido' : '', 'para recotizar') +
       uiKpi('Contratado', fmt(contratado), 'p-contratado', finaliz.length + ' finalizado' + (finaliz.length === 1 ? '' : 's')) +
-      uiKpi('Cobrado', fmt(cobradoDev), 'p-cobrado', pct + ' % de lo contratado') +
-      (abono > 0 ? uiKpi('Abono', fmt(abono), 'p-abono', '/mes · no suma al contratado') : '') +
+      uiKpi('Abono mensual', fmt(abono), 'p-abono', 'no suma al contratado') +
+      uiKpiDoble('Proyectado', [['Desarrollos', fmt(pDev), 'p-neutro'], ['Mantenimiento', fmt(pMant) + '/mes', 'p-abono']], pipe.length + ' en prospecto o negociación') +
     '</div>';
   }
   // C4 · fila de proyecto: logo, empresa y proyecto; a la derecha el total de desarrollos y el estado. La ficha (C5) se abre debajo.
   function tarjetaProy(p) {
-    var ab = P.inline === p.id, tot = mTotal(p);
+    var ab = P.inline === p.id;
     return uiFilaProy({ emp: p.empresa || '', pro: p.nombre || '—', logoUrl: (P.emps[p.empresa] || {}).logo, open: ab,
       attrs: 'data-pm="inline" data-id="' + esc(p.id) + '" aria-expanded="' + ab + '"',
-      tot: tot > 0 ? '<div class="ui-p-contratado">' + fmt(tot) + '</div><div class="ui-sub-t">desarrollos</div>' : '<span class="ui-nota-t">—</span>',
-      est: uiEstado(p.estado_proyecto || '—', { detenido: p.detenido }) },
+      est: uiEstado(p.estado_proyecto || '—') + (p.detenido ? uiMarcaDet() : '') },
       ab && P.f && P.f.id === p.id ? fichaCuerpo(p, true) : '');
   }
   // Proyectos = el universo completo (29/10/2026): los mismos chips de Seguimiento más Finalizado
   // y Rechazado; lista plana por título (sin agrupar por cliente); al desplegar, la ficha completa.
   var PR_FIL = SEG_FIL.slice(0, 4).concat([['finalizado', 'Finalizado', 'xg', 'c']], SEG_FIL.slice(4), [['rechazado', 'Rechazado', 'xz', 'x']]);
+  function usuarios() { return Object.keys(P.users).map(function (m) { return { mail: m, name: P.users[m] }; }); }
   function proyPasa(p, fil) {
     var c = _canonProy(p.estado_proyecto);
     if (!fil || fil === 'todos') return true;
@@ -363,7 +366,7 @@
       '</div>';
     var q = norm(R.q);
     var f = all.filter(function (p) { return !fil.length || fil.some(function (k) { return proyPasa(p, k); }); }).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0; });
-    h = barraFiltro(PR_FIL, fil, function (k) { return all.filter(function (p) { return proyPasa(p, k); }).length; }, 'prchip', all.length, f.length) + htmlKpis(f) + h;
+    h = htmlKpis(f) + barraFiltro(PR_FIL, fil, function (k) { return all.filter(function (p) { return proyPasa(p, k); }).length; }, 'prchip', all.length, f.length) + h;
     if (!f.length) return h + '<div class="ui-nota-t">Sin proyectos para este filtro.</div>';
     f.sort(function (a, b) {
       if (R.orden === 'nombre') return (a.nombre || '').localeCompare(b.nombre || '', 'es');
@@ -451,25 +454,33 @@
       (can === 'finalizado' ? '' : ib(esProyDetenido(p) ? 'play' : 'pausa', esProyDetenido(p) ? 'Reanudar el proyecto' : 'Detener el proyecto: los estados no cambian, queda marcado', 'data-pm="det-proy" data-id="' + esc(p.id) + '"')) +
       '</div></div>';
   }
+  // Cronograma (02/11/2026): línea de tiempo con los hitos del proyecto y la secuencia de cada desarrollo,
+  // en orden de fecha; cada hito dice si ya pasó y de qué desarrollo depende.
   function fechasHTML(p) {
-    var devs = (p.items || []).filter(function (it) { return !esMant(it); });
-    var aprob = null; (p.items || []).forEach(function (it) { var f = _pd(it.fecha_aprob); if (f && (!aprob || f > aprob)) aprob = f; });
-    var inicio = mInicio(p), fo = mFinObra(p), fm = mFinMant(p), dur = mDuracionMeses(p), gar = null, garDias = 0;
-    devs.forEach(function (it) {
-      var f = _pd(it.fecha_fin || it.fecha_cierre), d = Number(it.garantia_dias) || 0; if (!f || !d) return;
-      var v = mCorrerDias(f, d); if (!gar || v > gar) { gar = v; garDias = d; }
+    var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; }), hoy = mHoy(), ev = [];
+    var tit = function (it) { return it.titulo || it.tipo || it.id; };
+    var padre = function (it) {
+      var ids = (it.mant_de_ids || []).slice(); if (it.bloque) ids.push('D-' + String(it.bloque).padStart(4, '0'));
+      return ids.map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? tit(d) : ''; }).filter(Boolean).join(', ');
+    };
+    var aprob = null; its.forEach(function (it) { var f = _pd(it.fecha_aprob); if (f && (!aprob || f > aprob)) aprob = f; });
+    if (aprob) ev.push({ f: aprob, t: 'Aprobado', n: 'el cliente dijo que sí', c: 'aprobado' });
+    its.forEach(function (it) {
+      var dep = padre(it), ini = _pd(it.fecha_est), fin = _pd(it.fecha_fin || it.fecha_cierre), can = _canonSol(it.estado);
+      if (ini) ev.push({ f: ini, t: 'Inicio · ' + tit(it), n: dep ? 'depende de ' + dep : '', c: 'curso' });
+      if (fin) ev.push({ f: fin, t: (esMant(it) ? 'Fin del abono · ' : 'Fin de obra · ') + tit(it), n: can === 'finalizada' ? 'finalizado' : '', c: 'finalizado' });
+      var gd = Number(it.garantia_dias) || 0;
+      if (fin && gd && !esMant(it)) ev.push({ f: mCorrerDias(fin, gd), t: 'Fin de garantía · ' + tit(it), n: gd + ' días', c: 'garantia' });
+      if (!ini && !fin && can !== 'finalizada') ev.push({ f: null, t: tit(it), n: 'sin fechas cargadas' + (dep ? ' · depende de ' + dep : ''), c: 'prospecto' });
     });
-    if (!aprob && !inicio && !fo.fecha && !fm.fecha && !gar) return '<div class="u-s10-mt">Sin fechas cargadas.</div>';
-    var fila = function (l, v, cls, nota) { return '<div class="seg-kv"><span>' + l + '</span><b class="' + (cls || '') + '">' + v + (nota ? ' <span class="u-s10-mt">' + nota + '</span>' : '') + '</b></div>'; };
-    var h = '';
-    if (aprob) h += fila('Aprobado', ff(aprob), 't-xg');
-    if (inicio) h += fila('Inicio', ff(inicio), '', dur ? dur + ' mes' + (dur === 1 ? '' : 'es') + ' de duración' : '');
-    if (fo.fecha) h += fila(fo.faltan ? 'Fin de obra (parcial)' : 'Fin de obra', ff(fo.fecha), '',
-      fo.faltan ? 'última fecha cargada · ' + fo.faltan + ' desarrollo' + (fo.faltan === 1 ? '' : 's') + ' sin fecha de fin' : 'todos los desarrollos entregados');
-    else if (devs.length) h += fila('Fin de obra', 'Sin calcular', 'u-c-mt', fo.faltan + ' desarrollo' + (fo.faltan === 1 ? '' : 's') + ' sin fecha de fin');
-    if (gar) { var q = mFaltan(gar); h += fila('Garantía', ff(gar), q < 0 ? 'u-c-mt' : 't-xt', garDias + ' días' + (q < 0 ? ' · vencida' : ' · quedan ' + q)); }
-    if (fm.fecha) h += fila('Fin de mantenimiento', ff(fm.fecha), 't-xv', fm.totales ? 'va por la cuota ' + fm.cobradas + ' de ' + fm.totales : '');
-    return h;
+    if (!ev.length) return '<div class="ui-nota-t">Sin fechas cargadas.</div>';
+    ev.sort(function (a, b) { return (a.f ? a.f.getTime() : 9e15) - (b.f ? b.f.getTime() : 9e15); });
+    return '<ol class="ui-tl">' + ev.map(function (x) {
+      var hecho = x.f && x.f <= hoy;
+      return '<li class="ui-tl-i' + (hecho ? ' hecho' : '') + '"><span class="ui-tl-p ui-e-' + (x.f ? x.c : 'rechazado') + '"></span>' +
+        '<span class="ui-tl-f">' + (x.f ? ff(x.f) : '—') + '</span>' +
+        '<span class="ui-tl-t">' + esc(x.t) + (x.n ? '<div class="ui-tl-n">' + esc(x.n) + '</div>' : '') + '</span></li>';
+    }).join('') + '</ol>';
   }
   function tabInfo(p) {
     var F = P.f, dur = mDuracionMeses(p), cie = mCierre(p);
@@ -558,14 +569,24 @@
       var sub = [it.tipo_nombre || it.tipo, it.modelo_nombre || it.modelo].filter(Boolean).join(' · ');
       if (rec) { var cubre = (it.mant_de_ids || []).map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? (d.titulo || d.id) : ''; }).filter(Boolean); if (cubre.length) sub += ' · cubre ' + cubre.join(', '); }
       var abierto = P.fAb[it.id] !== undefined ? P.fAb[it.id] : (lista.length === 1 || can === 'curso' || can === 'garantia');
+      // Pausar: sólo mejoras, soportes y mantenimientos que dependen de otro desarrollo (reanudar, siempre)
       var iconos = (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' :
-          (it.detenido ? uiIb('play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : uiIb('pausa', 'Pausar este desarrollo', 'det', 'data-pm="det-des" data-id="' + esc(it.id) + '"'))) +
+          (it.detenido ? uiIb('play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : depende(it) ? uiIb('pausa', 'Pausar este desarrollo', 'det', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : '')) +
         (can === 'finalizada' || can === 'rechazada' || _canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiAcc('editar', 'data-pm="edit-des" data-id="' + esc(it.id) + '"')) +
         (det ? '' : botonesDes(it, false));
+      var plata = '', tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
+      if (rec) { if (cuota) plata = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cuota) + '/mes</span></span>' + (it.duracion ? '<span>Cuotas restantes <span class="ui-num">' + Math.max(0, (Number(it.duracion) || 0) - (Number(it.cuotas_facturadas) || 0)) + ' de ' + it.duracion + '</span></span>' : ''); }
+      else if (esGanado(it.estado) && tot > 0) plata = '<span>Contratado <span class="ui-num ui-p-contratado">' + fmt(tot) + '</span></span><span>Cobrado <span class="ui-num ui-p-cobrado">' + fmt(cob) + '</span> (<span class="ui-num">' + Math.round(cob / tot * 100) + ' %</span>)</span>';
+      else if (tot > 0) plata = '<span>Cotizado <span class="ui-num ui-p-neutro">' + fmt(tot) + '</span></span>';
       var h = '<div class="ui-dev' + (abierto ? ' open' : '') + '" data-des="' + esc(it.id) + '">' +
-        '<span class="ui-ch">' + uiIco('derecha') + '</span>' + uiTipo(it, it.estado, det) +
-        '<div><div class="ui-dev-n">' + esc(it.titulo || it.descripcion || '—') + '</div><div class="ui-sub-t">' + esc(sub) + '</div></div>' +
-        '<span class="ui-fila-ic">' + iconos + uiEstado(it.estado || '—', { detenido: det, nombre: p.detenido ? 'Detenido' : it.detenido ? 'Pausado' : null }) + '</span></div><div class="ui-devc">';
+        '<span class="ui-dev-barra ui-e-' + uiClaveEst(it.estado) + '"></span><span class="ui-ch">' + uiIco('derecha') + '</span>' + uiTipo(it, it.estado, det) +
+        '<div><div class="ui-dev-n">' + esc(it.titulo || it.descripcion || '—') + '</div><div class="ui-sub-t">' + esc(sub) + '</div>' + (plata ? '<div class="ui-dev-plata">' + plata + '</div>' : '') + '</div>' +
+        '<div class="ui-dev-der"><span>' + uiEstado(it.estado || '—') + (det ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</span>' +
+        (iconos ? '<span class="ui-fila-ic">' + iconos + '</span>' : '') + '</div></div><div class="ui-devc">';
+      // Nueva mejora / Nuevo soporte: colgando de un desarrollo vendido que no depende de otro
+      if (!depende(it) && esGanado(it.estado) && _canonProy(p.estado_proyecto) !== 'rechazado')
+        h += '<div class="ui-barra">' + uiBtn('Mejora', 'mas', 's', 'data-pm="alta-des" data-clase="mejora" data-id="' + esc(it.id) + '"') +
+          uiBtn('Soporte', 'mas', 's', 'data-pm="alta-des" data-clase="soporte" data-id="' + esc(it.id) + '"') + '</div>';
       // Contratado, cobrado y pendiente van sólo en el lateral: acá no se repiten (29/10/2026)
       var l1 = [];
       if (rec) {
@@ -587,7 +608,7 @@
         h += '<span>Inicio <span class="ui-num">' + (ff(it.fecha_est) || '—') + '</span></span><span>Fin <span class="ui-num">' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</span></span>';
       } else {
         h += '<span>Inicio</span><input class="ui-campo ui-num" type="date" data-fini="' + esc(it.id) + '" value="' + esc(it.fecha_est ? String(it.fecha_est).slice(0, 10) : '') + '" aria-label="Inicio del desarrollo">' +
-          corre('post-ini', 7, '1 sem.', 'Corre el inicio una semana') + corre('post-ini', 30, '1 mes', 'Corre el inicio un mes') +
+          (depende(it) ? corre('post-ini', 7, '1 sem.', 'Corre el inicio una semana') + corre('post-ini', 30, '1 mes', 'Corre el inicio un mes') : '') +
           (it.fecha_fin ? '<span>Fin <span class="ui-num">' + ff(it.fecha_fin) + '</span></span>' : '');
       }
       h += '</div>';
@@ -597,19 +618,12 @@
       return h + '</div>';
     }).join('');
   }
+  // Tareas y comentarios con la forma de HOY (js/tareas.js)
   function tabTareas(p) {
-    var F = P.f, h = '<div class="ui-barra">' + uiBtn('Tarea', 'tarea', 's', 'data-pm="nueva-tarea" data-id="' + esc(p.id) + '"') + '</div><div class="ui-lat-h">Tareas</div>';
+    var F = P.f, h = '<div class="ui-lat-h">Tareas</div>';
     var ab = F.tareas.filter(function (t) { return !t.closed; }).sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
     var tid = {}; F.tareas.forEach(function (t) { tid[t.id] = t; });
-    h += ab.length ? ab.map(function (t) {
-      var cs = F.coms.filter(function (c) { return c.tarea_id === t.id && !esAuditoria(c); }).slice(0, 2);
-      return '<div class="ui-linea"><span class="ui-f1" title="' + esc(t.title) + '">' + esc(t.title) +
-        '<span class="ui-nota-t"> · ' + esc(crmLista(t.assignees).map(nombre).join(', ') || 'sin responsable') + '</span>' +
-        (t.detail ? '<div class="ui-nota-t" title="' + esc(t.detail) + '">' + esc(t.detail) + '</div>' : '') + '</span>' +
-        (t.due ? '<span class="ui-num ' + (t.overdue ? 'ui-p-error' : 'ui-nota-t') + '">' + ff(t.due) + '</span>' : '') +
-        uiIb('chat', 'Ver, comentar, finalizar o delegar', 'vio', 'data-pm="tarea" data-id="' + esc(t.id) + '"') + '</div>' +
-        cs.map(function (c) { return '<div class="ui-linea-sub">' + comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }) + '</div>'; }).join('');
-    }).join('') : '<div class="ui-nota-t">Sin tareas pendientes.</div>';
+    h += ab.length ? TareasUI.html(ab, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>';
     var otros = F.coms.filter(function (c) { return (!c.tarea_id || !tid[c.tarea_id]) && !esAuditoria(c); });
     var auto = F.coms.filter(esAuditoria);   // delegada, procesada, IPC…: aparte y con menos peso (29/10/2026)
     h += '<br><div class="ui-lat-h">Otros comentarios</div>' +
@@ -669,29 +683,36 @@
         (p.detenido ? uiIb('play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
   }
+  // Acciones del PROYECTO, arriba a la derecha de la ficha: las del estado (botones con su confirmación),
+  // Arrancar si hay aprobados, y Tarea y Comentario como íconos (02/11/2026)
   function accionesYAlerta(p) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
     var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
     var viejo = function (txt, tipo) { return '<a class="ui-btn ui-' + tipo + '" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
-    return '<div class="ui-barra">' + uiBtn('Tarea', 'tarea', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') +
-      (can === 'rechazado' ? viejo('Volver a cotizar', 'p') :
+    var aprob = (p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; });
+    return (can === 'rechazado' ? viejo('Volver a cotizar', 'p') :
         (p.detenido ? '' : accionesProy(p).filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
           var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
-        ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) + '</div>';
+        (aprob && !p.detenido ? uiBtn('Arrancar', 'play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
+        ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
+      iconosEstado(p) + uiAcc('tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + uiAcc('comentar', 'data-pm="comentar-proy" data-id="' + pid + '"');
   }
   // C5 · la ficha: motivo en gris y, junto al estado, Detener y Finalizar; botones secundarios; pestañas; lateral de plata
+  // C5 · la ficha: el motivo en el color del estado; arriba a la derecha las acciones del proyecto;
+  // pestañas; lateral de plata. Las acciones de cada desarrollo van en su fila (02/11/2026)
   function fichaCuerpo(p, enLista) {
     var e = p.estado_proyecto || 'Prospecto', ab = P.f.tareas.filter(function (t) { return !t.closed; }).length, can = _canonProy(e);
     var tabs = [['info', 'Información', tabInfo], ['analisis', 'Análisis', tabAnalisis], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
                 ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
+    var motivo = '<div class="ui-motivo ui-fuerte ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</div>';
+    var acc = '<span class="ui-acc-est ui-fila-ic">' + accionesYAlerta(p) + '</span>';
     var cab = enLista
-      ? '<div class="ui-ficha-hd"><span class="ui-motivo">' + esc(pq) + '</span>' + (av ? ' ' + av : '') + '<span class="ui-acc-est">' + iconosEstado(p) + '</span></div>'
-      : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-emp">' + esc(p.empresa) + '</div><div class="ui-pro">' + esc(p.nombre) + '</div></div>' +
-        '<span class="ui-acc-est">' + av + uiEstado(e, { detenido: p.detenido }) + iconosEstado(p) + '</span></div>' + uiMotivo(pq) + riel(p);
-    var cuerpo = cab + accionesYAlerta(p) +
-      uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
+      ? '<div class="ui-ficha-hd">' + motivo + (av ? ' ' + av : '') + acc + '</div>'
+      : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
+        '<span>' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</span>' + av + acc + '</div>' + motivo + riel(p);
+    var cuerpo = cab + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
       '<div class="ui-cols"><div>' + t[2](p) + '</div>' + lateral(p) + '</div>';
     return enLista ? cuerpo : '<div class="ui-ficha ui-ficha-sola">' + cuerpo + '</div>';
   }
@@ -835,14 +856,27 @@
     document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
       return '<div class="rowb u-row8"><div class="u-f1m"><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
         '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
+        '<input class="fc u-wauto" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" aria-label="Monto aprobado" title="Monto aprobado (se puede corregir, p. ej. por IPC)">' +
         '<select class="fc u-wauto" data-ap="' + esc(it.id) + '" aria-label="Decisión"><option value="entro">Entró</option><option value="rechazado">No entró</option><option value="espera">En espera</option></select></div>';
-    }).join('');
+    }).join('') + '<div class="ui-kv">Total aprobado<span class="ui-num"><span class="ui-p-contratado" id="ap-tot"></span></span></div>';
+    var total = function () {
+      var t = 0; document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
+        if (x.value === 'entro') t += Number(document.querySelector('#ap-list [data-apm="' + x.getAttribute('data-ap') + '"]').value) || 0; });
+      document.getElementById('ap-tot').textContent = fmt(t);
+    };
+    document.getElementById('ap-list').oninput = total; document.getElementById('ap-list').onchange = total; setTimeout(total, 0);
     return new Promise(function (res) {
       document.getElementById('ap-ok').onclick = function () {
-        var dec = {}, n = 0;
-        document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) { dec[x.getAttribute('data-ap')] = x.value; if (x.value === 'entro') n++; });
-        if (!n) return say('Marcá al menos uno como «Entró».\n\nSi no entró nada, usá el paso Rechazado de la barra.', 'Aprobar propuesta');
-        closeM('m-aprob'); res(dec);
+        var dec = {}, montos = {}, n = 0, malo = '';
+        document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
+          var id = x.getAttribute('data-ap'); dec[id] = x.value;
+          if (x.value !== 'entro') return; n++;
+          var m = Number(document.querySelector('#ap-list [data-apm="' + id + '"]').value) || 0;
+          if (m <= 0) malo = id; montos[id] = m;
+        });
+        if (!n) return say('Marcá al menos uno como «Entró».\n\nSi no entró nada, usá Rechazar.', 'Aprobar propuesta');
+        if (malo) return say('El monto aprobado de ' + malo + ' tiene que ser mayor a 0.', 'Aprobar propuesta');
+        closeM('m-aprob'); res({ dec: dec, montos: montos });
       };
       openM('m-aprob');
     });
@@ -859,8 +893,9 @@
       nuevo: 'Alta de un proyecto nuevo.'
     }[P.sub] || 'Seguimiento y estado de cada proyecto.');
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
-    if (P.sub === 'seg') el.innerHTML = cab + '<div id="seg-c">' + htmlSeg() + '</div>';
-    else if (P.sub === 'proy') el.innerHTML = cab + htmlProy();
+    var tabs = uiTabs([['proy', 'Proyectos', 'data-pm="sub" data-s="proy"'], ['seg', 'Seguimiento', 'data-pm="sub" data-s="seg"']], P.sub);
+    if (P.sub === 'seg') el.innerHTML = cab + tabs + '<div id="seg-c">' + htmlSeg() + '</div>';
+    else if (P.sub === 'proy') el.innerHTML = cab + tabs + htmlProy();
     else if (P.sub === 'nuevo') { el.innerHTML = cab + htmlNuevo(); nvCargar(); }
     else el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
@@ -907,6 +942,81 @@
       return r.data;
     };
     var proy = function (id) { return P.proys.find(function (x) { return x.id === id; }); };
+    // Un modal simple (C14 de la app: .mo/.md): cuerpo + Cancelar / Confirmar; resuelve true al confirmar
+    var modal = function (tit, cuerpo, okTxt, valida) {
+      var m = document.getElementById('m-pm'); if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-pm'; document.body.appendChild(m); }
+      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + esc(tit) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-pm">' + ico('cerrar') + '</button></div>' +
+        '<div class="mb2">' + cuerpo + '</div><div class="mf"><button class="btn bg" data-cerrar="m-pm">Cancelar</button><button class="btn bp" id="m-pm-ok">' + esc(okTxt) + '</button></div></div>';
+      openM('m-pm');
+      return new Promise(function (res) {
+        document.getElementById('m-pm-ok').onclick = function () { var e = valida ? valida() : ''; if (e) return toast(e, 'err'); closeM('m-pm'); res(true); };
+      });
+    };
+    var hoyIso = function () { return isoMas(0); };
+    // Arrancar a nivel proyecto: qué desarrollos aprobados empiezan y desde cuándo (la aprobación no implica el inicio)
+    var arrancar = async function (p, soloIds, tit) {
+      var L = (p.items || []).filter(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido && (!soloIds || soloIds.indexOf(it.id) >= 0); });
+      if (!L.length) return say('No hay desarrollos aprobados para arrancar.', 'Arrancar');
+      var ok = await modal(tit || 'Arrancar desarrollos', '<div class="u-s11-mt u-mb10">Marcá lo que arranca y la fecha de inicio de cada uno.</div>' + L.map(function (it) {
+        return '<div class="rowb u-row8"><label class="u-row6 u-f1m"><input type="checkbox" data-arr="' + esc(it.id) + '" checked> ' + esc(it.titulo || it.id) + '</label>' +
+          '<input class="fc u-wauto" type="date" data-arrf="' + esc(it.id) + '" value="' + hoyIso() + '" aria-label="Fecha de inicio"></div>'; }).join(''), 'Arrancar',
+        function () { var n = 0, mal = false; document.querySelectorAll('#m-pm [data-arr]').forEach(function (x) { if (!x.checked) return; n++; if (!document.querySelector('#m-pm [data-arrf="' + x.getAttribute('data-arr') + '"]').value) mal = true; });
+          return !n ? 'Marcá al menos uno' : mal ? 'Falta la fecha de inicio' : ''; });
+      if (!ok) return;
+      var sel = Array.prototype.filter.call(document.querySelectorAll('#m-pm [data-arr]'), function (x) { return x.checked; }).map(function (x) {
+        var did = x.getAttribute('data-arr'); return { did: did, f: document.querySelector('#m-pm [data-arrf="' + did + '"]').value }; });
+      for (var i = 0; i < sel.length; i++) {
+        var r1 = await db().rpc('fecha_desarrollo', { did: sel[i].did, campo: 'fecha_ini', fecha: sel[i].f });
+        if (r1.error) return toast(r1.error.message, 'err');
+        var r2 = await db().rpc('accion_desarrollo', { did: sel[i].did, accion: 'arrancar' });
+        if (r2.error) return toast(r2.error.message, 'err');
+      }
+      toast(sel.length + ' desarrollo(s) arrancado(s)', 'ok'); refrescar();
+    };
+    // Rechazar o detener: el proyecto completo o algunos desarrollos, siempre con un comentario del proyecto
+    var corte = async function (p, tipo) {
+      var rech = tipo === 'rechazar';
+      var L = (p.items || []).filter(function (it) { var c = _canonSol(it.estado);
+        return rech ? (c === 'nueva' || c === 'aprobada') : (depende(it) && !it.detenido && c !== 'finalizada' && c !== 'rechazada'); });
+      var tit = rech ? 'Rechazar' : 'Detener';
+      var ok = await modal(tit + ' · ' + (p.nombre || p.id),
+        '<label class="u-row6 u-mb6"><input type="radio" name="pm-alc" value="todo" checked> El proyecto completo</label>' +
+        (L.length ? '<label class="u-row6 u-mb6"><input type="radio" name="pm-alc" value="algunos"> Sólo estos desarrollos</label><div class="u-mb10">' + L.map(function (it) {
+          return '<label class="u-row6 rowb"><input type="checkbox" data-cor="' + esc(it.id) + '"> ' + esc(it.titulo || it.id) + ' <span class="u-s10-mt">· ' + esc(it.estado || '') + '</span></label>'; }).join('') + '</div>'
+          : '<div class="u-s11-mt u-mb10">' + (rech ? 'No hay desarrollos para rechazar por separado.' : 'Sólo se pausan por separado las mejoras, soportes y mantenimientos que dependen de otro.') + '</div>') +
+        '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>', tit,
+        function () {
+          var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value;
+          if (alc === 'algunos' && !document.querySelector('#m-pm [data-cor]:checked')) return 'Marcá al menos un desarrollo';
+          return document.getElementById('pm-com').value.trim() ? '' : 'Escribí el comentario';
+        });
+      if (!ok) return;
+      var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value, txt = document.getElementById('pm-com').value.trim();
+      var ids = Array.prototype.filter.call(document.querySelectorAll('#m-pm [data-cor]'), function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-cor'); });
+      var r;
+      if (alc === 'todo') r = await db().rpc(rech ? 'rechazar_proyecto' : 'detener_proyecto', rech ? { pid: p.id } : { pid: p.id, detener: true });
+      else for (var i = 0; i < ids.length && !(r && r.error); i++)
+        r = await db().rpc(rech ? 'accion_desarrollo' : 'detener_desarrollo', rech ? { did: ids[i], accion: 'rechazar' } : { did: ids[i], detener: true });
+      if (r && r.error) return toast(r.error.message, 'err');
+      var nombres = ids.map(function (x) { var it = itemDe(x); return it ? (it.titulo || x) : x; });
+      await db().rpc('comentar', { p: { proyecto_id: p.id, texto: (rech ? 'Rechazado' : 'Detenido') + (alc === 'todo' ? ' (proyecto completo)' : ': ' + nombres.join(', ')) + '. ' + txt } });
+      toast(rech ? 'Rechazado' : 'Detenido', 'ok'); if (rech) toast(AVISO_ALERTAS, 'inf'); refrescar();
+    };
+    // Nueva mejora / Nuevo soporte: una línea simple en Nuevo, que depende del desarrollo elegido
+    var altaDes = async function (padre, clase) {
+      if (!padre) return;
+      var mej = clase === 'mejora';
+      var ok = await modal((mej ? 'Nueva mejora' : 'Nuevo soporte') + ' · ' + (padre.titulo || padre.id),
+        '<div class="fg"><label class="fl" for="ad-tit">Título <span class="req">*</span></label><input class="fc" id="ad-tit"></div>' +
+        '<div class="g2"><div class="fg"><label class="fl" for="ad-mon">Moneda</label><select class="fc" id="ad-mon"><option>ARS</option><option>USD</option></select></div>' +
+        '<div class="fg"><label class="fl" for="ad-monto">Monto <span class="req">*</span></label><input class="fc" type="number" id="ad-monto" data-monto></div></div>' +
+        (mej ? '<div class="fg"><label class="fl" for="ad-hs">Horas</label><input class="fc" type="number" min="0" id="ad-hs"></div>' : '') +
+        '<div class="u-s11-mt">Nace en Nuevo y se aprueba como cualquier desarrollo.</div>', 'Crear',
+        function () { return !document.getElementById('ad-tit').value.trim() ? 'Poné un título' : !(Number(document.getElementById('ad-monto').value) > 0) ? 'El monto tiene que ser mayor a 0' : ''; });
+      if (!ok) return;
+      hacer('alta_desarrollo', { p: { padre: padre.id, clase: clase, titulo: document.getElementById('ad-tit').value.trim(), moneda: document.getElementById('ad-mon').value,
+        monto: document.getElementById('ad-monto').value, horas: mej ? document.getElementById('ad-hs').value : '' } });
+    };
     var itemDe = function (iid) { var it = null; P.proys.some(function (p) { return (it = (p.items || []).find(function (x) { return x.id === iid; })); }); return it; };
     var cambiarEstado = async function (p, canon) {
       switch (canon) {
@@ -915,7 +1025,7 @@
           return hacer('enviar_propuesta', { pid: p.id, fecha: null });
         case 'aprobado':                         // aprobar no es un cambio de estado: es decidir qué entró
           var dec = await abrirAprobar(p); if (!dec) return;
-          return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec }, null, true);
+          return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos }, null, true);
         case 'finalizado':
           var ab = (p.items || []).filter(function (it) { var c = _canonSol(it.estado || ''); return c === 'curso' || c === 'garantia' || c === 'aprobada'; });
           var msg = ab.length ? '¿Finalizar el proyecto?\n\nQuedan ' + ab.length + ' desarrollo(s) sin cerrar:\n' +
@@ -923,9 +1033,7 @@
             : '¿Finalizar el proyecto?\n\nTodos los desarrollos ya están cerrados.';
           if (!(await ask(msg, 'Finalizar proyecto'))) return;
           return hacer('finalizar_proyecto', { pid: p.id });
-        case 'rechazado':
-          if (!(await ask('¿Rechazar el proyecto?\n\nTodos sus desarrollos pasan a Rechazado.', 'Rechazar proyecto', { peligro: true }))) return;
-          return hacer('rechazar_proyecto', { pid: p.id }, null, true);
+        case 'rechazado': return corte(p, 'rechazar');
         case 'activo': return toast('«Activo» se calcula solo: arrancá un desarrollo desde su fila', 'inf');
       }
       return hacer('cambiar_estado_proyecto', { pid: p.id, estado: nombreProy(canon) }, 'Estado: ' + nombreProy(canon));
@@ -936,7 +1044,12 @@
       if (t.hasAttribute && t.hasAttribute('data-fini')) return hacer('fecha_desarrollo', { did: t.getAttribute('data-fini'), campo: 'fecha_ini', fecha: t.value || null }, 'Fecha del desarrollo guardada');
     };
     // Comentario rápido: Enter guarda en el proyecto
+    // Tareas con la forma de Hoy (Seguimiento y ficha): se buscan entre las de los proyectos y las de la ficha abierta
+    var ctxTar = { st: P.tst, users: usuarios(), repintar: function () { pintar(el); }, refrescar: refrescar,
+      buscar: function (id) { var t = null; Object.keys(P.tareas).some(function (k) { return (t = P.tareas[k].find(function (x) { return x.id === id; })); });
+                              return t || (P.f && (P.f.tareas || []).find(function (x) { return x.id === id; })); } };
     el.onkeydown = async function (ev) {
+      if (TareasUI.manejar(ev, ctxTar)) return;
       var t = ev.target; if (ev.key !== 'Enter' || !t.hasAttribute || !t.hasAttribute('data-segnota')) return;
       var txt = t.value.trim(); if (!txt) return;
       t.disabled = true;
@@ -945,9 +1058,17 @@
       toast('Comentario guardado', 'ok'); refrescar();
     };
     el.onclick = function (ev) {
+      if (TareasUI.manejar(ev, ctxTar)) return;
       var b = ev.target.closest('[data-pm]'); if (!b) return;
       var a = b.getAttribute('data-pm'), id = b.getAttribute('data-id');
       if (a === 'ficha') return abrirFicha(el, id);
+      if (a === 'sub') { P.sub = b.getAttribute('data-s'); return pintar(el); }
+      if (a === 'arrancar') return arrancar(proy(id));
+      if (a === 'alta-des') return altaDes(itemDe(id), b.getAttribute('data-clase'));
+      if (a === 'comentar-proy') return pedir('Comentario para el proyecto', '', 'Comentar').then(function (txt) {
+        if (!txt || !String(txt).trim()) return;
+        db().rpc('comentar', { p: { proyecto_id: id, texto: String(txt).trim() } }).then(function (r) { if (r.error) return toast(r.error.message, 'err'); toast('Comentario guardado', 'ok'); refrescar(); });
+      });
       if (a === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); el.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
       if (a === 'nv-ok') return nvGuardar(el);
       if (a === 'volver') { P.sub = P.prev || 'seg'; return pintar(el); }
@@ -960,10 +1081,9 @@
       if (a === 'estado') { ev.preventDefault(); return cambiarEstado(proy(id), b.getAttribute('data-est')); }
       if (a === 'det-proy') {
         ev.preventDefault();
-        var pd = proy(id), det = !pd.detenido;
-        return ask(det ? '¿Detener el proyecto? El estado no cambia: queda marcado y griseado.' : '¿Reanudar el proyecto?').then(function (ok) {
-          if (ok) hacer('detener_proyecto', { pid: id, detener: det });
-        });
+        var pd = proy(id);
+        if (!pd.detenido) return corte(pd, 'detener');
+        return ask('¿Reanudar el proyecto?').then(function (ok) { if (ok) hacer('detener_proyecto', { pid: id, detener: false }); });
       }
       if (a === 'edit-des') { ev.preventDefault(); return abrirDesarrollo(id, { onSave: refrescar }); }
       if (a === 'det-des') { ev.preventDefault(); var dd = itemDe(id);
@@ -981,7 +1101,13 @@
         // accion_desarrollo crea sola las alertas de facturación y los recordatorios del desarrollo
         var go = function () { hacer('accion_desarrollo', { did: id, accion: acc }, function (r) {
           var f = r.alertas_facturacion || {}, extra = (f.creadas ? ' · ' + f.creadas + ' alerta(s) de facturación' : '') + (f.cerradas ? ' · ' + f.cerradas + ' cerrada(s)' : '');
-          return r.de + ' → ' + r.a + extra; }); };
+          return r.de + ' → ' + r.a + extra; }).then(function (r) {
+            // Al finalizar un desarrollo, ¿arranca ya el mantenimiento (MMR) que lo cubre?
+            var it0 = itemDe(id); if (!r || acc !== 'cerrar' || !it0 || esMant(it0)) return;
+            var pp = P.proys.find(function (x) { return (x.items || []).some(function (y) { return y.id === id; }); });
+            var mants = ((pp && pp.items) || []).filter(function (y) { return esMant(y) && _canonSol(y.estado) === 'aprobada' && (y.mant_de_ids || []).indexOf(id) >= 0; });
+            if (mants.length) arrancar(pp, mants.map(function (y) { return y.id; }), '¿Arranca el mantenimiento?');
+          }); };
         if (acc === 'rechazar') return ask('¿Rechazar este desarrollo? Se puede recotizar después.', 'Rechazar desarrollo', { peligro: true }).then(function (ok) { if (ok) go(); });
         return go();
       }

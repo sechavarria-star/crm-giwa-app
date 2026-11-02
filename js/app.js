@@ -21,7 +21,7 @@ var MODULOS = [
   { id: 'hoy',      nombre: 'Hoy',            ico: 'casa',     listo: true  },
   { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true },   // Empresas y Contactos son pestañas adentro (29/10/2026)
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true,
-    subs: [['seg', 'Seguimiento'], ['proy', 'Proyectos'], ['nuevo', 'Nuevo proyecto']] },
+    subs: [['proy', 'Proyectos'], ['seg', 'Seguimiento'], ['nuevo', 'Nuevo proyecto']] },
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
   { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,

@@ -45,6 +45,9 @@ function uiEstado(texto, op) {
   return '<span class="ui-st ui-e-' + k + '">' + uiIco(d[1]) + esc(nombre) + '</span>';
 }
 
+// Detenido (proyecto) o Pausado (desarrollo): una marca chica al lado del estado, no lo reemplaza (02/11/2026)
+function uiMarcaDet(tit) { return '<span class="ui-marca ui-e-detenido" title="' + esc(tit || 'Detenido') + '" aria-label="' + esc(tit || 'Detenido') + '">' + uiIco('e_pausa') + '</span>'; }
+
 // ── C12 · Ícono de tipo de desarrollo, en el color de su estado ──
 function uiTipo(it, estado, detenido) {
   return '<span class="ui-tipo ui-e-' + uiClaveEst(estado, detenido) + '">' + icoTipoDes(it).replace('class="ico ico-tipo"', 'class="ui-ico"') + '</span>';
@@ -100,20 +103,21 @@ function uiDesp(o, cuerpo) {
          '</div><div class="ui-cuerpo">' + (cuerpo || '') + '</div>';
 }
 
-// ── C4 · Fila de proyecto + C5 debajo · o: { logo, logoUrl, emp, pro, tot (HTML), est (HTML), open, attrs } ──
+// ── C4 · Fila de proyecto + C5 debajo · o: { logoUrl, emp, pro, est (HTML), open, attrs }
+//    El proyecto arriba y la empresa debajo; a la derecha sólo el estado (02/11/2026) ──
 function uiFilaProy(o, ficha) {
   return '<div class="ui-fp' + (o.open ? ' open' : '') + '" ' + (o.attrs || '') + '>' +
            '<span class="ui-ch">' + uiIco('derecha') + '</span>' + uiLogo(o.emp, o.logoUrl) +
-           '<div><div class="ui-emp">' + esc(o.emp) + '</div><div class="ui-pro">' + esc(o.pro) + '</div></div>' +
-           '<span class="ui-tot">' + (o.tot || '') + '</span><span>' + (o.est || '') + '</span>' +
+           '<div><div class="ui-pro">' + esc(o.pro) + '</div><div class="ui-emp">' + esc(o.emp) + '</div></div>' +
+           '<span class="ui-fp-est">' + (o.est || '') + '</span>' +
          '</div><div class="ui-ficha">' + (ficha || '') + '</div>';
 }
 
 // ── C5 · Desarrollo dentro de la ficha: C12 + nombre + C6, sin montos; los datos van al abrir ──
 function uiDev(o, cuerpo) {
   return '<div class="ui-dev' + (o.open ? ' open' : '') + '" ' + (o.attrs || '') + '>' +
-           '<span class="ui-ch">' + uiIco('derecha') + '</span>' + uiTipo(o.it, o.estado, o.detenido) +
-           '<span class="ui-dev-n">' + esc(o.nombre) + '</span>' + uiEstado(o.estado, { detenido: o.detenido }) +
+           '<span class="ui-dev-barra ui-e-' + uiClaveEst(o.estado) + '"></span><span class="ui-ch">' + uiIco('derecha') + '</span>' + uiTipo(o.it, o.estado, o.detenido) +
+           '<span class="ui-dev-n">' + esc(o.nombre) + '</span><div class="ui-dev-der"><span>' + uiEstado(o.estado) + (o.detenido ? uiMarcaDet('Pausado') : '') + '</span></div>' +
          '</div><div class="ui-devc">' + (cuerpo || '') + '</div>';
 }
 
@@ -141,6 +145,13 @@ function uiKpi(k, v, color, sub, usd) {
   return '<div class="ui-kpi' + (color ? ' ui-k-' + color : '') + '"><div class="ui-kpi-k">' + esc(k) + '</div>' +
          '<div class="ui-kpi-v">' + esc(v) + '</div>' + (usd ? '<div class="ui-kpi-s"><span class="ui-num ui-p-usd">' + esc(usd) + '</span></div>' : '') +
          (sub ? '<div class="ui-kpi-s">' + esc(sub) + '</div>' : '') + '</div>';
+}
+
+// C8 con dos importes (p. ej. Proyectado: Desarrollos y Mantenimiento) · filas: [[etiqueta, valor, color]]
+function uiKpiDoble(k, filas, sub) {
+  return '<div class="ui-kpi"><div class="ui-kpi-k">' + esc(k) + '</div>' + filas.map(function (f) {
+    return '<div class="ui-kpi-par"><span>' + esc(f[0]) + '</span><span class="ui-num ui-' + f[2] + '">' + esc(f[1]) + '</span></div>'; }).join('') +
+    (sub ? '<div class="ui-kpi-s">' + esc(sub) + '</div>' : '') + '</div>';
 }
 
 // ── C15 · Aviso (tipo 'info' celeste · 'adv' ámbar) y motivo en gris ──
