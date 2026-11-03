@@ -329,3 +329,8 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .ui-tarjeta-sp .ui-lbl { margin-bottom: 2px; }
 .ui-tarjeta-plata { margin: 4px 0 6px; }
 .ui-ib.ui-add:hover { color: var(--secundaria); background: var(--suave-secundaria); }
+
+/* Cotizador · En la reunión: el texto al lado del catálogo y los totales abajo (03/11/2026) */
+.cot-re { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--e5); align-items: start; }
+.cot-re-txt { width: 100%; min-height: 360px; line-height: 1.6; }
+.cot-re-tot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e4); margin-top: var(--e4); padding-top: var(--e3); border-top: 1px solid var(--marco); font-size: var(--t-m); }
