@@ -22,7 +22,7 @@ var MODULOS = [
   { id: 'clientes', nombre: 'Clientes',       ico: 'personas', listo: true },   // Empresas y Contactos son pestañas adentro (29/10/2026)
   { id: 'pm',       nombre: 'Proyectos',      ico: 'tablero',  listo: true },   // Proyectos | Seguimiento son pestañas adentro (02/11/2026)
   { id: 'soporte',  nombre: 'Soporte',        ico: 'chat',     listo: false, nuevo: true },
-  { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: false },
+  { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: true },   // Nuevo proyecto y Borradores (03/11/2026)
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
     subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
   { id: 'fin',      nombre: 'Estado financiero', ico: 'porcentaje', listo: true },

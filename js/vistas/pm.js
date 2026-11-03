@@ -1259,4 +1259,6 @@
     P.sub = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0);
   };
   VISTAS.pm.precargar = cargar;
+  // La Carga rápida también se abre desde el Cotizador (03/11/2026): el mismo modal, sin duplicarlo
+  window.abrirCargaRapida = function () { nvAbrir(document.getElementById('vista')); };
 })();

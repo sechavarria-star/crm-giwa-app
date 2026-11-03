@@ -310,3 +310,13 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .nv-std { background: var(--suave-principal); border-radius: var(--r); padding: var(--e2) var(--e4); margin-bottom: var(--e4); }
 .nv-std .ui-kv:last-of-type { border-bottom: 0; }
 .nv-crea { margin-top: var(--e3); }
+
+/* Cotizador · cuestionario en tres columnas: Preguntas · Respuestas · Lo que suma (03/11/2026) */
+.md.md-xl { max-width: min(1280px, 96vw); }
+.cot-fun { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .9fr); gap: var(--e5); align-items: start; }
+.cot-q { padding: var(--e3) 0; border-bottom: 1px solid var(--marco); }
+.cot-q-t { font-size: var(--t-l); margin-bottom: var(--e2); }
+.cot-hijas { margin: var(--e2) 0; }
+.cot-op { padding: var(--e1) 0 var(--e1) calc(var(--niv, 0) * var(--e4)); font-size: var(--t-m); }
+.cot-nota { margin-top: var(--e2); min-height: 0; }
+.ui-btn.on { border-color: var(--principal); background: var(--suave-principal); color: var(--texto); }
