@@ -28,10 +28,9 @@
    Soporte (tickets) no se pasa: va a su propio módulo, Soporte. Análisis: v_analisis_clientes (= getAnalisisCliente). Las tareas viven en Hoy (vistas/hoy.js).
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var P = { proys: [], emps: {}, users: {}, sub: 'proy', tareas: {}, tst: TareasUI.estado(),
+  var P = { proys: [], emps: {}, users: {}, sub: 'proy', tareas: {}, cons: [], tst: TareasUI.estado(),
             seg: { fil: [], q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
             f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'proy' };
-  var CARRUSEL = 3;   // más de esto por cliente → carrusel
   var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento']];   // pestañas; entra directo a Proyectos. Nuevo proyecto rápido es un modal (02/11/2026)
 
   async function cargar() {
@@ -42,7 +41,8 @@
       db().from('usuarios').select('mail,nombre'),
       db().rpc('estados_spec'),
       db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
-      db().from('v_tareas').select('*').eq('closed', false)
+      db().from('v_tareas').select('*').eq('closed', false),
+      db().from('contactos').select('id,nombre,apellido,empresa_id,puesto,area_trabajo,email,telefono').order('nombre')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     initEstadosSpec(r[4].data);
@@ -55,6 +55,7 @@
       p.tareas = x.tareas || []; p.comentarios = x.comentarios || []; p.modulos = x.modulos || [];
       return p;
     });
+    P.cons = r[7].data || [];   // contactos de todas las empresas, una sola vez (tarjetas de Seguimiento)
     P.tareas = {}; (r[6].data || []).forEach(function (t) { (t.project_ids || []).forEach(function (pid) { (P.tareas[pid] = P.tareas[pid] || []).push(t); }); });
     P.ok = true;
   }
@@ -207,75 +208,74 @@
     o.open = !!P.seg.abierto[key]; o.attrs = 'data-segdesp="' + esc(key) + '"';
     return uiDesp(o, cuerpo);
   }
-  // Tarjeta de Seguimiento (02/11/2026): barra de color del estado a la izquierda; arriba título y responsable,
-  // con «Ver proyecto» y Contactos chicos a la derecha; debajo el estado (lo principal) y, en un segundo nivel,
-  // sus acciones (Enviar / Aprobar / No aceptar como botones; Detener y Finalizar como íconos); «Ya lo revisé» al pie.
+  // Tarjeta de Seguimiento (03/11/2026): «Ver proyecto» solo arriba a la derecha; proyecto y empresa a la izquierda,
+  // estado y sus acciones (íconos) a la derecha; motivo; sponsors GIWA y cliente; y cuatro secciones plegadas
+  // (Desarrollos, Contactos, Tareas, Otros comentarios) con sus botones de agregar en la línea del título. Al pie, la nota rápida y «revisado».
   function segCard(p) {
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
     var rev = P.seg.rev.indexOf(p.id) >= 0, pid = esc(p.id), acc = p.detenido ? [] : accionesProy(p);
     var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; });
+    var add = function (icono, tip, attrs) { return uiIb(icono, tip, 'add', attrs); };
     var h = '<div class="ui-tarjeta' + (p.detenido || rev ? ' ui-apagada' : '') + '"><span class="ui-tarjeta-barra ui-e-' + uiClaveEst(e, p.detenido) + '"></span>';
+    h += '<div class="ui-tarjeta-top">' + uiBtn('Ver proyecto', 'documento', 's', 'data-pm="ficha" data-id="' + pid + '"') + '</div>';
+    // Las acciones del estado, como íconos con su tooltip (todas con confirmación)
+    var ICO = { negociacion: ['mail', 'Enviar la propuesta', ''], aprobado: ['check', 'Aprobar', 'fin'], rechazado: ['cerrar', 'No aceptar', 'bor'], finalizado: ['e_cuadrado', 'Finalizar', 'fin'] };
     var iconos = (can === 'finalizado' || can === 'rechazado' ? '' :
         (p.detenido ? uiIb('play', 'Reanudar el proyecto', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
-      (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
-    h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div>' +
-      (p.owner ? '<div class="ui-sub-t">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="ui-fila-ic"><button type="button" class="ui-lnk ui-azul" data-pm="ficha" data-id="' + pid + '">Ver proyecto</button>' +
-        uiIb('contacto', 'Contactos de ' + (p.empresa || 'la empresa'), '', 'data-pm="contactos" data-id="' + pid + '"') + '</div></div>';
-    // Las acciones del estado (enviar, aprobar, no aceptar), con su confirmación
-    var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
-    var botones = acc.filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
-      var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('');
-    h += '<div class="ui-tarjeta-est">' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</div>';
-    if (botones || iconos) h += '<div class="ui-barra">' + botones + (iconos ? '<span class="ui-fila-ic">' + iconos + '</span>' : '') + '</div>';
-    var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
+      acc.map(function (a) { var k = ICO[a[0]] || [a[2], a[1], '']; return uiIb(k[0], k[1], k[2], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('');
+    h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div><div class="ui-sub-t">' + esc(p.empresa || '') + '</div></div>' +
+      '<div class="ui-tarjeta-der"><div>' + uiEstado(e) + (p.detenido ? ' ' + uiEstado('Detenido', { detenido: true }) : '') + '</div>' +
+        (iconos ? '<div class="ui-fila-ic ui-tarjeta-acc">' + iconos + '</div>' : '') + '</div></div>';
     var pq = porQue(p, can); if (pq) h += uiMotivo(pq);
+    var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
+    // Sponsors: el de GIWA (owner) y el del cliente (contacto de proyecto.sponsor_id)
+    var sc = p.sponsor_id && P.cons.filter(function (c) { return c.id === p.sponsor_id; })[0];
+    var spCli = sc ? ((sc.nombre || '') + ' ' + (sc.apellido || '')).trim() : (p.sponsor || p.sponsor_id || '—');
+    h += '<div class="ui-tarjeta-sp"><div><span class="ui-lbl">Sponsor GIWA</span>' + esc(p.owner ? nombre(p.owner) : '—') + '</div>' +
+      '<div><span class="ui-lbl">Sponsor cliente</span>' + esc(spCli) + '</div></div>';
     var kv = function (l, v, cls) { return '<div class="ui-kv">' + l + '<span class="ui-num"><span class="' + (cls || '') + '">' + v + '</span></span></div>'; };
     if (can === 'prospecto' || can === 'negociacion') {
       var cot = Number(p.monto_cotizado) || 0, env = _pd(p.fecha_envio) || (can === 'negociacion' ? _pd(p.fecha_propuesta) : null);
       h += (cot > 0 ? kv('Cotizado', fmt(cot), 'ui-p-pendiente') : kv('Cotización', 'falta cotizar', 'ui-p-pendiente')) +
         (env ? kv('Propuesta', 'enviada ' + hace(env)) : kv('Propuesta', 'no enviada', 'ui-p-pendiente')) +
-        kv('Probabilidad', (p.probabilidad || 0) + ' %') + '<br>';
+        kv('Probabilidad', (p.probabilidad || 0) + ' %');
     }
-    if (its.length) {
-      h += '<div class="ui-lat-h">Desarrollos</div>';
-      its.forEach(function (it) {
-        // El proyecto se DETIENE; el desarrollo se PAUSA (independiente: ej. un abono que todavía no arranca)
-        var mant = esMant(it), m = '', pd = p.detenido || it.detenido;
-        h += '<div class="ui-linea">' + uiTipo(it, it.estado, pd) + '<span class="ui-f1" title="' + esc(it.titulo || '') + '">' + esc(it.titulo || it.tipo || '—') + '</span>' +
-          (pd ? '' : botonesDes(it, true)) + uiEstado(it.estado || '—') + (pd ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</div>';
-        if (esGanado(it.estado)) {
-          if (!mant) {
-            var tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
-            if (tot > 0) m = '<span>Contratado <span class="ui-num ui-p-contratado">' + fmt(tot) + '</span></span><span>Cobrado <span class="ui-num ui-p-cobrado">' + fmt(cob) + '</span> (<span class="ui-num">' + Math.round(cob / tot * 100) + ' %</span>)</span>';
-          } else {
-            var cu = Number(it.cuota_act) || Number(it.valor_cuota) || 0;
-            if (cu > 0) m = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cu) + '/mes</span></span>' + cuotasTxt(it);
-          }
-        }
-        if (m) h += '<div class="ui-linea-sub">' + m + '</div>';
-      });
-    }
-    var sec = '';   // sin «Módulos» en la tarjeta (02/11/2026): se ven en el desarrollo, dentro del proyecto
-    // Tareas abiertas: primero qué hay que hacer, después lo que comentó la gente.
-    // Los comentarios automáticos (delegada, procesada, IPC…) van aparte, en «Historial».
-    // Tareas con la forma de HOY (js/tareas.js). Los comentarios automáticos van aparte, en «Historial».
+    // a · Desarrollos
+    var dv = its.map(function (it) {
+      var mant = esMant(it), m = '', pd = p.detenido || it.detenido;
+      var l = '<div class="ui-linea">' + uiTipo(it, it.estado, pd) + '<span class="ui-f1" title="' + esc(it.titulo || '') + '">' + esc(it.titulo || it.tipo || '—') + '</span>' +
+        uiEstado(it.estado || '—') + (pd ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</div>';
+      if (esGanado(it.estado)) {
+        if (!mant) { var tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
+          if (tot > 0) m = '<span>Contratado <span class="ui-num ui-p-contratado">' + fmt(tot) + '</span></span><span>Cobrado <span class="ui-num ui-p-cobrado">' + fmt(cob) + '</span> (<span class="ui-num">' + Math.round(cob / tot * 100) + ' %</span>)</span>'; }
+        else { var cu = Number(it.cuota_act) || Number(it.valor_cuota) || 0, d = Number(it.duracion) || 0, cf = Number(it.cuotas_facturadas) || 0;
+          if (cu > 0) m = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cu) + '/mes</span></span>' + (d ? '<span>Cuotas restantes <span class="ui-num">' + Math.max(0, d - cf) + '</span> de <span class="ui-num">' + d + '</span></span>' : ''); }
+      }
+      return l + (m ? '<div class="ui-linea-sub ui-tarjeta-plata">' + m + '</div>' : '');
+    }).join('');
+    var sec = desp(p, 'des', { th: 'Desarrollos', n: its.length }, dv || '<div class="ui-nota-t">Sin desarrollos.</div>');
+    // b · Contactos de la empresa (C16)
+    var cs = P.cons.filter(function (c) { return c.empresa_id && c.empresa_id === p.empresa_id; });
+    sec += desp(p, 'con', { th: 'Contactos', n: cs.length, v: add('contacto', 'Nuevo contacto', 'data-pm="seg-contacto" data-id="' + pid + '"') },
+      cs.length ? uiContactos(cs.map(function (c) { return { nombre: ((c.nombre || '') + ' ' + (c.apellido || '')).trim(), puesto: c.puesto || c.area_trabajo, tel: c.telefono, mail: c.email }; }))
+        : '<div class="ui-nota-t">Sin contactos cargados.</div>');
+    // c · Tareas, con la forma de HOY (js/tareas.js)
     var ta = (P.tareas[p.id] || []).slice().sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
-    var nv = ta.filter(function (t) { return t.overdue; }).length, cs = p.comentarios || [], vistos = {};
-    var auto = cs.filter(esAuditoria); auto.forEach(function (c) { vistos[c.id] = 1; });
-    cs.forEach(function (c) { if (c.tarea_id && ta.some(function (t) { return t.id === c.tarea_id; })) vistos[c.id] = 1; });
-    var s = function (n) { return n > 1 ? 's' : ''; };
-    sec += desp(p, 'tar', { th: 'Tareas', n: ta.length || '',
-      v: '<span class="ui-fila-ic">' + (nv ? '<span class="ui-p-error">' + nv + ' vencida' + s(nv) + '</span>' : '') + uiAcc('tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</span>' },
+    var nv = ta.filter(function (t) { return t.overdue; }).length;
+    sec += desp(p, 'tar', { th: 'Tareas', n: ta.length + (nv ? ' · ' : ''),
+        v: (nv ? '<span class="ui-p-error ui-num">' + nv + ' vencida' + (nv > 1 ? 's' : '') + '</span> ' : '') +
+           '<span class="ui-fila-ic">' + add('tarea', 'Nueva tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + add('chat', 'Nuevo comentario', 'data-pm="nota-foco" data-id="' + pid + '"') + '</span>' },
       ta.length ? TareasUI.html(ta, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>');
-    var otros = cs.filter(function (c) { return !vistos[c.id]; }).slice(0, 3);
+    // d · Otros comentarios: los últimos 3 que no están debajo de una tarea
+    var otros = (p.comentarios || []).filter(function (c) { return !c.tarea_id; }).slice(0, 3);
     sec += desp(p, 'otros', { th: 'Otros comentarios', n: otros.length }, otros.length ? otros.map(comLinea).join('') : '<div class="ui-nota-t">Sin comentarios.</div>');
-    if (auto.length) sec += desp(p, 'hist', { th: 'Historial', n: auto.length }, auto.map(comLinea).join(''));
     h += '<div class="ui-rapido">' + sec + '</div>';
     h += '<input class="ui-campo ui-rapido" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">';
     h += '<div class="ui-tarjeta-pie">' + uiIb('revisado', rev ? 'Volver a su lugar' : 'Ya lo revisé', '', 'data-pm="rev" data-id="' + pid + '"').replace('class="ui-ib', 'class="ui-ib' + (rev ? ' on' : '')) + '</div>';
     return h + '</div>';
   }
+  // Seguimiento (03/11/2026): las tarjetas solas, sin agrupar por empresa. Primero las activas, después
+  // las que tienen más tareas pendientes; lo revisado va al final.
   function htmlSeg() {
     var S = P.seg, all = P.proys;
     var q = norm(S.q);
@@ -285,22 +285,13 @@
       barraFiltro(SEG_FIL, S.fil, function (k) { return all.filter(function (p) { return segPasa(p, k); }).length; }, 'segfil',
                   all.filter(function (p) { return segPasa(p, 'todos'); }).length, list.length);
     if (!list.length) return h + '<div class="ui-nota-t">Nada para este filtro.</div>';
-    var peso = { activo: 0, aprobado: 1, negociacion: 2, prospecto: 3, finalizado: 4, rechazado: 5 };
-    var rank = function (p) { return (S.rev.indexOf(p.id) >= 0 ? 100 : 0) + (p.detenido ? 50 : 0) + (peso[_canonProy(p.estado_proyecto)] || 0); };
-    var grupos = {}, orden = [];
-    list.forEach(function (p) { var e = p.empresa || 'Sin cliente'; if (!grupos[e]) { grupos[e] = []; orden.push(e); } grupos[e].push(p); });
-    orden.forEach(function (e) { grupos[e].sort(function (a, b) { return rank(a) - rank(b); }); });
-    orden.sort(function (a, b) { return a.localeCompare(b); });
-    var cerrados = {}; try { cerrados = JSON.parse(localStorage.getItem('seg_cerr') || '{}') || {}; } catch (e) { cerrados = {}; }
-    orden.forEach(function (emp, ei) {
-      var ps = grupos[emp], cerr = !!cerrados[emp], carr = ps.length > CARRUSEL;
-      // C3 por empresa con su logo (C13); las flechas del carrusel a la derecha
-      h += uiDesp({ logo: uiLogo(emp, (P.emps[emp] || {}).logo), t: emp, n: ps.length, open: !cerr,
-        attrs: 'data-pm="segemp" data-emp="' + esc(emp) + '" title="' + (cerr ? 'Mostrar los proyectos' : 'Ocultar los proyectos') + '"',
-        v: carr ? '<span class="ui-fila-ic">' + uiIb('izquierda', 'Anterior', '', 'data-pm="scr" data-dir="-1" data-g="' + ei + '"') + uiIb('derecha', 'Siguiente', '', 'data-pm="scr" data-dir="1" data-g="' + ei + '"') + '</span>' : '' },
-        '<div class="ui-tarjetas' + (carr ? ' ui-carr' : '') + '" data-track="' + ei + '">' + ps.map(segCard).join('') + '</div>');
+    var nt = function (p) { return (P.tareas[p.id] || []).length; };
+    list.sort(function (a, b) {
+      var ra = S.rev.indexOf(a.id) >= 0 ? 1 : 0, rb = S.rev.indexOf(b.id) >= 0 ? 1 : 0; if (ra !== rb) return ra - rb;
+      var aa = _canonProy(a.estado_proyecto) === 'activo' && !a.detenido ? 0 : 1, ab = _canonProy(b.estado_proyecto) === 'activo' && !b.detenido ? 0 : 1; if (aa !== ab) return aa - ab;
+      return nt(b) - nt(a) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
     });
-    return h;
+    return h + '<div class="ui-tarjetas">' + list.map(segCard).join('') + '</div>';
   }
 
   function htmlKpis(list) {
@@ -1168,6 +1159,8 @@
       });
       if (a === 'nv-abrir') return nvAbrir(el);
       if (a === 'contactos') { var pc = proy(id); return abrirFichaEmpresa(pc.empresa_id, { onSave: refrescar }); }
+      if (a === 'seg-contacto') { ev.preventDefault(); return abrirContacto(null, { empresa: proy(id).empresa_id, onSave: refrescar }); }
+      if (a === 'nota-foco') { ev.preventDefault(); var nf = el.querySelector('[data-segnota="' + id + '"]'); if (nf) { nf.focus(); nf.scrollIntoView({ block: 'center' }); } return; }
       if (a === 'volver') { P.sub = P.prev || 'seg'; return pintar(el); }
       if (a === 'nav') {
         var L = P.fLista, k = (L.indexOf(P.f.id) + Number(b.getAttribute('data-dir')) + L.length) % L.length;
@@ -1231,17 +1224,6 @@
       }
       if (a === 'contacto') { var pp = P.proys.find(function (x) { return x.id === P.f.id; }); return abrirFichaEmpresa(pp.empresa_id, { nuevoContacto: true, onSave: refrescar }); }
       if (a === 'segfil') { P.seg.fil = togFil(P.seg.fil, b.getAttribute('data-f')); return pintar(el); }
-      if (a === 'segemp') {
-        var c = {}; try { c = JSON.parse(localStorage.getItem('seg_cerr') || '{}') || {}; } catch (e) { c = {}; }
-        var emp = b.getAttribute('data-emp'); c[emp] = !c[emp];
-        try { localStorage.setItem('seg_cerr', JSON.stringify(c)); } catch (e) {}
-        return pintar(el);
-      }
-      if (a === 'scr') {
-        var tr = el.querySelector('[data-track="' + b.getAttribute('data-g') + '"]');
-        if (tr) tr.scrollBy({ left: Number(b.getAttribute('data-dir')) * tr.clientWidth * 0.9, behavior: 'smooth' });
-        return;
-      }
       if (a === 'rev') {
         var i = P.seg.rev.indexOf(id);
         return ask(i >= 0 ? '¿Vuelve a su lugar en la lista?' : '¿Ya lo revisaste? Pasa al final de la lista de este cliente.', i >= 0 ? 'Volver a su lugar' : 'Ya lo revisé').then(function (ok) {

@@ -320,3 +320,12 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .cot-op { padding: var(--e1) 0 var(--e1) calc(var(--niv, 0) * var(--e4)); font-size: var(--t-m); }
 .cot-nota { margin-top: var(--e2); min-height: 0; }
 .ui-btn.on { border-color: var(--principal); background: var(--suave-principal); color: var(--texto); }
+
+/* Tarjeta de Seguimiento (03/11/2026): «Ver proyecto» arriba solo, estado y acciones en columna, sponsors y plata con aire */
+.ui-tarjeta-top { display: flex; justify-content: flex-end; margin-bottom: var(--e2); }
+.ui-tarjeta-der { display: flex; flex-direction: column; align-items: flex-end; gap: var(--e1); }
+.ui-tarjeta-acc { justify-content: flex-end; }
+.ui-tarjeta-sp { display: flex; flex-direction: column; gap: var(--e2); margin: var(--e3) 0; font-size: var(--t-m); }
+.ui-tarjeta-sp .ui-lbl { margin-bottom: 2px; }
+.ui-tarjeta-plata { margin: 4px 0 6px; }
+.ui-ib.ui-add:hover { color: var(--secundaria); background: var(--suave-secundaria); }
