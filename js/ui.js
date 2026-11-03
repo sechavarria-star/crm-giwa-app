@@ -273,13 +273,15 @@ function _uiFecha(inp) {
     inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
   };
 }
+// «621234.21» es un número con decimales; «1.500» o «1.500,50» vienen con «.» de miles (03/11/2026)
+function _uiNumero(n) { return (/^-?\d+\.\d{1,2}$/.test(n) || /^-?\d+\.\d{4,}$/.test(n) ? Number(n) : Number(n.replace(/\./g, '').replace(',', '.'))) || 0; }
 function _uiMonto(inp) {
   if (inp._ui) return; inp._ui = 1;
   var v0 = _UI_VAL.get.call(inp);
   inp.type = 'text'; inp.setAttribute('inputmode', 'numeric'); inp.removeAttribute('step'); inp.classList.add('ui-monto');
   Object.defineProperty(inp, 'value', { configurable: true,
     get: function () { return _UI_VAL.get.call(this).replace(/\D/g, ''); },
-    set: function (v) { var n = String(v == null ? '' : v).trim(); _UI_VAL.set.call(this, n === '' ? '' : _uiMiles(String(Math.round(Number(n.replace(/\./g, '').replace(',', '.')) || 0)))); } });
+    set: function (v) { var n = String(v == null ? '' : v).trim(); _UI_VAL.set.call(this, n === '' ? '' : _uiMiles(String(Math.round(_uiNumero(n))))); } });
   inp.value = v0;
   inp.addEventListener('input', function () { _UI_VAL.set.call(inp, _uiMiles(_UI_VAL.get.call(inp).replace(/\D/g, ''))); });
 }
