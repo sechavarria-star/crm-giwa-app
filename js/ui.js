@@ -169,8 +169,8 @@ function uiContactos(cs) {
     var tel = telWa(c.tel);
     return '<li class="ui-ctc"><div class="ui-ctc-l"><span>' + esc(c.nombre) + (c.puesto ? ' <span class="ui-ps">· ' + esc(c.puesto) + '</span>' : '') + '</span>' +
            '<span class="ui-ics">' +
-             (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" title="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
-             (c.mail ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.mail) + '" title="Mail">' + uiIco('mail') + '</a>' : '') +
+             (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" data-tip="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
+             (c.mail ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.mail) + '" data-tip="Mail">' + uiIco('mail') + '</a>' : '') +
            '</span></div></li>';
   }).join('') + '</ul>';
 }
