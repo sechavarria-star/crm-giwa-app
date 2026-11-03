@@ -93,32 +93,32 @@
     return fil + ley + htmlEmpresas(filas);
   }
 
+  // Tarjeta por empresa (03/11/2026): el mismo componente que Seguimiento (ui-tarjeta), igual para todas.
+  // Barra y estado en el color del estado del cliente; arriba logo, nombre (abre la ficha) y, chicos a la derecha,
+  // Drive y Web; debajo tier y estado, la plata, los contactos y las dos acciones.
+  var EST_CLI = { 'prospecto': 'ui-p-neutro', 'detenido': 'ui-e-detenido', 'cliente': 'ui-p-contratado', 'abono activo': 'ui-p-abono', 'deuda vencida': 'ui-p-error' };
+  var TIP_CLI = { 'prospecto': 'Todavía sin proyectos aprobados', 'detenido': 'Tiene proyectos detenidos', 'cliente': 'Tiene proyectos aprobados',
+                  'abono activo': 'Paga un abono mensual', 'deuda vencida': 'Tiene cobros vencidos' };
   function htmlEmpresas(lista) {
-    return '<div class="emp-grid">' + lista.map(function (e) {
-      var n = consDe(e).length, np = D.nProy[e.id] || 0, g = clienteDe(e);
+    return '<div class="ui-tarjetas">' + lista.map(function (e) {
+      var np = D.nProy[e.id] || 0, g = clienteDe(e), cls = EST_CLI[g.estado] || 'ui-p-neutro';
       var web = e.web ? (e.web.indexOf('http') === 0 ? e.web : 'https://' + e.web) : '';
       var lugar = [e.localidad, e.provincia].filter(Boolean).join(', ');
-      return '<div class="card"><div class="u-p1214">' +
-        '<div class="u-row8">' + logo(e) + '<div class="u-f1m"><button class="emp-n emp-link" data-ver="' + esc(e.id) + '" data-tip="Ver la ficha">' + esc(e.nombre) + '</button>' +
-          '<div class="u-s11-mt">' + esc([e.rubro, lugar].filter(Boolean).join(' · ') || '—') + '</div></div></div>' +
-        '<div class="u-row8 u-mt6">' + tierChip(e.tier_id) + estado(g.estado) + '</div>' +
-        (g.estado === 'prospecto' ? '' : '<div class="emp-plata u-mt6"><span>Contratado <b class="m m-contratado">' + fmt(g.contratado) + '</b></span>' +
-          '<span>Saldo <b class="m m-pendiente">' + fmt(g.saldo) + '</b></span></div>') +
-        // Los contactos, en viñetas: nombre · puesto con WhatsApp y mail (cada ícono sólo si hay dato)
-        (n ? '<ul class="emp-cons">' + consDe(e).map(function (c) {
-          var wp = telWa(c.telefono);
-          return '<li><span class="u-f1m">' + esc([((c.nombre || '') + ' ' + (c.apellido || '')).trim(), c.puesto].filter(Boolean).join(' · ')) + '</span>' +
-            (wp ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') +
-            (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + ico('mail') + '</a>' : '') + '</li>';
-        }).join('') + '</ul>' : '<div class="u-s11-mt u-mt6">Sin contactos.</div>') +
-        '<div class="u-s11-mt u-mt4"><span class="m">' + np + '</span> proyecto' + (np !== 1 ? 's' : '') + '</div>' +
-        '<div class="u-row6 u-mt8">' +
-          '<button class="btn bsec xs" data-addcon="' + esc(e.id) + '">' + ico('contacto') + ' Contacto</button>' +
-          '<button class="btn bsec xs" data-addrs="' + esc(e.id) + '">' + ico('mas') + ' Razón social</button>' +
-          (e.drive_interno ? '<a class="lnk lnk-dr u-mla" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + ico('carpeta') + 'DRIVE</a>' : '') +
-          (web ? '<a class="lnk' + (e.drive_interno ? '' : ' u-mla') + '" href="' + esc(web) + '" target="_blank" rel="noopener">' + ico('web') + 'WEB</a>' : '') +
-        '</div>' +
-      '</div></div>';
+      var cons = consDe(e).map(function (c) { return { nombre: ((c.nombre || '') + ' ' + (c.apellido || '')).trim(), puesto: c.puesto, tel: c.telefono, mail: c.email }; });
+      return '<div class="ui-tarjeta"><span class="ui-tarjeta-barra ' + cls + '"></span>' +
+        '<div class="ui-tarjeta-hd"><div class="u-row8">' + uiLogo(e.nombre, e.logo) +
+          '<div><button type="button" class="ui-pro emp-link" data-ver="' + esc(e.id) + '" data-tip="Ver la ficha">' + esc(e.nombre) + '</button>' +
+          '<div class="ui-sub-t">' + esc([e.rubro, lugar].filter(Boolean).join(' · ') || '—') + '</div></div></div>' +
+          '<div class="ui-fila-ic">' +
+            (e.drive_interno ? '<a class="ui-ib ui-azul" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener" data-tip="Drive del cliente" aria-label="Drive">' + uiIco('carpeta') + '</a>' : '') +
+            (web ? '<a class="ui-ib" href="' + esc(web) + '" target="_blank" rel="noopener" data-tip="Web: ' + esc(e.web) + '" aria-label="Web">' + uiIco('web') + '</a>' : '') + '</div></div>' +
+        '<div class="ui-tarjeta-est">' + uiTier(e.tier_id) + '<span class="ui-st ' + cls + '" data-tip="' + esc(TIP_CLI[g.estado] || '') + '">' + esc((g.estado || 'prospecto').replace(/^./, function (x) { return x.toUpperCase(); })) + '</span></div>' +
+        '<div class="ui-linea-sub">' + (g.estado === 'prospecto' ? '' : '<span>Contratado <span class="ui-num ui-p-contratado">' + fmt(g.contratado) + '</span></span>' +
+          '<span>Saldo <span class="ui-num ui-p-pendiente">' + fmt(g.saldo) + '</span></span>') +
+          '<span><span class="ui-num">' + np + '</span> proyecto' + (np !== 1 ? 's' : '') + '</span></div>' +
+        (cons.length ? uiContactos(cons) : '<div class="ui-nota-t">Sin contactos.</div>') +
+        '<div class="ui-barra">' + uiBtn('Contacto', 'contacto', 's', 'data-addcon="' + esc(e.id) + '"') + uiBtn('Razón social', 'mas', 's', 'data-addrs="' + esc(e.id) + '"') + '</div>' +
+      '</div>';
     }).join('') + '</div>';
   }
 

@@ -124,16 +124,19 @@
     }).filter(Boolean);
     return A;
   }
+  // Orden de columnas (02/11/2026): Cobrado, Margen, Abono, Proyección 12m, Con 12 meses; al final Referencia y Estatus.
+  // Estatus: cuántos meses de abono hacen falta para cubrir lo que el cobrado quedó abajo de la referencia
+  // (meses = ⌈(referencia − cobrado) / abono⌉, la misma cuenta de siempre).
   function tablaAnalisis(A) {
-    return '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th class="u-tr">Referencia</th><th class="u-tr">Cobrado</th><th class="u-tr">Margen neto proyectado</th>' +
-      '<th class="u-tr">Abono / mes</th><th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Con 24 meses</th><th>Estatus de viabilidad</th></tr></thead><tbody>' + A.map(function (c) {
+    return '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th class="u-tr">Cobrado</th><th class="u-tr">Margen neto proyectado</th>' +
+      '<th class="u-tr">Abono / mes</th><th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>' + A.map(function (c) {
         var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
-        var lect = c.dif < 0 ? (c.mmr ? 'faltan ' + meses + ' mes(es) de abono' : 'sin abono que lo compense') : 'igual o arriba de la referencia';
+        var lect = c.dif < 0 ? (c.mmr ? 'Se compensa con ' + meses + (meses === 1 ? ' mes' : ' meses') + ' de abono' : 'Sin abono que lo compense') : 'Igual o arriba de la referencia';
         var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
-        return '<tr><td>' + esc(c.nombre || '—') + '</td>' + td(c.ref) + td(c.pre, 'm-cobrado') +
+        return '<tr><td>' + esc(c.nombre || '—') + '</td>' + td(c.pre, 'm-cobrado') +
           td(c.dif, c.dif < 0 ? 'm-pendiente' : 'm-cobrado', c.dif < 0) + td(c.mmr, 'm-abono') +
-          (sinAbono ? '<td class="m u-tr u-c-rd" title="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
-          td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.dif + c.mmr * 24, '', c.dif + c.mmr * 24 < 0) +
+          (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
+          td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.ref) +
           '<td class="u-s10-mt">' + esc(lect) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }

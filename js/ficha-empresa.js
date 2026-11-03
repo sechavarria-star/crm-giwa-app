@@ -71,7 +71,9 @@
       if (acc === 'quitar-con') { a.closest('.fe-bloque').remove(); contar(); }
       if (acc === 'editar') { closeM('m-fe-ver'); abrirFichaEmpresa(a.getAttribute('data-id'), { onSave: F.onSave }); }
       if (acc === 'contacto') { closeM('m-fe-ver'); abrirContacto(null, { empresa: a.getAttribute('data-id'), onSave: F.onSave }); }
+      if (acc.indexOf('pv-') === 0) pvAccion(acc, a);
     });
+    document.body.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target.id === 'pv-nuevo') { ev.preventDefault(); pvAccion('pv-add'); } });
     document.getElementById('fe-btn-s').onclick = guardar;
     document.getElementById('fe-c-s').onclick = guardarContacto;
   });
@@ -228,9 +230,11 @@
         (e.logo ? '<img class="emp-logo" src="' + esc(e.logo) + '" referrerpolicy="no-referrer" alt="">' : '<div class="emp-ini">' + esc((e.nombre || '?').charAt(0).toUpperCase()) + '</div>') +
         '<div class="u-f1m"><div class="emp-n">' + esc(e.nombre) + (e.alias ? ' <span class="u-s11-mt">(' + esc(e.alias) + ')</span>' : '') + '</div>' +
         '<div class="u-s11-mt">' + esc([e.rubro, e.localidad, e.provincia].filter(Boolean).join(' · ') || '—') + '</div></div>' +
-        (e.drive_interno ? '<a class="ui-lnk ui-azul" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + 'Drive</a>' : '') +
-        (web ? '<a class="ui-lnk ui-gris" href="' + esc(web) + '" target="_blank" rel="noopener">' + uiIco('web') + 'Web</a>' : '') +
-        '<button class="btn bp sm" data-acc="editar" data-id="' + esc(e.id) + '">' + ico('editar') + ' Editar</button></div>';
+        '<button class="btn bp sm" data-acc="editar" data-id="' + esc(e.id) + '">' + ico('editar') + ' Editar</button>' +
+        // Drive y Web: accesos secundarios, chicos, arriba a la derecha (03/11/2026)
+        '<span class="ui-fila-ic fe-accesos">' +
+          (e.drive_interno ? '<a class="ui-ib ui-azul" href="' + esc(e.drive_interno) + '" target="_blank" rel="noopener" data-tip="Drive del cliente" aria-label="Drive">' + uiIco('carpeta') + '</a>' : '') +
+          (web ? '<a class="ui-ib" href="' + esc(web) + '" target="_blank" rel="noopener" data-tip="Web: ' + esc(e.web) + '" aria-label="Web">' + uiIco('web') + '</a>' : '') + '</span></div>';
       h += '<div class="fe-datos">' + (e.tier_id ? '<div class="fe-dato"><div class="sec">Tier</div><div>' + tierChip(e.tier_id) + '</div></div>' : '') + dato('Proyectos', d.nProy ? String(d.nProy) : '') + '</div>';
       h += '<div class="sec u-mt10">Razones sociales (' + d.razones.length + ')</div>' +
         (d.razones.map(function (x) {
@@ -246,9 +250,70 @@
                  (c.email ? '<a class="btn bg xs btn-ico" href="mailto:' + esc(c.email) + '" data-tip="Mail" aria-label="Mail">' + ico('mail') + '</a>' : '') +
                  (wp ? '<a class="btn bg xs btn-ico" href="https://wa.me/' + wp + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + ico('whatsapp') + '</a>' : '') + '</div>';
         }).join('') || '<div class="empty">Sin contactos.</div>');
-      b.innerHTML = h;
+      h += '<div id="fe-pv" data-emp="' + esc(e.id) + '"></div>';
+      b.innerHTML = h; PV.e = e; pvPintar();
     } catch (err) { b.innerHTML = '<div class="empty">No se pudo abrir: ' + esc(err.message) + '</div>'; }
   };
+
+  // ── Alta de proveedor (03/11/2026): qué documentación pide ESTE cliente, su estado y su carpeta ──
+  // Tabla crm_giwa.proveedor_docs (una fila por documento, de una sola empresa) y empresas.carpeta_proveedor.
+  var PV = { e: null, docs: [] };
+  async function pvPintar() {
+    var box = $('fe-pv'); if (!box || !PV.e) return;
+    var r = await db().from('proveedor_docs').select('*').eq('empresa_id', PV.e.id).order('orden').order('creado');
+    if (r.error) { box.innerHTML = '<div class="empty">' + esc(r.error.message) + '</div>'; return; }
+    PV.docs = r.data;
+    var ent = PV.docs.filter(function (x) { return x.estado === 'Entregado'; }).length, cp = PV.e.carpeta_proveedor;
+    var h = '<div class="u-row8 u-mt10"><span class="sec">Alta de proveedor (' + ent + '/' + PV.docs.length + ' entregados)</span><span class="ui-fila-ic u-mla">' +
+      (cp ? '<a class="ui-ib ui-azul" href="' + esc(cp) + '" target="_blank" rel="noopener" data-tip="Carpeta de alta de proveedor" aria-label="Carpeta">' + uiIco('carpeta') + '</a>' : '') +
+      uiIb('link', cp ? 'Cambiar el link de la carpeta' : 'Cargar el link de la carpeta de Drive de este cliente', '', 'data-acc="pv-carpeta"') + '</span></div>';
+    if (!cp) h += '<div class="u-s11-mt">Sin carpeta: creala en el Drive del cliente, compartila con quien corresponda y pegá acá su link.</div>';
+    h += PV.docs.map(function (x) {
+      var ok = x.estado === 'Entregado', vencido = x.vence && x.vence < isoMas(0);
+      return '<div class="fe-linea u-row8"><div class="u-f1m"><div>' + esc(x.documento) + '</div>' +
+        (x.vence || x.nota ? '<div class="u-s11-mt">' + (x.vence ? 'Vence <span class="ui-num' + (vencido ? ' ui-p-error' : '') + '">' + ff(x.vence) + '</span>' : '') + (x.nota ? (x.vence ? ' · ' : '') + esc(x.nota) : '') + '</div>' : '') + '</div>' +
+        '<button type="button" class="ui-lnk ' + (ok ? 'ui-p-cobrado' : 'ui-p-pendiente') + '" data-acc="pv-est" data-id="' + esc(x.id) + '" data-tip="' + (ok ? 'Marcar como pendiente' : 'Marcar como entregado') + '">' + (ok ? 'Entregado' : 'Pendiente') + '</button>' +
+        (x.link ? '<a class="ui-ib ui-azul" href="' + esc(x.link) + '" target="_blank" rel="noopener" data-tip="Abrir el archivo" aria-label="Abrir">' + uiIco('abrir') + '</a>' : '') +
+        uiIb('link', x.link ? 'Cambiar el link del archivo' : 'Cargar el link del archivo', '', 'data-acc="pv-link" data-id="' + esc(x.id) + '"') +
+        uiIb('calendario', 'Fecha de vencimiento', '', 'data-acc="pv-vence" data-id="' + esc(x.id) + '"') +
+        uiIb('borrar', 'Quitar este documento', 'bor', 'data-acc="pv-borrar" data-id="' + esc(x.id) + '"') + '</div>';
+    }).join('');
+    h += '<div class="u-row8 u-mt6"><input class="fc u-f1m" id="pv-nuevo" placeholder="Documento que pide este cliente (p. ej. Constancia de CUIT) y Enter" aria-label="Documento que pide el cliente">' +
+      '<button class="btn bsec xs" data-acc="pv-add">' + ico('mas') + ' Agregar</button></div>';
+    box.innerHTML = h;
+  }
+  async function pvAccion(acc, a) {
+    var id = a && a.getAttribute('data-id'), x = PV.docs.find(function (d) { return d.id === id; }), r = null;
+    if (acc === 'pv-add') {
+      var t = ($('pv-nuevo').value || '').trim(); if (!t) return toast('Escribí el documento', 'err');
+      r = await db().from('proveedor_docs').insert({ empresa_id: PV.e.id, documento: t, orden: PV.docs.length });
+    } else if (acc === 'pv-carpeta') {
+      var u = await pedir('Link de la carpeta de Drive para la documentación de alta de proveedor de ' + PV.e.nombre + '.', PV.e.carpeta_proveedor || '', 'Carpeta de alta de proveedor');
+      if (u === null) return;
+      r = await db().from('empresas').update({ carpeta_proveedor: String(u).trim() || null }).eq('id', PV.e.id);
+      if (!r.error) PV.e.carpeta_proveedor = String(u).trim() || null;
+    } else if (!x) return;
+    else if (acc === 'pv-est') {
+      var nuevo = x.estado === 'Entregado' ? 'Pendiente' : 'Entregado';
+      if (!(await ask('«' + x.documento + '» de ' + PV.e.nombre + ' pasa a ' + nuevo + '.', 'Alta de proveedor', { ok: 'Cambiar' }))) return;
+      r = await db().from('proveedor_docs').update({ estado: nuevo }).eq('id', x.id);
+    } else if (acc === 'pv-link') {
+      var l = await pedir('Link del archivo «' + x.documento + '» (en la carpeta de alta de proveedor del cliente).', x.link || '', 'Archivo');
+      if (l === null) return;
+      r = await db().from('proveedor_docs').update({ link: String(l).trim() || null }).eq('id', x.id);
+    } else if (acc === 'pv-vence') {
+      var f = await pedir('Vencimiento de «' + x.documento + '» (dd/mm/aaaa; vacío = no vence).', x.vence ? ff(x.vence) : '', 'Vencimiento');
+      if (f === null) return;
+      var iso = String(f).trim() ? _uiDmyAIso(f) : null;
+      if (String(f).trim() && !iso) return toast('Fecha inválida: usá dd/mm/aaaa', 'err');
+      r = await db().from('proveedor_docs').update({ vence: iso }).eq('id', x.id);
+    } else if (acc === 'pv-borrar') {
+      if (!(await ask('Se quita «' + x.documento + '» de la documentación de ' + PV.e.nombre + '. El archivo en Drive no se toca.', 'Quitar documento', { ok: 'Quitar', peligro: true }))) return;
+      r = await db().from('proveedor_docs').delete().eq('id', x.id);
+    }
+    if (r && r.error) return toast(r.error.message, 'err');
+    toast('Guardado', 'ok'); pvPintar();
+  }
 
   // ── un contacto suelto ───────────────────────────────────────
   window.abrirContacto = async function (c, opts) {
