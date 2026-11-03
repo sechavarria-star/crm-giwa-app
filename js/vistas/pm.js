@@ -811,7 +811,7 @@
       if (!r.error && r.data && r.data.ok && Number(r.data.horas) > 0) {
         var t = document.getElementById('nv-tipo');
         NV.std = { horas: Number(r.data.horas), tipo: t.options[t.selectedIndex].text,
-                   base: (r.data.detalle || []).map(function (m) { return String(m.nombre || '').toLowerCase(); }) };
+                   base: (r.data.detalle || []).map(function (m) { var x = String(m.nombre || ''); return x.charAt(0).toLowerCase() + x.slice(1); }) };
       }
     }
     nvEq();
