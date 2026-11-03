@@ -209,6 +209,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-ib.ui-wa { color: var(--whatsapp); }
 .ui-ib.ui-azul { color: var(--principal); }
 .ui-lnk { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-s); letter-spacing: var(--espaciado); text-transform: uppercase; text-decoration: none; cursor: pointer; }
+button.ui-lnk { background: none; border: 0; padding: 0; font-family: var(--f-texto); }   /* «Ver proyecto», «Ver todos»: link, no botón */
 .ui-lnk .ui-ico { width: var(--ico-s); height: var(--ico-s); }
 .ui-lnk.ui-azul { color: var(--principal); }
 .ui-lnk.ui-gris { color: var(--texto2); }
