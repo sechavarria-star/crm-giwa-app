@@ -207,7 +207,7 @@
     if (integ) {
       var sinApi = hijas(v, integ).filter(function (x) { return /api/i.test(x.pregunta + ' ' + x.nombre); })[0];
       h += '<div class="ui-linea-sub"><span>Sistema de la empresa: <b>' + esc(v.notas[integ] || 'falta el nombre (anotalo en la nota)') + '</b> · ' +
-        (sinApi ? (si(v, sinApi.id) ? 'no tiene API' : v.r[sinApi.id] === 'Pendiente' ? 'API por definir' : 'tiene API') : '') + '</span></div>';
+        (sinApi ? (si(v, sinApi.id) ? 'no tiene API' : v.r[sinApi.id] === 'No' ? 'tiene API' : '<span class="ui-p-pendiente">falta confirmar si tiene API</span>') : '') + '</span></div>';
     }
     var wa = (R.wa || []).filter(function (id) { return si(v, id); })[0];
     if (wa) {
