@@ -29,7 +29,9 @@ var MODULOS = [
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
     subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
-    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] }
+    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] },
+  // Administración de datos (03/11/2026): el menú sólo se lo muestra a Victoria; el permiso real lo da la base (crm_giwa.es_duena)
+  { id: 'datos',    nombre: 'Datos',          ico: 'lista',    listo: true, solo: 'v.gagey@giwa-ia.com' }
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
 var _recargarVista = null;
@@ -55,7 +57,8 @@ function marcarSub(sub) {
 // ── la barra y el menú lateral ──────────────────────────────────
 function pintarBarra() {
   var act = _moduloActual(), sub = _ruta().sub;
-  document.getElementById('nav-mods').innerHTML = MODULOS.map(function(m) {
+  var yo = String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase();
+  document.getElementById('nav-mods').innerHTML = MODULOS.filter(function(m) { return !m.solo || m.solo === yo; }).map(function(m) {
     var on = m.id === act.id, subs = m.subs || [];
     var h = '<div class="lat-grupo"><a class="lat-mod ui-mi' + (on ? ' on' : '') + '" href="#/' + m.id + '"' + (on ? ' aria-current="page"' : '') + '>' +
       ico(m.ico, 'ui-ico') + '<span class="lat-txt">' + m.nombre + '</span>' +
