@@ -119,7 +119,7 @@
       var pr = await db().from('proyectos').select('empresa_id').eq('id', d.proyecto_id).maybeSingle();
       F.d = d; F.emp = (pr.data && pr.data.empresa_id) || '';
       F.bloq = /finaliz|cerrad|cancel|rechaz/i.test(String(d.estado_id || '').normalize('NFD').replace(/[̀-ͯ]/g, ''));
-      // Aprobado, en curso o en garantía: lo vendido no se toca; sólo el ajuste IPC (29/10/2026)
+      // Aprobado, en curso o en garantía: lo vendido no se toca, ni el ajuste IPC (02/11/2026; la base lo frena igual)
       F.vivo = !F.bloq && ['aprobada', 'curso', 'garantia'].indexOf(_canonSol(d.estado_id || '')) >= 0;
       $('fd-tit').textContent = 'Desarrollo · ' + d.id;
       $('fd-tipo').innerHTML = r[1].data.map(function (t) { return '<option value="' + esc(t.id) + '"' + (t.id === d.tipo_id ? ' selected' : '') + '>' + esc(t.nombre) + '</option>'; }).join('');
@@ -133,10 +133,10 @@
       await cargarCatalogo(d.tipo_id, r[3].data.map(function (x) { return x.modulo_id; }).filter(Boolean));
       // Lo cerrado se mira, no se edita
       $('fd-bloq').hidden = !F.bloq && !F.vivo;
-      if (F.bloq) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + '. Se mira, no se edita. Si hay trabajo nuevo, va como módulo evolutivo aparte.';
-      else if (F.vivo) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + ': lo vendido no se edita. Sólo se cambia el ajuste IPC.';
-      $('m-fdes').querySelectorAll('.mb2 input, .mb2 select, .mb2 textarea').forEach(function (x) { x.disabled = F.bloq || (F.vivo && x.id !== 'fd-ajuste'); });
-      $('fd-ok').hidden = F.bloq;
+      if (F.bloq) $('fd-bloq').textContent = 'Este desarrollo está ' + uiNombreEst(d.estado_id) + '. Se mira, no se edita. Si hay trabajo nuevo, va como mejora aparte.';
+      else if (F.vivo) $('fd-bloq').textContent = 'Este desarrollo está ' + d.estado_id + ': lo contratado no se edita. Si hay trabajo nuevo, va como mejora o soporte del proyecto.';
+      $('m-fdes').querySelectorAll('.mb2 input, .mb2 select, .mb2 textarea, .mb2 button').forEach(function (x) { x.disabled = F.bloq || F.vivo; });
+      $('fd-ok').hidden = F.bloq || F.vivo;
       $('fd-sug').innerHTML = '';
       openM('m-fdes');
       sugerir();
@@ -144,14 +144,12 @@
   };
 
   async function guardar() {
-    var d = F.d; if (!d || F.bloq) return;
+    var d = F.d; if (!d || F.bloq || F.vivo) return;
     if (!v('fd-titulo')) return toast('Poné un título', 'err');
     var p = { id: d.id, titulo: v('fd-titulo'), descripcion: v('fd-desc'), tipo: v('fd-tipo'), moneda: v('fd-moneda'),
       total_ars: n('fd-total-ars'), total_usd: n('fd-total-usd'), tc: n('fd-tc'), cuotas: n('fd-cuotas'), modelo: v('fd-modelo'),
       inflacion: v('fd-ajuste'), cuota_act: n('fd-cuota'), mant_horas: n('fd-mant-hs'), garantia_dias: n('fd-garantia'),
       soporte_ars: n('fd-sop-ars'), soporte_usd: n('fd-sop-usd') };
-    // Ya aprobado: sólo viaja el ajuste IPC; el resto quedó bloqueado en pantalla (29/10/2026)
-    if (F.vivo) { p = { id: d.id, inflacion: v('fd-ajuste') }; F.modsTocados = false; }
     var b = $('fd-ok'); b.disabled = true;
     try {
       var r = await db().rpc('guardar_desarrollo', { p: p }); if (r.error) throw new Error(r.error.message);

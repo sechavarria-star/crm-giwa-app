@@ -22,14 +22,14 @@ var _UI_EST = {
   curso:       ['En curso', 'e_play', 'En ejecución: se factura'],
   garantia:    ['En garantía', 'e_trebol', 'Entregado: en período de garantía'],
   finalizado:  ['Finalizado', 'e_cuadrado', 'Terminado y cerrado'],
-  rechazado:   ['Rechazado', 'e_cruz', 'El cliente no lo aceptó'],
+  rechazado:   ['No aceptado', 'e_cruz', 'El cliente no lo aceptó'],
   detenido:    ['Detenido', 'e_pausa', 'Frenado: hay que revisar qué pasa']
 };
 // Texto del estado (de proyecto o de desarrollo) → clave de color. Detenido es una marca aparte y manda.
 function uiClaveEst(texto, detenido) {
   if (detenido) return 'detenido';
   var x = String(texto || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (/rechaz|cancel|perdid/.test(x)) return 'rechazado';
+  if (/rechaz|no acept|cancel|perdid/.test(x)) return 'rechazado';
   if (/finaliz/.test(x)) return 'finalizado';
   if (/garant/.test(x)) return 'garantia';
   if (/curso|ejecu|activo|desarroll|implementac/.test(x)) return 'curso';
@@ -37,11 +37,13 @@ function uiClaveEst(texto, detenido) {
   if (/negoc|revis/.test(x)) return 'negociacion';
   return 'prospecto';
 }
+// Nombre que se MUESTRA: «Rechazado» de la base se ve como «No aceptado» (02/11/2026; el código interno no cambia)
+function uiNombreEst(texto) { return /rechaz/i.test(String(texto || '')) ? 'No aceptado' : String(texto || ''); }
 // uiEstado('En curso') · uiEstado('Aprobado', { detenido: true }) · uiEstado(x, { nombre: 'Activo' })
 function uiEstado(texto, op) {
   op = op || {};
   var k = uiClaveEst(texto, op.detenido), d = _UI_EST[k];
-  var nombre = op.nombre || (op.detenido ? d[0] : (texto || d[0]));   // nombre: p. ej. «Pausado» en un desarrollo
+  var nombre = op.nombre || (op.detenido ? d[0] : uiNombreEst(texto || d[0]));   // nombre: p. ej. «Pausado» en un desarrollo
   return '<span class="ui-st ui-e-' + k + '" data-tip="' + esc(d[2]) + '">' + uiIco(d[1]) + esc(nombre) + '</span>';
 }
 
@@ -262,7 +264,7 @@ function _uiFecha(inp) {
     }
   });
   var nat = document.createElement('input'); nat.type = 'date'; nat.className = 'ui-fecha-nat'; nat.tabIndex = -1; nat.setAttribute('aria-hidden', 'true'); if (min) nat.min = min;
-  var b = document.createElement('button'); b.type = 'button'; b.className = 'ui-ib'; b.title = 'Elegir en el calendario'; b.setAttribute('aria-label', 'Elegir en el calendario'); b.innerHTML = uiIco('calendario');
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'ui-ib'; b.setAttribute('data-tip', 'Elegir en el calendario'); b.setAttribute('aria-label', 'Elegir en el calendario'); b.innerHTML = uiIco('calendario');
   var w = document.createElement('span'); w.className = 'ui-fecha';
   inp.parentNode.insertBefore(w, inp); w.appendChild(inp); w.appendChild(nat); w.appendChild(b);
   b.onclick = function () { _UI_VAL.set.call(nat, inp.value || ''); try { nat.showPicker(); } catch (e) { nat.focus(); } };

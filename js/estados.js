@@ -91,7 +91,7 @@ function estadosProyEditables() {
 function _canonProy(estado) {
   var e = _normEst(estado);
   if (!e) return 'prospecto';
-  if (e.indexOf('rechaz') >= 0 || e.indexOf('perdid') >= 0 || e.indexOf('cancel') >= 0) return 'rechazado';
+  if (e.indexOf('rechaz') >= 0 || e.indexOf('no acept') >= 0 || e.indexOf('perdid') >= 0 || e.indexOf('cancel') >= 0) return 'rechazado';
   if (e.indexOf('finaliz') >= 0) return 'finalizado';
   if (e.indexOf('activo') >= 0 || e.indexOf('ejecu') >= 0 || e.indexOf('curso') >= 0) return 'activo';
   if (e.indexOf('aprob') >= 0 || e.indexOf('vendid') >= 0 || e.indexOf('ganad') >= 0) return 'aprobado';
@@ -102,6 +102,7 @@ var _NOMBRE_PROY_FB = { rechazado:'Rechazado', finalizado:'Finalizado', activo:'
                         aprobado:'Aprobado', negociacion:'Negociación', prospecto:'Prospecto' };
 // El nombre con el que se MUESTRA. Acá se traduce Vendido → Aprobado.
 function nombreProy(canon) {
+  if (canon === 'rechazado') return 'No aceptado';   // se muestra así; en la base sigue «Rechazado» (02/11/2026)
   var r = _ESTX.proy[canon];
   return (r && r.estado) || _NOMBRE_PROY_FB[canon] || 'Prospecto';
 }

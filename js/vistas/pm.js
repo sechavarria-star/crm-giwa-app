@@ -32,7 +32,7 @@
             seg: { fil: [], q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
             f: null, fLista: [], fTab: 'desarrollos', fAb: {}, prev: 'proy' };
   var CARRUSEL = 3;   // más de esto por cliente → carrusel
-  var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento'], ['nuevo', 'Nuevo proyecto']];   // entra directo a Proyectos (02/11/2026)   // Tareas vive en Hoy (29/10/2026)
+  var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento']];   // pestañas; entra directo a Proyectos. Nuevo proyecto rápido es un modal (02/11/2026)
 
   async function cargar() {
     var r = await Promise.all([
@@ -98,6 +98,10 @@
     if (!e.logo) return ini;
     return '<img class="' + cls + '" src="' + esc(e.logo) + '" referrerpolicy="no-referrer" alt="" onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' + esc(ini) + '">';
   }
+  // Cuotas del abono: un solo dato, las cobradas sobre el total (cuotas_facturadas de la vista)
+  function cuotasTxt(it) { var d = Number(it.duracion) || 0; return d ? '<span>Cuota <span class="ui-num">' + (Number(it.cuotas_facturadas) || 0) + '</span> de <span class="ui-num">' + d + '</span> cobradas</span>' : ''; }
+  // De qué desarrollos puede colgar una mejora o un soporte: vendidos y que no dependen de otro
+  function basesAlta(p) { return _canonProy(p.estado_proyecto) === 'rechazado' ? [] : (p.items || []).filter(function (it) { return !depende(it) && esGanado(it.estado); }); }
   function depende(it) { return !!it.bloque || (it.mant_de_ids || []).length > 0; }
   function vivosDe(p) { return (p.items || []).filter(function (it) { var c = _canonSol(it.estado); return !it.detenido && (c === 'curso' || c === 'garantia'); }); }
   // Por qué está en ese estado: sólo con datos que existen
@@ -125,7 +129,7 @@
   // ══ ACCIONES (5c) · las tablas de Estados.gs, en espejo ══════
   // El backend (crm_giwa.accion_desarrollo…) valida siempre; esto sólo decide
   // qué botón mostrar. Si cambia una, cambia la otra.
-  var RECH = ['rechazar', 'Rechazar', 'cerrar', 'Dijeron que no. Se puede recotizar'];
+  var RECH = ['rechazar', 'No aceptar', 'cerrar', 'El cliente no lo aceptó. Se puede recotizar'];
   var ACC_DES = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó el trabajo'], RECH],
                   curso: [['entregar', 'Deployar', 'subir', 'Sale a producción y empieza a correr la garantía']],
                   garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplió la garantía. Acá arranca el mantenimiento']] };
@@ -142,7 +146,7 @@
     if (p.detenido) return [];
     switch (_canonProy(p.estado_proyecto)) {
       case 'prospecto': return [['negociacion', 'Enviar propuesta', 'mail']];
-      case 'negociacion': return [['aprobado', 'Aprobar', 'check'], ['rechazado', 'Rechazar', 'cerrar']];
+      case 'negociacion': return [['aprobado', 'Aprobar', 'check'], ['rechazado', 'No aceptar', 'cerrar']];
       case 'activo': return [['finalizado', 'Finalizar', 'check']];
     }
     return [];
@@ -203,28 +207,29 @@
     o.open = !!P.seg.abierto[key]; o.attrs = 'data-segdesp="' + esc(key) + '"';
     return uiDesp(o, cuerpo);
   }
-  // Tarjeta de Seguimiento (C5 · plan por vista): título y responsable; arriba a la derecha el estado (C6)
-  // con Detener y Finalizar como íconos; «Proyecto» secundario y el pulgar de «Ya lo revisé»; motivo en gris.
+  // Tarjeta de Seguimiento (02/11/2026): barra de color del estado a la izquierda; arriba título y responsable,
+  // con «Ver proyecto» y Contactos chicos a la derecha; debajo el estado (lo principal) y, en un segundo nivel,
+  // sus acciones (Enviar / Aprobar / No aceptar como botones; Detener y Finalizar como íconos); «Ya lo revisé» al pie.
   function segCard(p) {
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
     var rev = P.seg.rev.indexOf(p.id) >= 0, pid = esc(p.id), acc = p.detenido ? [] : accionesProy(p);
     var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; });
-    var h = '<div class="ui-tarjeta' + (p.detenido || rev ? ' ui-apagada' : '') + '">';
+    var h = '<div class="ui-tarjeta' + (p.detenido || rev ? ' ui-apagada' : '') + '"><span class="ui-tarjeta-barra ui-e-' + uiClaveEst(e, p.detenido) + '"></span>';
     var iconos = (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
+        (p.detenido ? uiIb('play', 'Reanudar el proyecto', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
     h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div>' +
       (p.owner ? '<div class="ui-sub-t">' + esc(nombre(p.owner)) + '</div>' : '') + '</div>' +
-      '<div class="ui-tarjeta-der">' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + (iconos ? '<div class="ui-fila-ic ui-tarjeta-der">' + iconos + '</div>' : '') + '</div></div>';
+      '<div class="ui-fila-ic"><button type="button" class="ui-lnk ui-azul" data-pm="ficha" data-id="' + pid + '">Ver proyecto</button>' +
+        uiIb('contacto', 'Contactos de ' + (p.empresa || 'la empresa'), '', 'data-pm="contactos" data-id="' + pid + '"') + '</div></div>';
+    // Las acciones del estado (enviar, aprobar, no aceptar), con su confirmación
+    var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
+    var botones = acc.filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
+      var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('');
+    h += '<div class="ui-tarjeta-est">' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</div>';
+    if (botones || iconos) h += '<div class="ui-barra">' + botones + (iconos ? '<span class="ui-fila-ic">' + iconos + '</span>' : '') + '</div>';
     var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
     var pq = porQue(p, can); if (pq) h += uiMotivo(pq);
-    // Las otras acciones del estado (enviar, aprobar, rechazar) siguen como botones, con su confirmación
-    var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
-    h += '<div class="ui-barra">' + uiBtn('Proyecto', 'ficha', 's', 'data-pm="ficha" data-id="' + pid + '"') +
-      acc.filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
-        var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"');
-      }).join('') +
-      uiIb('revisado', rev ? 'Volver a su lugar' : 'Ya lo revisé', '', 'data-pm="rev" data-id="' + pid + '"').replace('class="ui-ib', 'class="ui-ib' + (rev ? ' on' : '')) + '</div>';
     var kv = function (l, v, cls) { return '<div class="ui-kv">' + l + '<span class="ui-num"><span class="' + (cls || '') + '">' + v + '</span></span></div>'; };
     if (can === 'prospecto' || can === 'negociacion') {
       var cot = Number(p.monto_cotizado) || 0, env = _pd(p.fecha_envio) || (can === 'negociacion' ? _pd(p.fecha_propuesta) : null);
@@ -244,35 +249,14 @@
             var tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
             if (tot > 0) m = '<span>Contratado <span class="ui-num ui-p-contratado">' + fmt(tot) + '</span></span><span>Cobrado <span class="ui-num ui-p-cobrado">' + fmt(cob) + '</span> (<span class="ui-num">' + Math.round(cob / tot * 100) + ' %</span>)</span>';
           } else {
-            var cu = Number(it.cuota_act) || Number(it.valor_cuota) || 0, d = Number(it.duracion) || 12, cf = Number(it.cuotas_facturadas) || 0;
-            if (cu > 0) m = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cu) + '/mes</span></span><span>Cuotas restantes <span class="ui-num">' + Math.max(0, d - cf) + ' de ' + d + '</span></span>';
+            var cu = Number(it.cuota_act) || Number(it.valor_cuota) || 0;
+            if (cu > 0) m = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cu) + '/mes</span></span>' + cuotasTxt(it);
           }
         }
         if (m) h += '<div class="ui-linea-sub">' + m + '</div>';
       });
     }
-    // Módulos por etapa, sólo con el proyecto Activo
-    var vivos = {}; its.forEach(function (it) { vivos[it.id] = 1; });
-    var mods = (p.modulos || []).filter(function (m) { return !m.item_id || vivos[m.item_id]; });
-    var sec = '';
-    if (can === 'activo' && mods.length) {
-      var cerr = function (m) { return /finaliz|cerr|complet|hech/i.test(m.estado || ''); };
-      var grp = {}, og = [], itemsM = {};
-      mods.forEach(function (m) { var k = (m.item_id || '') + '|' + (m.etapa || 'Sin etapa'); if (!grp[k]) { grp[k] = []; og.push(k); } grp[k].push(m); itemsM[m.item_id || ''] = 1; });
-      var multi = Object.keys(itemsM).length > 1, listas = og.filter(function (k) { return grp[k].every(cerr); });
-      var mh = og.map(function (k) {
-        var ms = grp[k], hecha = ms.every(cerr), hs = ms.reduce(function (a, m) { return a + (Number(m.est) || 0); }, 0);
-        var it = its.find(function (x) { return x.id === ms[0].item_id; });
-        var acts = ms.map(function (a) {
-          return '<div class="ui-linea"><span class="ui-f1' + (cerr(a) ? ' ui-nota-t' : '') + '">' + (cerr(a) ? uiIco('e_check') + ' ' : '') + esc(a.nombre) + '</span>' +
-            (a.est ? '<span class="ui-num ui-nota-t">' + a.est + ' h</span>' : '') + '</div>';
-        }).join('');
-        return desp(p, 'mod:' + k, { n2: true, th: (multi && it ? esc(it.titulo || '') + ' · ' : '') + esc(ms[0].etapa || 'Sin etapa'),
-          n: ms.filter(cerr).length + '/' + ms.length + (hs ? ' · ' + Math.round(hs * 10) / 10 + ' h' : ''),
-          v: hecha ? uiEstado('Finalizado', { nombre: 'Cerrada' }) : uiIb('check', 'Cerrar la etapa', 'fin', 'data-pm="cerrar-mod" data-id="' + esc(ms[0].id) + '"') }, acts);
-      }).join('');
-      sec += desp(p, 'mod', { th: 'Módulos', n: listas.length + '/' + og.length }, mh);
-    }
+    var sec = '';   // sin «Módulos» en la tarjeta (02/11/2026): se ven en el desarrollo, dentro del proyecto
     // Tareas abiertas: primero qué hay que hacer, después lo que comentó la gente.
     // Los comentarios automáticos (delegada, procesada, IPC…) van aparte, en «Historial».
     // Tareas con la forma de HOY (js/tareas.js). Los comentarios automáticos van aparte, en «Historial».
@@ -289,6 +273,7 @@
     if (auto.length) sec += desp(p, 'hist', { th: 'Historial', n: auto.length }, auto.map(comLinea).join(''));
     h += '<div class="ui-rapido">' + sec + '</div>';
     h += '<input class="ui-campo ui-rapido" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">';
+    h += '<div class="ui-tarjeta-pie">' + uiIb('revisado', rev ? 'Volver a su lugar' : 'Ya lo revisé', '', 'data-pm="rev" data-id="' + pid + '"').replace('class="ui-ib', 'class="ui-ib' + (rev ? ' on' : '')) + '</div>';
     return h + '</div>';
   }
   function htmlSeg() {
@@ -336,7 +321,7 @@
       uiKpi('Detenidos', String(detenidos.length), detenidos.length ? 'e-detenido' : '', 'para recotizar') +
       uiKpi('Contratado', fmt(contratado), 'p-contratado', finaliz.length + ' finalizado' + (finaliz.length === 1 ? '' : 's')) +
       uiKpi('Abono mensual', fmt(abono), 'p-abono', 'no suma al contratado') +
-      uiKpiDoble('Proyectado', [['Desarrollos', fmt(pDev), 'p-neutro'], ['Mantenimiento', fmt(pMant) + '/mes', 'p-abono']], pipe.length + ' en prospecto o negociación') +
+      uiKpiDoble('Proyectado', [['Desarrollos', fmt(pDev), 'p-neutro'], ['Mantenimiento', fmt(pMant) + '/mes', 'p-abono']], '', pipe.length + ' proyecto' + (pipe.length === 1 ? '' : 's') + ' en Prospecto o Negociación') +
     '</div>';
   }
   // C4 · fila de proyecto: logo, empresa y proyecto; a la derecha el total de desarrollos y el estado. La ficha (C5) se abre debajo.
@@ -349,7 +334,7 @@
   }
   // Proyectos = el universo completo (29/10/2026): los mismos chips de Seguimiento más Finalizado
   // y Rechazado; lista plana por título (sin agrupar por cliente); al desplegar, la ficha completa.
-  var PR_FIL = SEG_FIL.slice(0, 4).concat([['finalizado', 'Finalizado', 'xg', 'c']], SEG_FIL.slice(4), [['rechazado', 'Rechazado', 'xz', 'x']]);
+  var PR_FIL = SEG_FIL.slice(0, 4).concat([['finalizado', 'Finalizado', 'xg', 'c']], SEG_FIL.slice(4), [['rechazado', 'No aceptado', 'xz', 'x']]);
   function usuarios() { return Object.keys(P.users).map(function (m) { return { mail: m, name: P.users[m] }; }); }
   function proyPasa(p, fil) {
     var c = _canonProy(p.estado_proyecto);
@@ -391,7 +376,7 @@
       db().from('contactos').select('*').eq('empresa_id', p.empresa_id || '-').order('nombre'),
       db().from('proyecto_horas').select('desarrollo_id,modulo_nombre,etapa,horas_est,horas_reales').eq('proyecto_id', id),
       db().from('v_analisis_clientes').select('*').eq('empresa', p.empresa_id || '-'),
-      db().from('cobros').select('desarrollo_id,tipo_comprobante,comprobante_nro,comprobante_fecha,deposito_fecha,monto_ars').eq('proyecto_id', id).order('comprobante_fecha')
+      db().from('cobros').select('desarrollo_id,tipo_comprobante,comprobante_nro,comprobante_fecha,deposito_fecha,monto_ars,link_fc').eq('proyecto_id', id).order('comprobante_fecha')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     P.f = {
@@ -410,7 +395,7 @@
     if (esProyDetenido(p)) return '· puesto a mano, no lo mandan los desarrollos';
     var vivos = vivosDe(p).map(function (it) {
       var t = it.titulo || it.tipo || it.id;
-      return esMant(it) && it.duracion ? t + ' · cuota ' + (it.cuotas_facturadas || 0) + '/' + it.duracion : t + (_canonSol(it.estado) === 'garantia' ? ' · en garantía' : ' · en curso');
+      return t + (_canonSol(it.estado) === 'garantia' ? ' · en garantía' : ' · en curso');   // las cuotas van en la fila del desarrollo
     });
     var arr = its.filter(function (it) { return !it.detenido && _canonSol(it.estado) === 'aprobada'; }).map(function (it) { return it.titulo || it.id; });
     var sin = its.filter(function (it) { return !it.detenido && _canonSol(it.estado) === 'nueva'; }).map(function (it) { return it.titulo || it.id; });
@@ -456,22 +441,26 @@
   }
   // Cronograma (02/11/2026): línea de tiempo con los hitos del proyecto y la secuencia de cada desarrollo,
   // en orden de fecha; cada hito dice si ya pasó y de qué desarrollo depende.
-  function fechasHTML(p) {
-    var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; }), hoy = mHoy(), ev = [];
-    var tit = function (it) { return it.titulo || it.tipo || it.id; };
+  // soloId (02/11/2026): la secuencia de UN desarrollo (la de su fila), con su arranque estimado si es un abono
+  function fechasHTML(p, soloId) {
+    var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada' && (!soloId || it.id === soloId); }), hoy = mHoy(), ev = [];
+    var tit = function (it) { return soloId ? '' : ' · ' + (it.titulo || it.tipo || it.id); };
+    var nom = function (it) { return it.titulo || it.tipo || it.id; };
     var padre = function (it) {
       var ids = (it.mant_de_ids || []).slice(); if (it.bloque) ids.push('D-' + String(it.bloque).padStart(4, '0'));
-      return ids.map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? tit(d) : ''; }).filter(Boolean).join(', ');
+      return ids.map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? nom(d) : ''; }).filter(Boolean).join(', ');
     };
     var aprob = null; its.forEach(function (it) { var f = _pd(it.fecha_aprob); if (f && (!aprob || f > aprob)) aprob = f; });
     if (aprob) ev.push({ f: aprob, t: 'Aprobado', n: 'el cliente dijo que sí', c: 'aprobado' });
     its.forEach(function (it) {
       var dep = padre(it), ini = _pd(it.fecha_est), fin = _pd(it.fecha_fin || it.fecha_cierre), can = _canonSol(it.estado);
-      if (ini) ev.push({ f: ini, t: 'Inicio · ' + tit(it), n: dep ? 'depende de ' + dep : '', c: 'curso' });
-      if (fin) ev.push({ f: fin, t: (esMant(it) ? 'Fin del abono · ' : 'Fin de obra · ') + tit(it), n: can === 'finalizada' ? 'finalizado' : '', c: 'finalizado' });
+      var arr = !ini && esMant(it) ? mantArranca(p, it) : null;   // abono sin inicio: arranca al terminar la garantía de lo que cubre
+      if (ini) ev.push({ f: ini, t: 'Inicio' + tit(it), n: dep ? 'depende de ' + dep : '', c: 'curso' });
+      if (arr) ev.push({ f: arr, t: 'Arranca (estimado)' + tit(it), n: 'fin de obra + garantía de ' + (dep || 'lo que cubre'), c: 'curso' });
+      if (fin) ev.push({ f: fin, t: (esMant(it) ? 'Fin del abono' : 'Fin de obra') + tit(it), n: can === 'finalizada' ? 'finalizado' : '', c: 'finalizado' });
       var gd = Number(it.garantia_dias) || 0;
-      if (fin && gd && !esMant(it)) ev.push({ f: mCorrerDias(fin, gd), t: 'Fin de garantía · ' + tit(it), n: gd + ' días', c: 'garantia' });
-      if (!ini && !fin && can !== 'finalizada') ev.push({ f: null, t: tit(it), n: 'sin fechas cargadas' + (dep ? ' · depende de ' + dep : ''), c: 'prospecto' });
+      if (fin && gd && !esMant(it)) ev.push({ f: mCorrerDias(fin, gd), t: 'Fin de garantía' + tit(it), n: gd + ' días', c: 'garantia' });
+      if (!ini && !arr && !fin && can !== 'finalizada') ev.push({ f: null, t: soloId ? 'Sin fechas cargadas' : nom(it), n: (soloId ? '' : 'sin fechas cargadas') + (dep ? (soloId ? '' : ' · ') + 'depende de ' + dep : ''), c: 'prospecto' });
     });
     if (!ev.length) return '<div class="ui-nota-t">Sin fechas cargadas.</div>';
     ev.sort(function (a, b) { return (a.f ? a.f.getTime() : 9e15) - (b.f ? b.f.getTime() : 9e15); });
@@ -489,7 +478,6 @@
       ? uiBtn('Editar proyecto', 'editar', 'p', 'data-pm="editar-proy"')
       : '<span class="ui-nota-t" title="El proyecto ya arrancó: los datos se cargaron al cotizar. Acá sólo se suman contactos.">Sólo lectura</span>';
     var dato = function (l, v) { return '<div><span class="ui-lbl">' + l + '</span>' + v + '</div>'; };
-    var drv = p.carpeta || (P.emps[p.empresa] || {}).drive_interno || '';
     var h = uiDesp({ t: 'Datos del proyecto', open: true, v: editar },
       dato('Descripción', esc(p.descripcion || '—')) + '<br><div class="ui-datos">' +
       [['Sponsor', esc(p.sponsor || '—')], ['Owner', esc(nombre(p.owner) || '—')], ['Probabilidad', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>'],
@@ -497,8 +485,7 @@
        ['Inicio', '<span class="ui-num">' + (ff(mInicio(p)) || '—') + '</span>'], ['Cierre estimado', cie.fecha ? '<span class="ui-num">' + ff(cie.fecha) + '</span>' + (cie.firme ? '' : ' (parcial)') : '—']].map(function (x) {
         return dato(x[0], x[1]);
       }).join('') + '</div>' +
-      (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') : '') +
-      (drv ? '<a class="ui-lnk ui-azul" href="' + esc(drv) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + 'Drive interno</a>' : '<span class="ui-nota-t">Sin carpeta de Drive cargada.</span>'));
+      (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') : ''));
     // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
     h += uiDesp({ t: 'Contactos · ' + (p.empresa || ''), n: F.cons.length,
@@ -562,8 +549,12 @@
     var ord = { curso: 0, garantia: 1, aprobada: 2, nueva: 3, finalizada: 4, rechazada: 5 };
     var k = function (it) { return it.detenido ? 3.5 : (ord[_canonSol(it.estado)] === undefined ? 3 : ord[_canonSol(it.estado)]); };
     var lista = (p.items || []).slice().sort(function (a, b) { return k(a) - k(b); });
-    if (!lista.length) return '<div class="ui-nota-t">Sin desarrollos.</div>';
-    return lista.map(function (it) {
+    // Nueva mejora / Nuevo soporte: acciones del PROYECTO (el modal pregunta de qué desarrollo depende)
+    var bases = basesAlta(p);
+    var alta = bases.length ? '<div class="ui-barra">' + uiBtn('Nueva mejora', 'mas', 's', 'data-pm="alta-des" data-clase="mejora" data-id="' + esc(p.id) + '"') +
+      uiBtn('Nuevo soporte', 'mas', 's', 'data-pm="alta-des" data-clase="soporte" data-id="' + esc(p.id) + '"') + '</div>' : '';
+    if (!lista.length) return alta + '<div class="ui-nota-t">Sin desarrollos.</div>';
+    return alta + lista.map(function (it) {
       var rec = esMant(it), det = !!it.detenido || !!p.detenido, can = _canonSol(it.estado);
       var cuota = Number(it.cuota_act) || Number(it.valor_cuota) || 0;
       var sub = [it.tipo_nombre || it.tipo, it.modelo_nombre || it.modelo].filter(Boolean).join(' · ');
@@ -572,10 +563,12 @@
       // Pausar: sólo mejoras, soportes y mantenimientos que dependen de otro desarrollo (reanudar, siempre)
       var iconos = (can === 'rechazada' || can === 'finalizada' || p.detenido ? '' :
           (it.detenido ? uiIb('play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : depende(it) ? uiIb('pausa', 'Pausar este desarrollo', 'det', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : '')) +
-        (can === 'finalizada' || can === 'rechazada' || _canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiAcc('editar', 'data-pm="edit-des" data-id="' + esc(it.id) + '"')) +
+        // Editar sólo en Nuevo; aprobado o en marcha se mira (lo contratado no cambia, 02/11/2026)
+        (can === 'nueva' && _canonProy(p.estado_proyecto) !== 'rechazado' ? uiAcc('editar', 'data-pm="edit-des" data-id="' + esc(it.id) + '"')
+          : uiIb('ficha', 'Ver el desarrollo (sólo lectura)', '', 'data-pm="edit-des" data-id="' + esc(it.id) + '"')) +
         (det ? '' : botonesDes(it, false));
       var plata = '', tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
-      if (rec) { if (cuota) plata = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cuota) + '/mes</span></span>' + (it.duracion ? '<span>Cuotas restantes <span class="ui-num">' + Math.max(0, (Number(it.duracion) || 0) - (Number(it.cuotas_facturadas) || 0)) + ' de ' + it.duracion + '</span></span>' : ''); }
+      if (rec) { if (cuota) plata = '<span>Abono <span class="ui-num ui-p-abono">' + fmt(cuota) + '/mes</span></span>' + cuotasTxt(it); }
       else if (esGanado(it.estado) && tot > 0) plata = '<span>Contratado <span class="ui-num ui-p-contratado">' + fmt(tot) + '</span></span><span>Cobrado <span class="ui-num ui-p-cobrado">' + fmt(cob) + '</span> (<span class="ui-num">' + Math.round(cob / tot * 100) + ' %</span>)</span>';
       else if (tot > 0) plata = '<span>Cotizado <span class="ui-num ui-p-neutro">' + fmt(tot) + '</span></span>';
       var h = '<div class="ui-dev' + (abierto ? ' open' : '') + '" data-des="' + esc(it.id) + '">' +
@@ -583,15 +576,10 @@
         '<div><div class="ui-dev-n">' + esc(it.titulo || it.descripcion || '—') + '</div><div class="ui-sub-t">' + esc(sub) + '</div>' + (plata ? '<div class="ui-dev-plata">' + plata + '</div>' : '') + '</div>' +
         '<div class="ui-dev-der"><span>' + uiEstado(it.estado || '—') + (det ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</span>' +
         (iconos ? '<span class="ui-fila-ic">' + iconos + '</span>' : '') + '</div></div><div class="ui-devc">';
-      // Nueva mejora / Nuevo soporte: colgando de un desarrollo vendido que no depende de otro
-      if (!depende(it) && esGanado(it.estado) && _canonProy(p.estado_proyecto) !== 'rechazado')
-        h += '<div class="ui-barra">' + uiBtn('Mejora', 'mas', 's', 'data-pm="alta-des" data-clase="mejora" data-id="' + esc(it.id) + '"') +
-          uiBtn('Soporte', 'mas', 's', 'data-pm="alta-des" data-clase="soporte" data-id="' + esc(it.id) + '"') + '</div>';
       // Contratado, cobrado y pendiente van sólo en el lateral: acá no se repiten (29/10/2026)
       var l1 = [];
       if (rec) {
-        if (cuota) l1.push('Cuota <span class="ui-num ui-p-abono">' + fmt(cuota) + '/mes</span>');
-        if (it.duracion) l1.push('<span class="ui-num">' + (it.cuotas_facturadas || 0) + '</span> de <span class="ui-num">' + it.duracion + '</span> cuotas');
+        // abono y cuotas ya están en la fila (plata): no se repiten acá (02/11/2026)
       } else if (it.cuotas > 1) l1.push('<span class="ui-num">' + it.cuotas + '</span> cuotas');
       if (it.horas) l1.push('Vendidas <span class="ui-num">' + it.horas + ' h</span>');
       if (it.socios) l1.push(esc(crmLista(it.socios).map(nombre).join(', ')));
@@ -599,7 +587,7 @@
       h += l1.length ? '<div class="ui-linea-sub">' + l1.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>' : '';
       var corre = function (a, d, txt, tit) { return uiBtn(txt, 'mas', 's', 'data-pm="' + a + '" data-id="' + esc(it.id) + '" data-d="' + d + '" title="' + tit + '"'); };
       h += '<div class="ui-linea-sub">';
-      if (rec) { var arr = mantArranca(p, it); h += arr ? '<span>Arranca <span class="ui-num">' + ff(arr) + '</span> — fin de obra + garantía</span>' : '<span class="ui-p-pendiente">No se sabe cuándo arranca: falta vincularlo a un desarrollo o cargarle la fecha de fin</span>'; }
+      if (rec) { if (!it.fecha_est && !mantArranca(p, it)) h += '<span class="ui-p-pendiente">No se sabe cuándo arranca: falta vincularlo a un desarrollo o cargarle la fecha de fin</span>'; }
       else if (can === 'garantia') {
         // en garantía se corre el FIN: corre la garantía y el arranque del mantenimiento
         h += '<span>Inicio <span class="ui-num">' + (ff(it.fecha_est) || '—') + '</span></span><span>Fin <span class="ui-num">' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</span></span>' +
@@ -614,22 +602,39 @@
       h += '</div>';
       if (it.descripcion) h += '<div class="ui-nota-t">' + esc(it.descripcion) + '</div>';
       if (can === 'finalizada') h += resumenFinalizado(it);   // de qué trató, cuánto duró y cuándo se cobró
+      h += uiDesp({ t: 'Cronograma', n2: true, open: true }, fechasHTML(p, it.id));
       h += uiDesp({ t: 'Módulos de trabajo', n2: true }, modulosDe(it.id));
       return h + '</div>';
     }).join('');
   }
   // Tareas y comentarios con la forma de HOY (js/tareas.js)
   function tabTareas(p) {
-    var F = P.f, h = '<div class="ui-lat-h">Tareas</div>';
+    var F = P.f, pid = esc(p.id);
+    var h = '<div class="ui-barra">' + uiBtn('Nueva tarea', 'tarea', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div><div class="ui-lat-h">Tareas</div>';
     var ab = F.tareas.filter(function (t) { return !t.closed; }).sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
     var tid = {}; F.tareas.forEach(function (t) { tid[t.id] = t; });
     h += ab.length ? TareasUI.html(ab, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>';
     var otros = F.coms.filter(function (c) { return (!c.tarea_id || !tid[c.tarea_id]) && !esAuditoria(c); });
-    var auto = F.coms.filter(esAuditoria);   // delegada, procesada, IPC…: aparte y con menos peso (29/10/2026)
+    var auto = F.coms.filter(function (c) { return esAuditoria(c) && !c.tarea_id; });   // lo de cada tarea va en su historial, adentro de la tarea (02/11/2026)
     h += '<br><div class="ui-lat-h">Otros comentarios</div>' +
       '<input class="ui-campo" data-segnota="' + esc(p.id) + '" placeholder="Comentar el proyecto y Enter…" aria-label="Comentar el proyecto">' +
       (otros.length ? otros.slice(0, 10).map(function (c) { return comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }); }).join('') : '<div class="ui-nota-t ui-rapido">Sin comentarios.</div>');
     if (auto.length) h += '<div class="ui-rapido">' + uiDesp({ t: 'Historial', n: auto.length }, auto.slice(0, 20).map(function (c) { return comLinea({ usuario: c.creador, texto: c.texto, fecha: c.fecha }); }).join('')) + '</div>';
+    return h;
+  }
+  // Documentos y Drive (02/11/2026): la carpeta que ya existe (la del proyecto o, si no, la de la empresa)
+  // y los comprobantes con su archivo. No crea carpetas ni copia archivos.
+  function tabDocs(p) {
+    var drv = p.carpeta || '', emp = (P.emps[p.empresa] || {}).drive_interno || '';
+    var lnk = function (u, t) { return '<a class="ui-lnk ui-azul" href="' + esc(u) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + t + '</a>'; };
+    var h = '<div class="ui-barra">' + (drv ? lnk(drv, 'Carpeta del proyecto') : '') + (emp && emp !== drv ? lnk(emp, 'Drive de ' + esc(p.empresa || 'la empresa')) : '') + '</div>';
+    if (!drv && !emp) h = uiAviso('Este proyecto no tiene carpeta de Drive cargada, ni su empresa.', 'adv');
+    var cs = (P.f.cobros || []).filter(function (c) { return c.link_fc; });
+    h += '<div class="ui-lat-h">Comprobantes</div>' + (cs.length ? cs.map(function (c) {
+      return '<div class="ui-linea"><span class="ui-f1">' + esc([c.tipo_comprobante, c.comprobante_nro].filter(Boolean).join(' ') || 'Comprobante') + '</span>' +
+        '<span class="ui-num ui-nota-t">' + (ff(c.comprobante_fecha) || '') + '</span>' +
+        '<a class="ui-ib" href="' + esc(c.link_fc) + '" target="_blank" rel="noopener" data-tip="Abrir el archivo" aria-label="Abrir el archivo">' + uiIco('abrir') + '</a></div>'; }).join('')
+      : '<div class="ui-nota-t">Sin comprobantes con archivo.</div>');
     return h;
   }
   // Análisis del cliente (getAnalisisCliente): lo que guardó el Cotizador, no se recalcula
@@ -649,25 +654,44 @@
       uiMotivo('Cobrado − referencia ' + fmt(c.dif) + ' · abono ' + fmt(c.mmr) + '/mes · con 12 meses de abono ' + fmt(c.a12) +
         ' · con 24 ' + fmt(c.a24) + (c.dif < 0 ? (c.mmr ? ' · lo que faltó son ' + c.meses + ' mes(es) de abono' : ' · sin abono que lo compense') : ' · cobrado igual o arriba de la referencia'));
   }
-  // Lateral de la ficha: sólo plata, en recuadros C8
+  // Lateral de la ficha: sólo plata, en recuadros C8. Con un desarrollo abierto en la pestaña
+  // Desarrollos, muestra los números de ESE desarrollo (02/11/2026); si no, los del proyecto.
   function lateral(p) {
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
+    var sel = P.fTab === 'desarrollos' && P.fSel && (p.items || []).find(function (x) { return x.id === P.fSel; });
+    if (sel) return '<div id="pm-lat">' + lateralDes(sel, usd) + '</div>';
     var tot = mTotal(p), cob = mCobradoDev(p), sal = mSaldo(p);
     var nDev = (p.items || []).filter(function (x) { return !esMant(x) && esGanado(x.estado); }).length, nDevT = (p.items || []).filter(function (x) { return !esMant(x); }).length;
-    var h = '<div><div class="ui-lat-h">Desarrollos · ' + nDev + (nDevT > nDev ? ' de ' + nDevT : '') + ' contratado' + (nDev === 1 ? '' : 's') + '</div><div class="ui-lat-g">' +
+    var h = '<div id="pm-lat"><div class="ui-lat-h">Desarrollos · ' + nDev + (nDevT > nDev ? ' de ' + nDevT : '') + ' contratado' + (nDev === 1 ? '' : 's') + '</div><div class="ui-lat-g">' +
       uiKpi('Contratado', fmt(tot), 'p-contratado', '', usd(tot)) + uiKpi('Cobrado', fmt(cob), 'p-cobrado', '', usd(cob)) + uiKpi('Pendiente', fmt(sal), 'p-pendiente', '', usd(sal)) + '</div>';
     var rec = mRecurrente(p), sm = mSaldoMant(p);
     if (rec > 0 || sm > 0) {
-      var fm = mFinMant(p), falta = Math.max(0, fm.totales - fm.cobradas);
+      var fm = mFinMant(p);
       h += '<div class="ui-lat-h">Mantenimiento y soporte</div><div class="ui-lat-g">' +
         uiKpi('Abono mensual', fmt(rec), 'p-abono', (p.mant_vivos || 0) + ' en curso', usd(rec)) +
-        uiKpi('Ya cobrado', fmt(mCobradoMant(p)), 'p-cobrado', fm.cobradas + ' cuota' + (fm.cobradas === 1 ? '' : 's'), usd(mCobradoMant(p))) +
-        uiKpi('Faltan', falta + ' cuota' + (falta === 1 ? '' : 's'), 'p-pendiente', fm.totales ? 'de ' + fm.totales : '') +
+        uiKpi('Ya cobrado', fmt(mCobradoMant(p)), 'p-cobrado', fm.cobradas + ' de ' + fm.totales + ' cuotas cobradas', usd(mCobradoMant(p))) +
         uiKpi('Por cobrar', fmt(sm), 'p-pendiente', '', usd(sm)) + '</div><div class="ui-nota-t">No suma al contratado: se factura por cuota.</div><br>';
     }
     var hs = sum(p.items, 'horas');
     if (hs) h += '<div class="ui-lat-h">Del contrato</div><div class="ui-lat-g">' + uiKpi('Horas vendidas', Math.round(hs) + ' h', 'p-neutro') + '</div>';
     return h + '</div>';
+  }
+  function lateralDes(it, usd) {
+    var cs = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id; });
+    var cob = cs.filter(function (c) { return c.deposito_fecha; }).reduce(function (a, c) { return a + (Number(c.monto_ars) || 0); }, 0);
+    var h = '<div class="ui-lat-h">' + esc(it.titulo || it.id) + '</div><div class="ui-lat-g">';
+    if (esMant(it)) {
+      var cu = Number(it.cuota_act) || Number(it.valor_cuota) || 0, d = Number(it.duracion) || 0, cf = Number(it.cuotas_facturadas) || 0;
+      h += uiKpi('Abono mensual', fmt(cu), 'p-abono', '', usd(cu)) +
+        uiKpi('Ya cobrado', fmt(cob), 'p-cobrado', d ? cf + ' de ' + d + ' cuotas cobradas' : '', usd(cob)) +
+        (d ? uiKpi('Por cobrar', fmt(Math.max(0, d - cf) * cu), 'p-pendiente', '', usd(Math.max(0, d - cf) * cu)) : '');
+    } else {
+      var tot = Number(it.total_ars) || 0, fac = Number(it.facturado) || 0;
+      h += uiKpi(esGanado(it.estado) ? 'Contratado' : 'Cotizado', fmt(tot), esGanado(it.estado) ? 'p-contratado' : 'p-neutro', '', usd(tot)) +
+        (esGanado(it.estado) ? uiKpi('Cobrado', fmt(fac), 'p-cobrado', '', usd(fac)) + uiKpi('Pendiente', fmt(Math.max(0, tot - fac)), 'p-pendiente', '', usd(Math.max(0, tot - fac))) : '');
+    }
+    if (it.horas) h += uiKpi('Horas vendidas', Math.round(it.horas) + ' h', 'p-neutro');
+    return h + '</div><button type="button" class="ui-lnk ui-azul" data-pm="lat-proy">Ver el total del proyecto</button>';
   }
   function htmlFicha() {
     var p = P.proys.find(function (x) { return x.id === P.f.id; }); if (!p) return '<div class="ui-nota-t">Proyecto no encontrado.</div>';
@@ -703,7 +727,7 @@
   function fichaCuerpo(p, enLista) {
     var e = p.estado_proyecto || 'Prospecto', ab = P.f.tareas.filter(function (t) { return !t.closed; }).length, can = _canonProy(e);
     var tabs = [['info', 'Información', tabInfo], ['analisis', 'Análisis', tabAnalisis], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
-                ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas]];
+                ['tareas', 'Tareas y comentarios' + (ab ? ' (' + ab + ')' : ''), tabTareas], ['docs', 'Documentos y Drive', tabDocs]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
     var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
@@ -723,7 +747,7 @@
   var NV = { moneda: 'ARS' };
   function htmlNuevo() {
     var mon = function (m) { return '<button type="button" class="ui-mon-b ui-mon-' + m.toLowerCase() + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
-    return '<div class="card nv-card"><div class="card-t">Carga rápida</div><div class="hint">Cliente, desarrollo y plata. Se guarda como Prospecto y se abre su ficha.</div>' +
+    return '<div class="hint">Cliente, desarrollo y plata. Se guarda como Prospecto y se abre su ficha.</div>' +
       '<div class="g2 u-mt10"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
         '<div class="fg"><label class="fl" for="nv-sp">Sponsor</label><select class="fc" id="nv-sp"><option value="">Elegí la empresa</option></select></div></div>' +
       '<div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
@@ -734,8 +758,23 @@
       '<div class="g2"><div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div>' +
         '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" id="nv-mm" data-monto></div></div>' +
       '<div class="u-c-rd u-s11" id="nv-err"></div>' +
-      '<div class="u-row8 u-mt10"><button class="btn bp" data-pm="nv-ok">' + ico('guardar') + ' Guardar</button>' +
-        '<a class="btn bg sm u-mla" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Funcionalidades, horas y costos">' + ico('abrir') + ' Cotizador completo en el CRM actual</a></div></div>';
+      '<a class="btn bg sm" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" data-tip="Funcionalidades, horas y costos">' + ico('abrir') + ' Cotizador completo en el CRM actual</a>';
+  }
+  // El mismo formulario de carga rápida, en un modal (02/11/2026): se abre desde «+ Nuevo proyecto rápido»
+  function nvAbrir(el) {
+    var m = document.getElementById('m-nv');
+    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-nv'; document.body.appendChild(m); }
+    NV.moneda = 'ARS';
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Nuevo proyecto rápido</span>' +
+      '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-nv">' + ico('cerrar') + '</button></div>' +
+      '<div class="mb2">' + htmlNuevo() + '</div>' +
+      '<div class="mf"><button class="btn bg" data-cerrar="m-nv">Cancelar</button><button class="btn bp" data-pm="nv-ok">Guardar</button></div></div>';
+    m.onclick = function (ev) {
+      var b = ev.target.closest('[data-pm]'); if (!b) return;
+      if (b.getAttribute('data-pm') === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); m.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
+      if (b.getAttribute('data-pm') === 'nv-ok') return nvGuardar(el);
+    };
+    openM('m-nv'); nvCargar();
   }
   async function nvCargar() {
     var r = await Promise.all([
@@ -766,12 +805,12 @@
     var falta = [!v('nv-emp') && 'la empresa', !v('nv-nom') && 'el título del proyecto', !v('nv-tipo') && 'el tipo de desarrollo',
                  !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago'].filter(Boolean);
     if (falta.length) return set('nv-err', 'Falta ' + falta.join(', ') + '.');
-    var b = el.querySelector('[data-pm="nv-ok"]'); b.disabled = true;
+    var b = document.querySelector('#m-nv [data-pm="nv-ok"]'); b.disabled = true;
     var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'),
       titulo: v('nv-tit'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
     b.disabled = false;
     if (r.error) return set('nv-err', esc(r.error.message));
-    toast(r.data.pid + ' cargado como Prospecto', 'ok');
+    closeM('m-nv'); toast(r.data.pid + ' cargado como Prospecto', 'ok');
     await cargar(); P.sub = 'proy'; abrirFicha(el, r.data.pid);
   }
 
@@ -822,7 +861,7 @@
     $e('ep-owner').innerHTML = Object.keys(P.users).map(function (mail) { return '<option value="' + esc(mail) + '"' + (mail === p.owner ? ' selected' : '') + '>' + esc(P.users[mail]) + '</option>'; }).join('');
     var act = p.estado_proyecto;
     $e('ep-est').innerHTML = estadosProyecto().filter(function (o) { return o === act || puedeEstado(p, o).ok; })
-      .map(function (o) { return '<option' + (o === act ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+      .map(function (o) { return '<option value="' + esc(o) + '"' + (o === act ? ' selected' : '') + '>' + esc(uiNombreEst(o)) + '</option>'; }).join('');
     $e('ep-prob').value = p.probabilidad || 50; $e('ep-fecha').value = p.fecha_propuesta ? String(p.fecha_propuesta).slice(0, 10) : '';
     // Aprobado o activo: nombre, empresa y lo comercial quedan fijos (29/10/2026). IPC y fechas van por su lado.
     var fijo = ['aprobado', 'activo'].indexOf(_canonProy(act)) >= 0;
@@ -852,31 +891,44 @@
         '<div class="mf"><button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button></div></div>';
       document.body.appendChild(m);
     }
-    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Lo que marques como «Entró» pasa a Aprobado.';
+    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Lo que marques como «Entró» pasa a Aprobado. Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar; si no, queda Aprobado sin facturar.';
     document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
       return '<div class="rowb u-row8"><div class="u-f1m"><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
         '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
         '<input class="fc u-wauto" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" aria-label="Monto aprobado" title="Monto aprobado (se puede corregir, p. ej. por IPC)">' +
-        '<select class="fc u-wauto" data-ap="' + esc(it.id) + '" aria-label="Decisión"><option value="entro">Entró</option><option value="rechazado">No entró</option><option value="espera">En espera</option></select></div>';
+        '<select class="fc u-wauto" data-ap="' + esc(it.id) + '" aria-label="Decisión"><option value="entro">Entró</option><option value="rechazado">No entró</option><option value="espera">En espera</option></select>' +
+        '<label class="u-row6" data-tip="¿Inicia el desarrollo? Con fecha arranca y se puede facturar"><input type="checkbox" data-api="' + esc(it.id) + '"> Inicia</label>' +
+        '<input class="fc u-wauto" type="date" data-apf="' + esc(it.id) + '" value="' + isoMas(0) + '" aria-label="Fecha de inicio" disabled></div>';
     }).join('') + '<div class="ui-kv">Total aprobado<span class="ui-num"><span class="ui-p-contratado" id="ap-tot"></span></span></div>';
     var total = function () {
       var t = 0; document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
         if (x.value === 'entro') t += Number(document.querySelector('#ap-list [data-apm="' + x.getAttribute('data-ap') + '"]').value) || 0; });
       document.getElementById('ap-tot').textContent = fmt(t);
     };
-    document.getElementById('ap-list').oninput = total; document.getElementById('ap-list').onchange = total; setTimeout(total, 0);
+    var inicia = function () {   // la fecha sólo con «Entró» e «Inicia»
+      document.querySelectorAll('#ap-list [data-api]').forEach(function (c) {
+        var id = c.getAttribute('data-api'), entro = document.querySelector('#ap-list [data-ap="' + id + '"]').value === 'entro';
+        if (!entro) c.checked = false; c.disabled = !entro;
+        document.querySelector('#ap-list [data-apf="' + id + '"]').disabled = !c.checked;
+      });
+    };
+    document.getElementById('ap-list').oninput = total; document.getElementById('ap-list').onchange = function () { total(); inicia(); }; setTimeout(function () { total(); inicia(); }, 0);
     return new Promise(function (res) {
       document.getElementById('ap-ok').onclick = function () {
-        var dec = {}, montos = {}, n = 0, malo = '';
+        var dec = {}, montos = {}, inicios = {}, n = 0, malo = '', sinFecha = '';
         document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
           var id = x.getAttribute('data-ap'); dec[id] = x.value;
           if (x.value !== 'entro') return; n++;
           var m = Number(document.querySelector('#ap-list [data-apm="' + id + '"]').value) || 0;
           if (m <= 0) malo = id; montos[id] = m;
+          if (document.querySelector('#ap-list [data-api="' + id + '"]').checked) {
+            var f = document.querySelector('#ap-list [data-apf="' + id + '"]').value; if (!f) sinFecha = id; else inicios[id] = f;
+          }
         });
-        if (!n) return say('Marcá al menos uno como «Entró».\n\nSi no entró nada, usá Rechazar.', 'Aprobar propuesta');
+        if (!n) return say('Marcá al menos uno como «Entró».\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
         if (malo) return say('El monto aprobado de ' + malo + ' tiene que ser mayor a 0.', 'Aprobar propuesta');
-        closeM('m-aprob'); res({ dec: dec, montos: montos });
+        if (sinFecha) return say('Falta la fecha de inicio de ' + sinFecha + '.', 'Aprobar propuesta');
+        closeM('m-aprob'); res({ dec: dec, montos: montos, inicios: inicios });
       };
       openM('m-aprob');
     });
@@ -887,16 +939,14 @@
   function pintar(el) {
     if (_montado !== 'pm') return;                // se terminó de leer con otro módulo en pantalla
     marcarSub(P.sub === 'ficha' ? P.prev : P.sub);
-    var cab = uiHd((SUBS.find(function (s) { return s[0] === P.sub; }) || ['', 'Proyectos'])[1], {
+    var cab = uiHd('Proyectos', {
       seg: 'Proyectos en marcha y en negociación, para revisar.',
-      proy: 'Todos los proyectos, con sus desarrollos y su estado.',
-      nuevo: 'Alta de un proyecto nuevo.'
-    }[P.sub] || 'Seguimiento y estado de cada proyecto.');
+      proy: 'Todos los proyectos, con sus desarrollos y su estado.'
+    }[P.sub] || 'Seguimiento y estado de cada proyecto.', uiBtn('Nuevo proyecto rápido', 'mas', 'p', 'data-pm="nv-abrir"'));
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     var tabs = uiTabs([['proy', 'Proyectos', 'data-pm="sub" data-s="proy"'], ['seg', 'Seguimiento', 'data-pm="sub" data-s="seg"']], P.sub);
     if (P.sub === 'seg') el.innerHTML = cab + tabs + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + tabs + htmlProy();
-    else if (P.sub === 'nuevo') { el.innerHTML = cab + htmlNuevo(); nvCargar(); }
     else el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
   }
@@ -911,14 +961,20 @@
     var refrescar = async function () { await leer(); pintar(el); };
     var s = subPedida(); if (s === 'tar') { location.hash = '#/hoy'; return; }   // la vieja vista Tareas
     if (SUBS.some(function (x) { return x[0] === s; })) P.sub = s;
+    var nvPedido = s === 'nuevo';                 // el viejo #/pm/nuevo abre el modal
     await abrirModulo(el, { id: 'pm', texto: 'Cargando proyectos…', forzar: op && op.forzar, cargar: leer,
       cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f]); }, pintar: function () { pintar(el); } });
+    if (nvPedido) nvAbrir(el);
     if (!el._pmBound) {                          // una vez: #vista es el mismo para todos los módulos
       el._pmBound = true;
       el.addEventListener('ui-toggle', function (ev) {
         var d = ev.target, o = ev.detail.open;
         if (d.hasAttribute('data-segdesp')) P.seg.abierto[d.getAttribute('data-segdesp')] = o;
-        if (d.hasAttribute('data-des')) P.fAb[d.getAttribute('data-des')] = o;
+        if (d.hasAttribute('data-des')) {
+          var did = d.getAttribute('data-des'); P.fAb[did] = o;
+          if (o) P.fSel = did; else if (P.fSel === did) P.fSel = null;
+          latRepintar();
+        }
       });
       el.addEventListener('toggle', function (ev) {
         var d = ev.target; if (!d.matches) return;
@@ -928,6 +984,8 @@
       }, true);
     }
     var alGuardar = { onSave: refrescar };
+    // El lateral sigue al desarrollo abierto: se redibuja sólo él
+    var latRepintar = function () { var l = document.getElementById('pm-lat'), p = P.f && proy(P.f.id); if (l && p) l.outerHTML = lateral(p); };
     el.oninput = function (ev) {
       if (ev.target.id === 'seg-q') { P.seg.q = ev.target.value; repintarConFoco(el, 'seg-q'); }
       if (ev.target.id === 'pr-q') { P.pr.q = ev.target.value; repintarConFoco(el, 'pr-q'); }
@@ -973,17 +1031,17 @@
       }
       toast(sel.length + ' desarrollo(s) arrancado(s)', 'ok'); refrescar();
     };
-    // Rechazar o detener: el proyecto completo o algunos desarrollos, siempre con un comentario del proyecto
+    // No aceptar o detener: el proyecto completo o algunos desarrollos, siempre con un comentario del proyecto
     var corte = async function (p, tipo) {
       var rech = tipo === 'rechazar';
       var L = (p.items || []).filter(function (it) { var c = _canonSol(it.estado);
         return rech ? (c === 'nueva' || c === 'aprobada') : (depende(it) && !it.detenido && c !== 'finalizada' && c !== 'rechazada'); });
-      var tit = rech ? 'Rechazar' : 'Detener';
+      var tit = rech ? 'No aceptar' : 'Detener';
       var ok = await modal(tit + ' · ' + (p.nombre || p.id),
         '<label class="u-row6 u-mb6"><input type="radio" name="pm-alc" value="todo" checked> El proyecto completo</label>' +
         (L.length ? '<label class="u-row6 u-mb6"><input type="radio" name="pm-alc" value="algunos"> Sólo estos desarrollos</label><div class="u-mb10">' + L.map(function (it) {
-          return '<label class="u-row6 rowb"><input type="checkbox" data-cor="' + esc(it.id) + '"> ' + esc(it.titulo || it.id) + ' <span class="u-s10-mt">· ' + esc(it.estado || '') + '</span></label>'; }).join('') + '</div>'
-          : '<div class="u-s11-mt u-mb10">' + (rech ? 'No hay desarrollos para rechazar por separado.' : 'Sólo se pausan por separado las mejoras, soportes y mantenimientos que dependen de otro.') + '</div>') +
+          return '<label class="u-row6 rowb"><input type="checkbox" data-cor="' + esc(it.id) + '"> ' + esc(it.titulo || it.id) + ' <span class="u-s10-mt">· ' + esc(uiNombreEst(it.estado)) + '</span></label>'; }).join('') + '</div>'
+          : '<div class="u-s11-mt u-mb10">' + (rech ? 'No hay desarrollos para marcar como no aceptados por separado.' : 'Sólo se pausan por separado las mejoras, soportes y mantenimientos que dependen de otro.') + '</div>') +
         '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>', tit,
         function () {
           var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value;
@@ -999,14 +1057,16 @@
         r = await db().rpc(rech ? 'accion_desarrollo' : 'detener_desarrollo', rech ? { did: ids[i], accion: 'rechazar' } : { did: ids[i], detener: true });
       if (r && r.error) return toast(r.error.message, 'err');
       var nombres = ids.map(function (x) { var it = itemDe(x); return it ? (it.titulo || x) : x; });
-      await db().rpc('comentar', { p: { proyecto_id: p.id, texto: (rech ? 'Rechazado' : 'Detenido') + (alc === 'todo' ? ' (proyecto completo)' : ': ' + nombres.join(', ')) + '. ' + txt } });
-      toast(rech ? 'Rechazado' : 'Detenido', 'ok'); if (rech) toast(AVISO_ALERTAS, 'inf'); refrescar();
+      await db().rpc('comentar', { p: { proyecto_id: p.id, texto: (rech ? 'No aceptado' : 'Detenido') + (alc === 'todo' ? ' (proyecto completo)' : ': ' + nombres.join(', ')) + '. ' + txt } });
+      toast(rech ? 'No aceptado' : 'Detenido', 'ok'); if (rech) toast(AVISO_ALERTAS, 'inf'); refrescar();
     };
     // Nueva mejora / Nuevo soporte: una línea simple en Nuevo, que depende del desarrollo elegido
-    var altaDes = async function (padre, clase) {
-      if (!padre) return;
+    var altaDes = async function (p, clase) {
+      var bases = basesAlta(p); if (!bases.length) return;
       var mej = clase === 'mejora';
-      var ok = await modal((mej ? 'Nueva mejora' : 'Nuevo soporte') + ' · ' + (padre.titulo || padre.id),
+      var ok = await modal((mej ? 'Nueva mejora' : 'Nuevo soporte') + ' · ' + (p.nombre || p.id),
+        '<div class="fg"><label class="fl" for="ad-padre">Depende de <span class="req">*</span></label><select class="fc" id="ad-padre">' +
+          bases.map(function (it) { return '<option value="' + esc(it.id) + '">' + esc(it.titulo || it.id) + '</option>'; }).join('') + '</select></div>' +
         '<div class="fg"><label class="fl" for="ad-tit">Título <span class="req">*</span></label><input class="fc" id="ad-tit"></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ad-mon">Moneda</label><select class="fc" id="ad-mon"><option>ARS</option><option>USD</option></select></div>' +
         '<div class="fg"><label class="fl" for="ad-monto">Monto <span class="req">*</span></label><input class="fc" type="number" id="ad-monto" data-monto></div></div>' +
@@ -1014,7 +1074,7 @@
         '<div class="u-s11-mt">Nace en Nuevo y se aprueba como cualquier desarrollo.</div>', 'Crear',
         function () { return !document.getElementById('ad-tit').value.trim() ? 'Poné un título' : !(Number(document.getElementById('ad-monto').value) > 0) ? 'El monto tiene que ser mayor a 0' : ''; });
       if (!ok) return;
-      hacer('alta_desarrollo', { p: { padre: padre.id, clase: clase, titulo: document.getElementById('ad-tit').value.trim(), moneda: document.getElementById('ad-mon').value,
+      hacer('alta_desarrollo', { p: { padre: document.getElementById('ad-padre').value, clase: clase, titulo: document.getElementById('ad-tit').value.trim(), moneda: document.getElementById('ad-mon').value,
         monto: document.getElementById('ad-monto').value, horas: mej ? document.getElementById('ad-hs').value : '' } });
     };
     var itemDe = function (iid) { var it = null; P.proys.some(function (p) { return (it = (p.items || []).find(function (x) { return x.id === iid; })); }); return it; };
@@ -1025,7 +1085,7 @@
           return hacer('enviar_propuesta', { pid: p.id, fecha: null });
         case 'aprobado':                         // aprobar no es un cambio de estado: es decidir qué entró
           var dec = await abrirAprobar(p); if (!dec) return;
-          return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos }, null, true);
+          return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos, inicios: dec.inicios }, null, true);
         case 'finalizado':
           var ab = (p.items || []).filter(function (it) { var c = _canonSol(it.estado || ''); return c === 'curso' || c === 'garantia' || c === 'aprobada'; });
           var msg = ab.length ? '¿Finalizar el proyecto?\n\nQuedan ' + ab.length + ' desarrollo(s) sin cerrar:\n' +
@@ -1065,19 +1125,20 @@
       if (a === 'ficha') return abrirFicha(el, id);
       if (a === 'sub') { P.sub = b.getAttribute('data-s'); return pintar(el); }
       if (a === 'arrancar') return arrancar(proy(id));
-      if (a === 'alta-des') return altaDes(itemDe(id), b.getAttribute('data-clase'));
+      if (a === 'alta-des') return altaDes(proy(id), b.getAttribute('data-clase'));
       if (a === 'comentar-proy') return pedir('Comentario para el proyecto', '', 'Comentar').then(function (txt) {
         if (!txt || !String(txt).trim()) return;
         db().rpc('comentar', { p: { proyecto_id: id, texto: String(txt).trim() } }).then(function (r) { if (r.error) return toast(r.error.message, 'err'); toast('Comentario guardado', 'ok'); refrescar(); });
       });
-      if (a === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); el.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
-      if (a === 'nv-ok') return nvGuardar(el);
+      if (a === 'nv-abrir') return nvAbrir(el);
+      if (a === 'contactos') { var pc = proy(id); return abrirFichaEmpresa(pc.empresa_id, { onSave: refrescar }); }
       if (a === 'volver') { P.sub = P.prev || 'seg'; return pintar(el); }
       if (a === 'nav') {
         var L = P.fLista, k = (L.indexOf(P.f.id) + Number(b.getAttribute('data-dir')) + L.length) % L.length;
         return abrirFicha(el, L[k], P.prev);
       }
       if (a === 'ftab') { P.fTab = b.getAttribute('data-t'); return pintar(el); }
+      if (a === 'lat-proy') { P.fSel = null; return latRepintar(); }
       // ── acciones (5c) ──
       if (a === 'estado') { ev.preventDefault(); return cambiarEstado(proy(id), b.getAttribute('data-est')); }
       if (a === 'det-proy') {
@@ -1111,9 +1172,9 @@
             if (mants.length) arrancar(pp, mants.map(function (y) { return y.id; }), '¿Arranca el mantenimiento?');
           }); };
         var itA = itemDe(id), dn = '«' + ((itA && itA.titulo) || id) + '»';
-        if (acc === 'rechazar') return ask('¿Rechazar ' + dn + '? Se puede recotizar después.', 'Rechazar desarrollo', { peligro: true }).then(function (ok) { if (ok) go(); });
+        if (acc === 'rechazar') return ask('¿Marcar ' + dn + ' como no aceptado? Se puede recotizar después.', 'No aceptar desarrollo', { ok: 'No aceptar', peligro: true }).then(function (ok) { if (ok) go(); });
         var full = b.getAttribute('aria-label') || acc, etq = full.split(':')[0];   // «Finalizar: Se cumplieron las cuotas»
-        return ask(etq + ' ' + dn + (itA && itA.estado ? ' (hoy ' + itA.estado + ').' : '.') + (full !== etq ? '\n\n' + full.slice(etq.length + 1).trim() : ''), etq + ' desarrollo', { ok: etq }).then(function (ok) { if (ok) go(); });
+        return ask(etq + ' ' + dn + (itA && itA.estado ? ' (hoy ' + uiNombreEst(itA.estado) + ').' : '.') + (full !== etq ? '\n\n' + full.slice(etq.length + 1).trim() : ''), etq + ' desarrollo', { ok: etq }).then(function (ok) { if (ok) go(); });
       }
       if (a === 'cerrar-mod') { ev.preventDefault(); return hacer('cerrar_modulo_horas', { hid: id, cerrar: true }, function (r) { return 'Módulo cerrado (' + r.n + ')'; }); }
       if (a === 'post-ini' || a === 'post-fin') {

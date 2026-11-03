@@ -46,9 +46,11 @@ var TareasUI = (function () {
         '<input class="fc hoy-fecha" type="date" id="tp-f-' + id + '" min="' + isoMas(P === 'pos' ? 0 : 1) + '" value="' + isoMas(P === 'pos' ? 7 : 1) + '">' +
         (P === 'rec' ? '<label class="u-row6 u-s12"><input type="checkbox" id="tp-tg-' + id + '" checked> Avisar por Telegram</label>' : '') +
         '<button class="btn bp sm" data-tar="' + (P === 'pos' ? 'pos-ok' : 'rec-ok') + '" data-id="' + id + '">' + (P === 'pos' ? 'Postergar' : 'Guardar') + '</button></div>';
+    // Responsable, tipo y prioridad como datos con su etiqueta, no una línea corrida (02/11/2026)
+    var dato = function (l, v) { return v ? '<div><span class="ui-lbl">' + l + '</span>' + esc(v) + '</div>' : ''; };
     h += '<div class="hoy-meta">' + (t.detail ? '<div class="hoy-det">' + esc(t.detail) + '</div>' : '') +
-      '<div class="u-s11-mt">Responsable: ' + esc(String(t.assignees || '').split(',').filter(Boolean).map(function (m) { return nombreDe(users, m); }).join(', ') || '—') +
-      (t.type ? ' · ' + esc(t.type) : '') + (t.priority ? ' · Prioridad ' + esc(t.priority) : '') + '</div></div>';
+      '<div class="ui-datos">' + dato('Responsable', String(t.assignees || '').split(',').filter(Boolean).map(function (m) { return nombreDe(users, m); }).join(', ') || '—') +
+      dato('Tipo', t.type) + dato('Prioridad', t.priority) + '</div></div>';
     h += '<div class="hoy-coms">' + (cs === undefined ? '<div class="u-s11-mt">Cargando comentarios…</div>' : !cs.length ? '<div class="u-s11-mt">Sin comentarios.</div>' :
       cs.slice(0, st.todos === t.id ? 50 : 3).map(function (c) {
         return '<div class="hoy-com"><span class="u-fw6">' + esc(nombreDe(users, c.creador)) + '</span> <span class="u-s10-mt m">' + esc(corto(c.fecha)) + '</span> ' + esc(c.texto) + '</div>'; }).join('') +

@@ -156,16 +156,20 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-tbl tr.ui-fila { cursor: pointer; }
 .ui-tbl tr.ui-fila:hover td { background: var(--suave-fila); }
 
-/* ── Tarjeta (Seguimiento, empresas): fondo caja, borde marco ── */
-.ui-tarjeta { background: var(--caja); border: 1px solid var(--marco); border-radius: var(--r-l); padding: var(--e3) var(--e4); min-width: 0; }
+/* ── Tarjeta (Seguimiento): fondo de la página, borde marco y barra de estado a la izquierda (02/11/2026) ──
+   Unas dos por pantalla (mínimo 480 px cada una); el color de la barra sale de la clave de estado (ui-e-*). */
+.ui-tarjeta { position: relative; background: var(--fondo); border: 1px solid var(--marco); border-radius: var(--r-l); padding: var(--e3) var(--e4) var(--e3) var(--e5); min-width: 0; }
+.ui-tarjeta-barra { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--r-l) 0 0 var(--r-l); background: currentColor; }
 .ui-tarjeta.ui-apagada { opacity: .6; }
-.ui-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: var(--e3); }
+.ui-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: var(--e4); }
 .ui-tarjeta-hd { display: grid; grid-template-columns: 1fr auto; gap: var(--e4); align-items: start; }
 .ui-tarjeta-der { text-align: right; }
+.ui-tarjeta-est { margin-top: var(--e2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--e2); }
+.ui-tarjeta-pie { display: flex; justify-content: flex-end; margin-top: var(--e3); }
 .ui-sub-t { font-size: var(--t-s); color: var(--texto2); margin-top: var(--e1); }
-/* Carrusel de tarjetas (más de CARRUSEL proyectos por cliente) */
+/* Carrusel de tarjetas (más de CARRUSEL proyectos por cliente): de a dos */
 .ui-tarjetas.ui-carr { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; }
-.ui-tarjetas.ui-carr .ui-tarjeta { flex: 0 0 420px; scroll-snap-align: start; }
+.ui-tarjetas.ui-carr .ui-tarjeta { flex: 0 0 min(100%, max(480px, calc(50% - var(--e4) / 2))); scroll-snap-align: start; }
 /* Filtros de pantalla (buscador, orden) */
 .ui-filtros { display: flex; gap: var(--e2); margin-bottom: var(--e3); flex-wrap: wrap; }
 .ui-filtros .ui-campo { width: auto; }
@@ -199,6 +203,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-ib.ui-det:hover { color: var(--e-detenido); background: var(--suave-detenido); }
 .ui-ib.ui-edi:hover { color: var(--principal); background: var(--suave-principal); }
 .ui-ib.ui-bor:hover { color: var(--p-error); background: var(--suave-error); }
+.ui-ib.ui-vio { color: var(--secundaria-txt); }   /* Tarea y Comentario: violeta también en reposo (02/11/2026) */
 .ui-ib.ui-vio:hover { color: var(--secundaria); background: var(--suave-secundaria); }
 .ui-ib.on { color: var(--brillo); }
 .ui-ib.ui-wa { color: var(--whatsapp); }
