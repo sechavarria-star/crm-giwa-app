@@ -305,3 +305,8 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
   line-height: 1.35; pointer-events: none; box-shadow: var(--sombra); }
 /* «{IA}» de la marca: Courier New (reemplaza a Codec Pro, 02/11/2026) */
 .nav-marca .u-c-vi { font-family: var(--f-num); }
+
+/* Carga rápida: horas estándar y lo que se crea (03/11/2026) */
+.nv-std { background: var(--suave-principal); border-radius: var(--r); padding: var(--e2) var(--e4); margin-bottom: var(--e4); }
+.nv-std .ui-kv:last-of-type { border-bottom: 0; }
+.nv-crea { margin-top: var(--e3); }

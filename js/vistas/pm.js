@@ -744,31 +744,36 @@
   // Empresa, sponsor, desarrollo y plata. Guarda alta_proyecto_rapido (= altaCotizacion
   // con rapido): el proyecto como Prospecto, su desarrollo y, si hay, su mantenimiento.
   // El Cotizador completo (funcionalidades, horas, costos) sigue en el CRM actual.
-  var NV = { moneda: 'ARS' };
+  // Carga rápida del Cotizador (03/11/2026): debajo del monto, las horas estándar del catálogo para ese tipo
+  // (la base: lo que lleva cualquier desarrollo de ese tipo, sale de estimar_desarrollo sin tildar nada) y a
+  // cuánto queda la hora; debajo del mantenimiento, qué incluye; al pie, los dos desarrollos que se crean.
+  var NV = { moneda: 'ARS', std: null };
   function htmlNuevo() {
     var mon = function (m) { return '<button type="button" class="ui-mon-b ui-mon-' + m.toLowerCase() + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
-    return '<div class="hint">Cliente, desarrollo y plata. Se guarda como Prospecto y se abre su ficha.</div>' +
-      '<div class="g2 u-mt10"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
+    return '<div class="g2"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
         '<div class="fg"><label class="fl" for="nv-sp">Sponsor</label><select class="fc" id="nv-sp"><option value="">Elegí la empresa</option></select></div></div>' +
       '<div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="nv-tipo">Desarrollo <span class="req">*</span></label><select class="fc" id="nv-tipo"></select></div>' +
-        '<div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el tipo"></div></div>' +
-      '<div class="g2"><div class="fg"><span class="fl">Moneda</span><div><span class="ui-mon" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</span></div></div>' +
-        '<div class="fg"><label class="fl" for="nv-monto">Monto <span class="req">*</span> <span class="u-s10-mt m" id="nv-eq"></span></label><input class="fc u-tr m" type="number" min="0" id="nv-monto" data-monto></div></div>' +
-      '<div class="g2"><div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div>' +
-        '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" id="nv-mm" data-monto></div></div>' +
-      '<div class="u-c-rd u-s11" id="nv-err"></div>' +
-      '<a class="btn bg sm" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" data-tip="Funcionalidades, horas y costos">' + ico('abrir') + ' Cotizador completo en el CRM actual</a>';
+        '<div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div></div>' +
+      '<div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el título del proyecto"></div>' +
+      '<div class="fg"><div class="u-row8"><label class="fl u-f1" for="nv-monto">Monto del desarrollo <span class="req">*</span></label>' +
+          '<span class="ui-mon" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</span></div>' +
+        '<input class="fc u-tr m" type="number" min="0" id="nv-monto" data-monto><div class="u-s11-mt" id="nv-eq"></div></div>' +
+      '<div class="nv-std" id="nv-std" hidden></div>' +
+      '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" id="nv-mm" data-monto>' +
+        '<div class="u-s11-mt" id="nv-mm-eq"></div><div class="u-s11-mt">Incluye: monitoreo, reunión mensual, análisis y ajustes.</div></div>' +
+      '<div class="nv-crea" id="nv-crea"></div>' +
+      '<div class="u-c-rd u-s11" id="nv-err"></div>';
   }
   // El mismo formulario de carga rápida, en un modal (02/11/2026): se abre desde «+ Nuevo proyecto rápido»
   function nvAbrir(el) {
     var m = document.getElementById('m-nv');
     if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-nv'; document.body.appendChild(m); }
-    NV.moneda = 'ARS';
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Nuevo proyecto rápido</span>' +
+    NV.moneda = 'ARS'; NV.std = null;
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Carga rápida</span>' +
       '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-nv">' + ico('cerrar') + '</button></div>' +
       '<div class="mb2">' + htmlNuevo() + '</div>' +
-      '<div class="mf"><button class="btn bg" data-cerrar="m-nv">Cancelar</button><button class="btn bp" data-pm="nv-ok">Guardar</button></div></div>';
+      '<div class="mf"><span class="u-s11-mt u-f1">Se guarda como Prospecto.</span><button class="btn bg" data-cerrar="m-nv">Cancelar</button><button class="btn bp" data-pm="nv-ok">Guardar</button></div></div>';
     m.onclick = function (ev) {
       var b = ev.target.closest('[data-pm]'); if (!b) return;
       if (b.getAttribute('data-pm') === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); m.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
@@ -794,11 +799,42 @@
       $n('nv-sp').innerHTML = '<option value="">' + (this.value ? 'Sponsor' : 'Elegí la empresa') + '</option>' + (c.data || []).map(function (x) {
         return '<option value="' + esc(x.id) + '">' + esc(((x.nombre || '') + ' ' + (x.apellido || '')).trim()) + '</option>'; }).join('');
     };
-    $n('nv-monto').oninput = nvEq;
+    $n('nv-tipo').onchange = nvStd;
+    ['nv-monto', 'nv-mm', 'nv-nom', 'nv-tit'].forEach(function (id) { $n(id).oninput = nvEq; });
+    nvEq();
+  }
+  // Horas estándar del tipo: la base del catálogo (lo sugerido, sin preguntas) · estimar_desarrollo sin tildar nada
+  async function nvStd() {
+    var tipo = (document.getElementById('nv-tipo') || {}).value; NV.std = null;
+    if (tipo) {
+      var r = await db().rpc('estimar_desarrollo', { tipo: tipo, empresa_id: '', opts: {} });
+      if (!r.error && r.data && r.data.ok && Number(r.data.horas) > 0) {
+        var t = document.getElementById('nv-tipo');
+        NV.std = { horas: Number(r.data.horas), tipo: t.options[t.selectedIndex].text,
+                   base: (r.data.detalle || []).map(function (m) { return String(m.nombre || '').toLowerCase(); }) };
+      }
+    }
+    nvEq();
   }
   function nvEq() {
-    var tc = window.TC || 0, n = Number((document.getElementById('nv-monto') || {}).value) || 0;
-    set('nv-eq', n && tc ? '= ' + (NV.moneda === 'USD' ? fmt(n * tc) : fmt(n / tc, 'USD')) : '');
+    var tc = window.TC || 0, usd = NV.moneda === 'USD', $n = function (id) { return document.getElementById(id); };
+    var n = Number(($n('nv-monto') || {}).value) || 0, mm = Number(($n('nv-mm') || {}).value) || 0;
+    var ars = usd ? n * tc : n, abono = usd ? mm * tc : mm;
+    set('nv-eq', n && tc ? '= <span class="ui-num ui-p-usd">' + (usd ? fmt(ars) : fmt(n / tc, 'USD')) + '</span>' : '');
+    set('nv-mm-eq', mm && tc ? '= <span class="ui-num ui-p-usd">' + (usd ? fmt(abono) : fmt(mm / tc, 'USD')) + '</span> por mes · ajuste por IPC cada <span class="ui-num">3</span> meses' : '');
+    var box = $n('nv-std');
+    if (box) {
+      box.hidden = !NV.std;
+      if (NV.std) box.innerHTML = '<div class="ui-kv">Horas estándar del catálogo<span class="ui-num">' + NV.std.horas + ' h</span></div>' +
+        '<div class="ui-kv">Tu hora con este monto<span class="ui-num">' + (ars ? fmt(ars / NV.std.horas) + (tc ? ' <span class="ui-p-usd">' + fmt(ars / NV.std.horas / tc, 'USD') + '</span>' : '') : '—') + '</span></div>' +
+        '<div class="u-s11-mt">Es la base de ' + esc(NV.std.tipo) + ': ' + esc(NV.std.base.join(', ')) + '. Para cotizar por funcionalidad, usá Nuevo proyecto ' +
+        '(por ahora, <a class="ui-azul" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">en el CRM actual</a>).</div>';
+    }
+    var tit = String(($n('nv-tit') || {}).value || '').trim() || String(($n('nv-nom') || {}).value || '').trim() || 'El desarrollo';
+    var crea = $n('nv-crea');
+    if (crea) crea.innerHTML = '<div class="ui-lat-h">' + (abono > 0 ? 'Se crean dos desarrollos' : 'Se crea un desarrollo') + '</div>' +
+      '<div class="ui-kv">' + esc(tit) + '<span class="ui-num">' + (ars ? fmt(ars) : '—') + '</span></div>' +
+      (abono > 0 ? '<div class="ui-kv"><span class="ui-p-abono">Mantenimiento — ' + esc(tit) + '</span><span class="ui-num">' + fmt(abono) + ' × 12</span></div>' : '');
   }
   async function nvGuardar(el) {
     var v = function (id) { return String(document.getElementById(id).value || '').trim(); };
@@ -807,7 +843,7 @@
     if (falta.length) return set('nv-err', 'Falta ' + falta.join(', ') + '.');
     var b = document.querySelector('#m-nv [data-pm="nv-ok"]'); b.disabled = true;
     var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'),
-      titulo: v('nv-tit'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
+      titulo: v('nv-tit') || v('nv-nom'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
     b.disabled = false;
     if (r.error) return set('nv-err', esc(r.error.message));
     closeM('m-nv'); toast(r.data.pid + ' cargado como Prospecto', 'ok');
