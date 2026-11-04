@@ -145,7 +145,6 @@
   async function guardar(otra) {
     var pago = C.modo === 'pago', P = partes(), nc = !pago && /nota de cr/i.test(v('cb-tipo'));
     if (!v('cb-emp')) return toast('Elegí el cliente', 'err');
-    if (nc) return toast('La nota de crédito todavía no se guarda desde acá: sumaría en vez de restar', 'err');
     if (!P.length) return toast('Poné el monto en al menos un desarrollo', 'err');
     if (pago && !v('cb-dep')) return toast('Falta la fecha del pago', 'err');
     if (!pago && !v('cb-nro')) return toast('Falta el número de la factura', 'err');
