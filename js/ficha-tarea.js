@@ -60,8 +60,8 @@
         // Igual que _FichaTarea (26/10): Qué · Proyecto (o «Sólo cliente») · Para quién · Vence · Prioridad · detalle opcional
         // Formato de la ficha original (27/10): rótulos en mayúsculas, prioridad con banderitas, personas y tareas rápidas en botones
         '<div class="fg"><label class="fl ft-lbl" for="ftn-tit">Qué hay que hacer <span class="req">*</span></label><div class="ft-pills u-mb6" id="ftn-rap"></div><input class="fc" id="ftn-tit"></div>' +
-        '<div class="fg"><label class="fl ft-lbl" for="ftn-cli">Cliente</label><select class="fc" id="ftn-cli"></select></div>' +
-        '<div class="fg"><label class="fl ft-lbl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div>' +
+        '<div class="g2"><div class="fg"><label class="fl ft-lbl" for="ftn-cli">Cliente</label><select class="fc" id="ftn-cli"></select></div>' +
+          '<div class="fg"><label class="fl ft-lbl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div></div>' +
         '<div class="g2"><div class="fg"><span class="fl ft-lbl">Para quién</span><div class="ft-pills" id="ftn-who" role="radiogroup" aria-label="Para quién"></div></div>' +
           '<div class="fg"><label class="fl ft-lbl" for="ftn-vence">Vence</label><input class="fc" type="date" id="ftn-vence"></div></div>' +
         '<div class="fg"><span class="fl ft-lbl">Prioridad</span><div class="ft-pills" id="ftn-prio" role="radiogroup" aria-label="Prioridad"></div></div>' +

@@ -33,6 +33,7 @@
     ['Formas de pago', ['Cobro_FormaPago', 'formas_pago']],
     ['Condiciones de pago', ['condiciones_pago']],
     ['Tipos de Tarea', ['Tarea_Tipo', 'tareas_tipo', 'tipos_tarea']],
+    ['Tareas rápidas', ['Tarea_Rapida']],
     ['Tipos de Alerta', ['Tarea_AlertaTipo', 'Tareas_alertas_tipos', 'alertas_tipos', 'tipos_alerta']],
     ['Etapas (Diseño, Configuración, Pruebas, Producción)', ['Modulos_crono']],
     ['Categorías de Gasto', ['Gasto_Categoria', 'categorias_gasto']]

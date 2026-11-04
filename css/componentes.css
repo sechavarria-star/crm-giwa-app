@@ -341,12 +341,13 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .cb-adj.on { border-color: var(--brillo); background: var(--suave-brillo); }
 
 /* Facturación: una sola fila de títulos y las mismas columnas en cada proyecto (03/11/2026) */
-.fa-lista { min-width: 860px; }
+.fa-lista { min-width: 930px; }
 .fa-lista .ui-cuerpo { padding: 0; }
-.fa-lista .fa-tb { table-layout: fixed; width: 100%; }
-.fa-tb th:nth-child(2), .fa-tb td:nth-child(2) { width: 170px; }
-.fa-tb th:nth-child(3), .fa-tb td:nth-child(3) { width: 90px; }
-.fa-tb th:nth-child(4), .fa-tb td:nth-child(4) { width: 130px; }
-.fa-tb th:nth-child(5), .fa-tb td:nth-child(5) { width: 100px; }
-.fa-tb th:nth-child(6), .fa-tb td:nth-child(6) { width: 70px; }
-.fa-tb th:nth-child(7), .fa-tb td:nth-child(7) { width: 120px; }
+.fa-lista table.tbl.fa-tb { table-layout: fixed; width: 100%; max-width: none; }   /* sin esto, app.css limita a 960 px las tablas sin 5 títulos */
+.fa-tb th:nth-child(2), .fa-tb td:nth-child(2) { width: 70px; }
+.fa-tb th:nth-child(3), .fa-tb td:nth-child(3) { width: 170px; }
+.fa-tb th:nth-child(4), .fa-tb td:nth-child(4) { width: 90px; }
+.fa-tb th:nth-child(5), .fa-tb td:nth-child(5) { width: 130px; }
+.fa-tb th:nth-child(6), .fa-tb td:nth-child(6) { width: 100px; }
+.fa-tb th:nth-child(7), .fa-tb td:nth-child(7) { width: 70px; }
+.fa-tb th:nth-child(8), .fa-tb td:nth-child(8) { width: 120px; }

@@ -16,8 +16,8 @@
                                No guarda nada. DNI y cargo del socio salen de
                                Configuración › Usuarios.
 
-     Valores de mercado (04/11/2026) = v_mercado_referencias, para consultar; se
-                               edita en Datos. Filtro por tipo.
+     Valores de mercado (04/11/2026) = v_mercado_referencias. Filtro por tipo;
+                               Actualizar (sólo Victoria) guarda con admin_editar.
      Análisis (04/11/2026)   = «Evaluar costos» del Cotizador suelto
                                (cot_herramientas): no guarda nada.
    ══════════════════════════════════════════════════════════════════════ */
@@ -403,15 +403,38 @@
     }
     var tipos = {}; MK.filas.forEach(function (x) { if (x.tipo) tipos[x.tipo] = 1; });
     var L = MK.filas.filter(function (x) { return !MK.tipo || x.tipo === MK.tipo; });
+    var duena = String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase() === 'v.gagey@giwa-ia.com';   // la base lo vuelve a verificar (es_duena)
     var usd = function (n) { return '<td class="m u-tr u-nw">' + (n == null ? '—' : fmt(Math.round(n), 'USD')) + '</td>'; };
-    el.innerHTML = uiHd('Valores de mercado', 'Referencias en USD por hora. Se editan en Datos.',
+    el.innerHTML = uiHd('Valores de mercado', 'Referencias en USD por hora.',
         '<select class="fc u-wauto" id="mk-tipo" aria-label="Tipo"><option value="">Todos los tipos</option>' + Object.keys(tipos).sort().map(function (t) { return '<option value="' + esc(t) + '"' + (t === MK.tipo ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>') +
       (!L.length ? '<div class="empty">Sin valores para este tipo.</div>' :
-      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Rol</th><th>Tipo</th><th>Fuente</th><th class="u-tr">Mínimo</th><th class="u-tr">Referencia</th><th class="u-tr">Máximo</th><th class="u-tr">Fecha</th><th>Estado</th></tr></thead><tbody>' +
+      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Rol</th><th>Fuente</th><th class="u-tr">Mínimo</th><th class="u-tr">Referencia</th><th class="u-tr">Máximo</th><th class="u-tr">Fecha</th><th></th></tr></thead><tbody>' +
       L.map(function (x) {
-        return '<tr><td>' + esc(x.rol || '—') + '</td><td>' + esc(x.tipo || '—') + '</td><td>' + esc(x.fuente || '—') + '</td>' + usd(x.usd_min) + usd(x.usd_ref) + usd(x.usd_max) +
-          '<td class="m u-nw u-tr">' + esc(x.fecha ? ff(x.fecha) : '—') + '</td><td class="' + (x.estado === 'Vigente' ? 'ui-p-cobrado' : 'ui-p-pendiente') + '">' + esc(x.estado) + '</td></tr>'; }).join('') +
+        return '<tr><td>' + esc(x.rol || '—') + '</td><td>' + esc(x.fuente || '—') + '</td>' + usd(x.usd_min) + usd(x.usd_ref) + usd(x.usd_max) +
+          '<td class="m u-nw u-tr' + (x.estado === 'Vigente' ? '' : ' ui-p-pendiente') + '">' + esc(x.fecha ? ff(x.fecha) : '—') + '</td>' +
+          '<td class="u-tr u-nw">' + (duena ? '<button class="btn bg xs" data-mk-act="' + esc(x.id) + '">Actualizar</button>' : '') + '</td></tr>'; }).join('') +
       '</tbody></table></div>');
+  }
+  // Actualizar una referencia: valores en su unidad original y fecha; queda en el registro de cambios de Datos
+  function actualizarMk(el, id) {
+    var x = MK.filas.find(function (f) { return f.id === id; }); if (!x) return;
+    var m = document.getElementById('m-mk');
+    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-mk'; document.body.appendChild(m); }
+    var num = function (k, t) { return '<div class="fg"><label class="fl" for="mk-' + k + '">' + t + '</label><input class="fc u-tr" type="number" min="0" step="any" id="mk-' + k + '" value="' + (x['valor_' + k] == null ? '' : esc(x['valor_' + k])) + '"></div>'; };
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Actualizar valor</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-mk">' + ico('cerrar') + '</button></div><div class="mb2">' +
+      '<div class="ft-info">' + esc(x.rol || '') + ' · ' + esc(x.fuente || '') + ' · valores en ' + esc(x.unidad || '') + '</div>' +
+      '<div class="g3">' + num('min', 'Mínimo') + num('ref', 'Referencia') + num('max', 'Máximo') + '</div>' +
+      '<div class="fg"><label class="fl" for="mk-fecha">Fecha</label><input class="fc" type="date" id="mk-fecha" value="' + isoMas(0) + '"></div></div>' +
+      '<div class="mf"><button class="btn bg" data-cerrar="m-mk">Cancelar</button><button class="btn bp" id="mk-ok">Guardar</button></div></div>';
+    var g = function (k) { return document.getElementById('mk-' + k).value; }, val = function (k) { return g(k) === '' ? null : Number(g(k)); };
+    document.getElementById('mk-ok').onclick = async function () {
+      if (!g('fecha')) return toast('Falta la fecha', 'err');
+      this.disabled = true;
+      var r = await db().rpc('admin_editar', { tabla: 'mercado_referencias', rid: id, cambios: { valor_min: val('min'), valor_ref: val('ref'), valor_max: val('max'), fecha: g('fecha') }, motivo: 'Actualización de valor de mercado' });
+      if (r.error) { this.disabled = false; return toast(r.error.message, 'err'); }
+      closeM('m-mk'); toast('Valor actualizado', 'ok'); MK.filas = null; pintarMercado(el);
+    };
+    openM('m-mk');
   }
   // ── Análisis: qué herramienta conviene y cuánto cuesta (misma regla que «Evaluar costos») ──
   function pintarAnalisis(el) {
@@ -478,6 +501,7 @@
       if (_montado !== 'her') return;
       var nb = ev.target.closest('[data-nda="descargar"]'); if (nb) return descargarNda(nb);
       if (ev.target.closest('[data-her-ev]')) return evaluarHer(el);
+      var mk = ev.target.closest('[data-mk-act]'); if (mk) return actualizarMk(el, mk.getAttribute('data-mk-act'));
       var b = ev.target.closest('[data-sim]'); if (!b) return;
       var a = b.getAttribute('data-sim'), k = b.getAttribute('data-k');
       if (a === 'tab') { S.tab = k; return pintar(el); }

@@ -385,7 +385,7 @@
     document.querySelectorAll('.ui-d[data-fa]').forEach(function (d, i) { if (!i) A.fOpen = {}; if (d.classList.contains('open')) A.fOpen[d.getAttribute('data-fa')] = 1; });
     var abiertos = A.fOpen || {}, porE = {};
     list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
-    h += '<div class="u-ovx"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th>Comprobante</th><th class="u-tr">Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
+    h += '<div class="u-ovx"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th class="u-tr">Cuota</th><th>Comprobante</th><th class="u-tr">Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
     Object.keys(porE).sort().forEach(function (emp) {
       var cs = porE[emp], porP = {}, cuerpo = '';
       cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; (porP[k] = porP[k] || []).push(c); });
@@ -403,7 +403,7 @@
     // el color del monto dice si la plata entró: cobrado · pendiente · nota de crédito (neutra)
     var mc = nc ? 'm-neutro' : sinDep(c) ? 'm-pendiente' : 'm-cobrado';
     var ib = function (acc, icono, tip) { return '<button class="btn bg xs btn-ico" data-adm="' + acc + '" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icono) + '</button>'; };
-    return '<tr><td>' + esc(c.concepto || '—') + (c.cuota_nro ? ' <span class="u-s10-mt">· cuota <span class="m">' + esc(c.cuota_nro) + '</span></span>' : '') + '</td>' +
+    return '<tr><td>' + esc(c.concepto || '—') + '</td><td class="m u-tr u-nw">' + esc(c.cuota_nro || '—') + '</td>' +
       '<td class="u-nw">' + esc(c.tipo_comp || '—') + (c.nro_factura ? ' <span class="m u-s10-mt">#' + esc(c.nro_factura) + '</span>' : '') + '</td>' +
       '<td class="m u-c-mt u-nw u-tr">' + esc(ff(c.fecha_comp)) + '</td>' +
       '<td class="m ' + mc + ' u-tr u-nw">' + fmt(c.monto) + '</td>' +
