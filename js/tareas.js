@@ -49,13 +49,13 @@ var TareasUI = (function () {
     // Responsable, tipo y prioridad como datos con su etiqueta, no una línea corrida (02/11/2026)
     var dato = function (l, v) { return v ? '<div><span class="ui-lbl">' + l + '</span>' + esc(v) + '</div>' : ''; };
     h += '<div class="hoy-meta">' + (t.detail ? '<div class="hoy-det">' + esc(t.detail) + '</div>' : '') +
-      '<div class="ui-datos">' + dato('Responsable', String(t.assignees || '').split(',').filter(Boolean).map(function (m) { return nombreDe(users, m); }).join(', ') || '—') +
+      '<div class="ui-datos">' + dato(String(t.assignees || '').indexOf(',') > 0 ? 'Participantes' : 'Responsable', String(t.assignees || '').split(',').filter(Boolean).map(function (m) { return nombreDe(users, m); }).join(', ') || '—') +
       dato('Tipo', t.type) + dato('Prioridad', t.priority) + '</div></div>';
     h += '<div class="hoy-coms">' + (cs === undefined ? '<div class="u-s11-mt">Cargando comentarios…</div>' : !cs.length ? '<div class="u-s11-mt">Sin comentarios.</div>' :
       cs.slice(0, st.todos === t.id ? 50 : 3).map(function (c) {
-        return '<div class="hoy-com"><span class="u-fw6">' + esc(nombreDe(users, c.creador)) + '</span> <span class="u-s10-mt m">' + esc(corto(c.fecha)) + '</span> ' + esc(c.texto) + '</div>'; }).join('') +
+        return '<div class="hoy-com"><span class="u-fw6">' + esc(nombreDe(users, c.creador)) + '</span> <span class="u-s10-mt m">' + esc(corto(c.fecha)) + '</span> ' + resaltarMenciones(esc(c.texto)) + '</div>'; }).join('') +
       (cs.length > 3 && st.todos !== t.id ? '<button class="hoy-go" data-tar="todos" data-id="' + id + '">ver todos (' + cs.length + ')</button>' : '')) + '</div>';
-    if (!t.closed) h += '<input class="fc hoy-nota" data-tnota="' + id + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">';
+    if (!t.closed) h += '<input class="fc hoy-nota" data-tnota="' + id + '" placeholder="Comentario rápido y Enter… (@ para mencionar)" aria-label="Comentario rápido">';
     return h + '</div>';
   }
   async function comentarios(ctx, id) {
@@ -100,7 +100,7 @@ var TareasUI = (function () {
       if (a === 'del-ok') {
         var ms = Array.prototype.map.call(document.querySelectorAll('[data-tar="del-a"].on[data-id="' + t.id + '"]'), function (x) { return x.getAttribute('data-m'); });
         if (!ms.length) { toast('Elegí a quién se la delegás.', 'err'); return true; }
-        ask('«' + t.title + '» pasa a ' + ms.map(function (m) { return nombreDe(ctx.users, m); }).join(', ') + '. Cada uno tiene su tarea.', 'Delegar', { ok: 'Delegar' }).then(async function (ok) {
+        ask('«' + t.title + '» pasa a ' + ms.map(function (m) { return nombreDe(ctx.users, m); }).join(', ') + '. Queda una sola tarea compartida.', 'Delegar', { ok: 'Delegar' }).then(async function (ok) {
           if (!ok) return;
           try { await window.delegarTarea(t, ms, ''); toast('Delegada', 'ok'); delete st.panel[t.id]; ctx.refrescar(); } catch (e) { toast(e.message, 'err'); }
         });

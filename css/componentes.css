@@ -351,3 +351,16 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .fa-tb th:nth-child(6), .fa-tb td:nth-child(6) { width: 100px; }
 .fa-tb th:nth-child(7), .fa-tb td:nth-child(7) { width: 70px; }
 .fa-tb th:nth-child(8), .fa-tb td:nth-child(8) { width: 120px; }
+
+/* Menciones con @ (04/11/2026) */
+.ment { color: var(--brillo); }
+.ment-menu { position: fixed; z-index: 3000; min-width: 180px; background: var(--modal); border: 1px solid var(--marco); border-radius: var(--r); padding: var(--e1); }
+.ment-op { display: flex; align-items: center; gap: var(--e2); width: 100%; padding: var(--e1) var(--e2); background: none; border: 0; border-radius: var(--r); color: var(--texto); font-family: var(--f-texto); font-size: var(--t-m); text-align: left; cursor: pointer; }
+.ment-op.on, .ment-op:hover { background: var(--suave-brillo); }
+.ment-op .ico { width: 13px; height: 13px; }
+.hoy-men { display: block; width: 100%; padding: 9px 13px; background: none; border: 0; border-bottom: 1px solid var(--marco); color: var(--texto2); font-family: var(--f-texto); font-size: var(--t-m); text-align: left; cursor: pointer; }
+.hoy-men:last-child { border-bottom: 0; }
+.hoy-men:hover { background: var(--suave-brillo); }
+.hoy-men.nueva { color: var(--texto); }
+.hoy-men-h { display: flex; justify-content: space-between; gap: var(--e2); font-size: var(--t-s); }
+.hoy-men-t { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

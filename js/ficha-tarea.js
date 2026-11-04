@@ -15,7 +15,8 @@
    (finalizar_tarea, procesar_alerta, delegar_tarea, ...): las reglas
    (quién puede, qué pasa con una recurrente) viven allá, no acá.
 
-   Un solo responsable por tarea (regla del 20/10): «Para quién» es un
+   Una tarea puede tener varios participantes en un solo registro (04/11/2026;
+   los recordatorios nacen con uno). Antes, un solo responsable: «Para quién» era un
    desplegable, no una lista para tildar.
 
    PENDIENTE: reuniones (Calendar, puente de Google), facturar y ajustar
@@ -38,6 +39,8 @@
         '<div class="ft-box" id="ftv-del"><div class="fg"><span class="fl ft-lbl">Delegar a</span><div class="ft-pills" id="ftv-to" role="group" aria-label="Delegar a"></div></div>' +
           '<textarea class="fc" id="ftv-dnota" rows="2" placeholder="Por qué se delega (opcional)"></textarea>' +
           '<div class="u-tr u-mt6"><button class="btn bp sm" data-fta="delegar">' + ico('flecha') + ' Delegar</button></div></div>' +
+        '<div class="ft-box" id="ftv-par"><div class="fg"><span class="fl ft-lbl">Participantes</span><div class="ft-pills" id="ftv-par-sel" role="group" aria-label="Participantes"></div></div>' +
+          '<div class="u-tr u-mt6"><button class="btn bp sm" data-fta="participantes">Guardar</button></div></div>' +
         '<div class="ft-box" id="ftv-rec"><div class="u-row6"><button class="btn bg sm" data-fta="rq" data-n="1">+1 día</button>' +
           '<button class="btn bg sm" data-fta="rq" data-n="3">+3 días</button><button class="btn bg sm" data-fta="rq" data-n="7">+1 semana</button>' +
           '<input class="fc u-wauto" type="date" id="ftv-rfecha" aria-label="Fecha del recordatorio"></div>' +
@@ -48,7 +51,7 @@
           '<div class="u-tr"><button class="btn bp sm" data-fta="posponer">Posponer</button></div></div>' +
         '<div class="ft-sep"><div class="sec">Comentarios</div>' +
           '<div class="ft-pills u-mb6" id="ftv-qk" role="group" aria-label="Comentarios rápidos" hidden></div>' +
-          '<textarea class="fc" id="ftv-txt" rows="2" placeholder="Escribí un comentario…" aria-label="Comentario"></textarea>' +
+          '<textarea class="fc" id="ftv-txt" rows="2" placeholder="Escribí un comentario… (@ para mencionar)" aria-label="Comentario"></textarea>' +
           '<div class="u-row8 u-mt6 u-mb12"><label class="u-row6" id="ftv-seg-l" hidden><input type="checkbox" id="ftv-seg"> <span id="ftv-seg-t"></span></label>' +
             '<button class="btn bp sm u-mla" data-fta="comentar">' + ico('chat') + ' Comentar</button></div>' +
           '<div id="ftv-coms"></div></div>' +
@@ -98,6 +101,7 @@
       if (a === 'procesar') hecho(T.t, true);
       if (a === 'caja') abrirCaja(b.getAttribute('data-caja'));
       if (a === 'delegar') delegar();
+      if (a === 'participantes') participantes();
       if (a === 'rq') $('ftv-rfecha').value = isoMas(+b.getAttribute('data-n'));
       if (a === 'recordar') recordar();
       if (a === 'posponer') posponer();
@@ -113,8 +117,9 @@
     // Comentario rápido: un clic carga el texto para editarlo (botones, no desplegable)
     $('ftv-qk').onclick = function (e) { var b = e.target.closest('[data-qk]'); if (b) { $('ftv-txt').value = b.getAttribute('data-qk'); $('ftv-txt').focus(); } };
     // Botones de una sola elección (prioridad, para quién, delegar a) y tareas rápidas
-    $('ftv-to').addEventListener('click', function (e) { var b = e.target.closest('.ft-pill'); if (b) b.classList.toggle('on'); });   // uno o más socios
-    ['ftn-who', 'ftn-prio'].forEach(function (id) {
+    // Uno o más: delegar, participantes y «Para quién»
+    ['ftv-to', 'ftv-par-sel', 'ftn-who'].forEach(function (id) { $(id).addEventListener('click', function (e) { var b = e.target.closest('.ft-pill'); if (b) b.classList.toggle('on'); }); });
+    ['ftn-prio'].forEach(function (id) {
       $(id).addEventListener('click', function (e) { var b = e.target.closest('.ft-pill'); if (!b) return;
         this.querySelectorAll('.ft-pill').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     });
@@ -153,6 +158,7 @@
     return u ? u.name : m.split('@')[0];
   }
   function elegido(id) { var b = $(id) && $(id).querySelector('.ft-pill.on'); return b ? b.getAttribute('data-v') : ''; }
+  function elegidos(id) { return Array.prototype.map.call($(id).querySelectorAll('.ft-pill.on'), function (b) { return b.getAttribute('data-v'); }); }
   function yo() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').trim().toLowerCase(); }
   function esAlerta(t) { return /administr/i.test(t.type || ''); }
   function esReunion(t) { return /reuni/i.test(t.type || ''); }
@@ -172,6 +178,7 @@
       if (r[1].error) throw new Error(r[1].error.message);
       var t = r[1].data; if (!t) { $('ftv-desc').innerHTML = '<div class="empty">No encontré la tarea.</div>'; return; }
       T.t = t; pintar(t); comentarios(t.id);
+      db().rpc('menciones_leer', { tid: t.id }).then(function () {});   // abrir la tarea marca sus menciones como leídas
       if (opts.ir === 'delegar' && $('ftv-acc').querySelector('[data-caja=ftv-del]')) abrirCaja('ftv-del');
       if (opts.ir === 'comentar') setTimeout(function () { $('ftv-txt').focus(); }, 50);
     } catch (e) { $('ftv-desc').innerHTML = '<div class="empty">No se pudo abrir: ' + esc(e.message) + '</div>'; }
@@ -190,7 +197,7 @@
       (t.channels ? '<span>' + ico('campana') + 'Te recuerda el ' + esc(ff(t.due)) + (/telegram/i.test(t.channels) ? ' · también por Telegram' : '') + '</span>'
                   : '<span>' + ico('calendario') + 'Vence ' + esc(ff(t.due) || '—') + '</span>') +
       (t.frequency && !/^[uú]nica$/i.test(t.frequency) ? '<span>' + ico('repetir') + esc(t.frequency) + '</span>' : '') +
-      '<span>' + ico('personas') + esc(rs.map(nombre).join(', ') || 'Sin responsable') + '</span>';
+      '<span>' + ico('personas') + (rs.length > 1 ? 'Participantes: ' : '') + esc(rs.map(nombre).join(', ') || 'Sin responsable') + '</span>';
     var a = '';
     // Un solo botón principal (bp) por ficha; el resto, secundarios (bg) · 29/10/2026
     if (!t.closed && al) {
@@ -215,7 +222,10 @@
     } else if (!t.closed) {
       a += '<span class="ft-info u-m0">Solo ' + esc(rs.map(nombre).join(', ') || 'el responsable') + ' puede finalizarla o delegarla. Vos podés comentar.</span>';
     }
+    if (!t.closed && !al && (rs.indexOf(yo()) >= 0 || String(t.creator || '').toLowerCase() === yo()))
+      a += '<button class="btn bg sm" data-fta="caja" data-caja="ftv-par">' + ico('personas') + ' Participantes</button>';
     $('ftv-acc').innerHTML = a;
+    $('ftv-par-sel').innerHTML = B.users.map(function (u) { return '<button type="button" class="ft-pill' + (rs.indexOf(u.mail) >= 0 ? ' on' : '') + '" data-v="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('');
     // delegar a uno o más socios, nunca al mismo
     var gente = B.users.filter(function (u) { return rs.length !== 1 || u.mail !== rs[0]; });
     $('ftv-to').innerHTML = gente.map(function (u) { return '<button type="button" class="ft-pill" data-v="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('');
@@ -225,7 +235,7 @@
   }
 
   // Un recuadro abierto por vez
-  var CAJAS = ['ftv-fin', 'ftv-del', 'ftv-rec', 'ftv-pos'];
+  var CAJAS = ['ftv-fin', 'ftv-del', 'ftv-par', 'ftv-rec', 'ftv-pos'];
   function abrirCaja(id) {
     var c = $(id), on = !c.classList.contains('on');
     CAJAS.forEach(function (x) { $(x).classList.remove('on'); });
@@ -249,7 +259,7 @@
       var f = cuando ? ff(cuando) + ' ' + String(cuando.getHours()).padStart(2, '0') + ':' + String(cuando.getMinutes()).padStart(2, '0') : ff(c.fecha);
       return '<div class="ft-note' + (seg ? ' follow' : '') + '"><div class="ft-note-h"><span>' + ico('personas') + ' ' + esc(nombre(c.creador)) +
         (seg ? ' · ' + ico('bandera') + ' ' + esc(c.estado) : '') + '</span><span class="m">' + esc(f) + '</span></div>' +
-        '<div class="ft-note-t">' + links(esc(c.texto)) + '</div></div>';
+        '<div class="ft-note-t">' + resaltarMenciones(links(esc(c.texto))) + '</div></div>';
     }).join('') : '<div class="ft-info">Sin comentarios todavía.</div>';
   }
 
@@ -275,19 +285,17 @@
     var res = await hacer('comentar', { p: { tarea_id: T.t.id, texto: txt, estado: st } }, 'Comentario guardado');
     if (res) { $('ftv-txt').value = ''; $('ftv-seg').checked = false; comentarios(T.t.id); }
   }
-  // Una tarea por socio: el primero recibe esta misma (delegar_tarea: misma fila, otro responsable),
-  // los demás una copia. Primero las copias: la delegación le saca la tarea a quien delega.
-  window.delegarTarea = async function (t, mails, nota) {
-    var pid = [].concat(t.project_ids || []).join(',').split(',')[0].trim();
-    for (var i = 1; i < mails.length; i++)
-      await rpc('nueva_tarea', { p: { title: t.title, detail: [t.detail, nota].filter(Boolean).join('\n'), clientId: t.client_id || '', projectId: pid, priority: t.priority || '', assignees: mails[i], due: t.due || '' } });
-    return rpc('delegar_tarea', { tid: t.id, a: mails[0], nota: nota || '' });
-  };
+  // Delegar a uno o a varios: siempre el mismo registro (delegar_tarea)
+  window.delegarTarea = function (t, mails, nota) { return rpc('delegar_tarea', { tid: t.id, a: mails.join(', '), nota: nota || '' }); };
   async function delegar() {
-    var m = Array.prototype.map.call($('ftv-to').querySelectorAll('.ft-pill.on'), function (b) { return b.getAttribute('data-v'); });
+    var m = elegidos('ftv-to');
     if (!m.length) return toast('Elegí a quién se la delegás.', 'err');
-    try { await window.delegarTarea(T.t, m, v('ftv-dnota')); toast(m.length > 1 ? 'Delegada a ' + m.length + ' socios' : 'Delegada', 'ok'); closeM('m-ftv'); avisar(T.onSave); }
+    try { await window.delegarTarea(T.t, m, v('ftv-dnota')); toast('Delegada', 'ok'); closeM('m-ftv'); avisar(T.onSave); }
     catch (e) { toast(e.message, 'err'); }
+  }
+  function participantes() {
+    var m = elegidos('ftv-par-sel'); if (!m.length) return toast('Elegí al menos una persona.', 'err');
+    hacer('asignar_tarea', { tid: T.t.id, mails: m.join(', ') }, 'Participantes guardados', 'm-ftv');
   }
   function recordar() {
     var f = v('ftv-rfecha'); if (!f) return toast('Elegí la fecha del recordatorio.', 'err');
@@ -449,7 +457,7 @@
     } catch (e) { b.disabled = false; return toast(e.message, 'err'); }
     var creada = await hacer('nueva_tarea', { p: { title: v('ftn-tit'), detail: v('ftn-det'),
       clientId: emp, projectId: pv,
-      priority: pr, assignees: elegido('ftn-who'), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
+      priority: pr, assignees: elegidos('ftn-who').join(', '), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
     if (creada && subidos.length) { try { await rpc('comentar', { p: { tarea_id: creada.id, texto: 'Documentos: ' + subidos.map(function (d) { return d.nombre + ' ' + d.url; }).join(' · '), estado: 'Normal' } }); } catch (e) { toast('Los archivos subieron pero no se anotaron: ' + e.message, 'err'); } }
     b.disabled = false;
   }

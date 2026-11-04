@@ -38,10 +38,11 @@
       db().from('v_facturar_mensuales').select('item_id'),
       db().from('v_facturar_saldos').select('item_id'),
       db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 }),
-      db().from('usuarios').select('mail,nombre').eq('es_giwa', true).eq('activo', true).order('orden')
+      db().from('usuarios').select('mail,nombre').eq('es_giwa', true).eq('activo', true).order('orden'),
+      db().from('v_mis_menciones').select('*').order('creado', { ascending: false }).limit(30)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
-    H.tareas = r[0].data;
+    H.tareas = r[0].data; H.menc = r[6].data;
     H.users = r[5].data.map(function (u) { return { mail: String(u.mail || '').trim().toLowerCase(), name: u.nombre || u.mail }; });
     var dv = Number(r[4].data) || 30;
     H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
@@ -84,18 +85,27 @@
         (P === 'rec' ? '<label class="u-row6 u-s12"><input type="checkbox" id="hp-tg-' + id + '" checked> Avisar por Telegram</label>' : '') +
         '<button class="btn bp sm" data-hoy="' + (P === 'pos' ? 'pos-ok' : 'rec-ok') + '" data-id="' + id + '">' + (P === 'pos' ? 'Postergar' : 'Guardar') + '</button></div>';
     h += '<div class="hoy-meta">' + (t.detail ? '<div class="hoy-det">' + esc(t.detail) + '</div>' : '') +
-      '<div class="u-s11-mt">Responsable: ' + esc(String(t.assignees || '').split(',').filter(Boolean).map(nombreDe).join(', ') || '—') +
+      '<div class="u-s11-mt">' + (String(t.assignees || '').indexOf(',') > 0 ? 'Participantes' : 'Responsable') + ': ' + esc(String(t.assignees || '').split(',').filter(Boolean).map(nombreDe).join(', ') || '—') +
       (t.type ? ' · ' + esc(t.type) : '') + (t.priority ? ' · Prioridad ' + esc(t.priority) : '') + '</div></div>';
     h += '<div class="hoy-coms">' + (cs === undefined ? '<div class="u-s11-mt">Cargando comentarios…</div>' : !cs.length ? '<div class="u-s11-mt">Sin comentarios.</div>' :
       cs.slice(0, H.todos === t.id ? 50 : 3).map(function (c) {
-        return '<div class="hoy-com"><span class="u-fw6">' + esc(nombreDe(c.creador)) + '</span> <span class="u-s10-mt m">' + esc(corto(c.fecha)) + '</span> ' + esc(c.texto) + '</div>'; }).join('') +
+        return '<div class="hoy-com"><span class="u-fw6">' + esc(nombreDe(c.creador)) + '</span> <span class="u-s10-mt m">' + esc(corto(c.fecha)) + '</span> ' + resaltarMenciones(esc(c.texto)) + '</div>'; }).join('') +
       (cs.length > 3 && H.todos !== t.id ? '<button class="hoy-go" data-hoy="todos" data-id="' + id + '">ver todos (' + cs.length + ')</button>' : '')) + '</div>';
-    if (!t.closed) h += '<input class="fc hoy-nota" data-nota="' + id + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">';
+    if (!t.closed) h += '<input class="fc hoy-nota" data-nota="' + id + '" placeholder="Comentario rápido y Enter… (@ para mencionar)" aria-label="Comentario rápido">';
     return h + '</div>';
   }
   async function comentarios(el, id) {
     var r = await db().from('comentarios').select('id,texto,fecha,creador,creado').eq('tarea_id', id).order('fecha', { ascending: false }).order('creado', { ascending: false });
     H.coms[id] = r.error ? [] : r.data; pintar(el);
+  }
+
+  // Dónde me mencionaron: quién, en qué tarea, qué dijo y cuándo. Un clic abre la conversación.
+  function menciones() {
+    var L = H.menc || []; if (!L.length) return '<div class="hoy-vacio">Nadie te mencionó todavía.</div>';
+    return L.map(function (m) {
+      var d = new Date(m.creado), hora = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      return '<button class="hoy-men' + (m.leida ? '' : ' nueva') + '" data-hoy="men" data-t="' + esc(m.tarea_id) + '"><span class="hoy-men-h"><span>' + esc(nombreDe(m.creador)) + ' · ' + esc(m.titulo || m.tarea_id) + '</span>' +
+        '<span class="m u-nw">' + esc(ff(d)) + ' ' + hora + '</span></span><span class="hoy-men-t">' + resaltarMenciones(esc(m.texto)) + '</span></button>'; }).join('');
   }
 
   function pintar(el) {
@@ -151,6 +161,7 @@
       return '<details class="hoy-sec' + (cls ? ' ' + cls : '') + '" data-hsec="' + k + '"' + (cerrado ? '' : ' open') + '><summary class="hoy-sec-h">' +
         '<span class="chev">' + ico('derecha') + '</span>' + ico(icon) + ' ' + tit + (n !== null ? ' <span class="u-s11-mt">' + n + '</span>' : '') + (extra || '') + '</summary>' + cuerpo + '</details>';
     };
+    var sinLeer = (H.menc || []).filter(function (m) { return !m.leida; }).length;
     var lista = function (L, vacio) { return L.length ? L.map(function (t) { return fila(t, hoy); }).join('') : '<div class="hoy-vacio">' + vacio + '</div>'; };
     h += '<div class="hoy"><div>' +
       (alertasAb.length ? sec('alertas', 'campana', 'Alertas', alertasAb.length, lista(alertasAb, ''), '', 'hoy-alertas') : '') +
@@ -160,6 +171,7 @@
         sec('despues', 'derecha', 'Más adelante', despues.length, lista(despues, 'Nada más adelante.'), '', '', !(H.q || H.cli || H.who || H.tipo)) +
         (H.fin ? sec('fin', 'check', 'Finalizadas', cerradas.length, lista(cerradas, 'Ninguna.')) : '')) +
       '</div><div>' +
+      sec('menciones', 'chat', 'Menciones', sinLeer, menciones(), '', '', !sinLeer) +
       sec('agenda', 'reloj', 'Agenda de hoy', null, '<div class="hoy-vacio">La agenda de Google Calendar llega con el puente de Google.</div>') +
       sec('plata', 'plata', 'Plata', null,
         '<div class="hoy-plata"><span>Cobros vencidos</span><b class="m' + (P.venc ? ' u-c-rd' : '') + '">' + P.venc + '</b></div>' +
@@ -184,7 +196,7 @@
     var refrescar = async function () { await cargar(); pintar(el); };
     var alGuardar = { onSave: refrescar };
     await abrirModulo(el, { id: 'hoy', texto: 'Armando el día…', forzar: op && op.forzar, cargar: cargar,
-      cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata]); }, pintar: function () { pintar(el); } });
+      cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata, H.menc]); }, pintar: function () { pintar(el); } });
     if (!el._hoySec) {                            // recordar qué bloque quedó plegado
       el._hoySec = true;
       el.addEventListener('toggle', function (ev) { var d = ev.target; if (_montado === 'hoy' && d.matches && d.matches('details[data-hsec]')) H.cerr[d.getAttribute('data-hsec')] = !d.open; }, true);
@@ -219,6 +231,11 @@
         H.kpi = H.kpi === k ? '' : k; return pintar(el);
       }
       if (a === 'nueva') return nuevaTarea({}, alGuardar);
+      if (a === 'men') {
+        var tid = b.getAttribute('data-t');
+        (H.menc || []).forEach(function (m) { if (m.tarea_id === tid && !m.leida) m.leida = true; });
+        pintar(el); return verTarea(tid, { ir: 'comentar', onSave: alGuardar.onSave });
+      }
       if (!t) return;
       if (a === 'tog') { H.ab[t.id] = !H.ab[t.id]; if (H.ab[t.id] && H.coms[t.id] === undefined) comentarios(el, t.id); return pintar(el); }
       if (a === 'hecho') return tareaHecha(t, alGuardar);
