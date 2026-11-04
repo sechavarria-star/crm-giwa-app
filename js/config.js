@@ -14,5 +14,6 @@ var CRM_CONFIG = {
   // El CRM actual (el Apps Script, con su envoltorio de login): ahí siguen
   // las pantallas que todavía no pasaron a esta app. crm.giwa-ia.com es
   // ahora esta app; el viejo quedó en la dirección de GitHub Pages de crm-giwa.
+  puente:      'https://script.google.com/macros/s/AKfycbwrmKKgA9eIDysGFNa1Hmn_0k-a4cBtq8rQZ62wj5pRTs4ABRfaxTMoqDLFiVnr_z6u/exec',   // Drive y Gmail: Puente.js del Apps Script
   crmViejo:    'https://sechavarria-star.github.io/crm-giwa/'
 };

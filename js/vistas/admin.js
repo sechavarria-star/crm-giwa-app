@@ -149,9 +149,9 @@
   }
   // ── Depósito: un popup para el depósito del cliente y, si ya se hizo, la transferencia al socio ──
   // registrar_deposito: deposito_fecha y cobrado una sola vez; transf_fecha (= socio, como v_reparto_socio) sólo si viene.
-  function abrirDeposito(alGuardar) {
-    var ids = Array.prototype.map.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-id'); });
-    var fcs = A.d.cobros.filter(function (c) { return ids.indexOf(c.id) >= 0; }); if (!fcs.length) return;
+  function abrirDeposito(alGuardar, lista) {   // lista: el cobro de la línea (Facturación); sin ella, los tildados de la tabla
+    var ids = lista ? lista.map(function (c) { return c.id; }) : Array.prototype.map.call(document.querySelectorAll('#pc-wrap [data-pc=fc]:checked'), function (x) { return x.getAttribute('data-id'); });
+    var fcs = lista || A.d.cobros.filter(function (c) { return ids.indexOf(c.id) >= 0; }); if (!fcs.length) return;
     var pct = A.d.rep.length ? Number(A.d.rep[0].pct) || 50 : 50;
     var tot = suma(fcs, 'monto'), soc = fcs.reduce(function (a, c) { return a + Math.round((Number(c.monto) || 0) * pct / 100); }, 0);
     var m = document.getElementById('m-dep');
@@ -165,7 +165,7 @@
     document.getElementById('dep-cuerpo').innerHTML =
       '<div class="fg"><span class="fl">Cliente</span><div class="dep-cli">' + esc(fcs[0].empresa || '—') + '</div></div>' +
       '<div class="fg"><span class="fl">Facturas</span>' + fcs.map(function (c) {
-        return '<div class="dep-fila"><span class="u-f1m">' + (c.nro ? 'FC <span class="m">' + esc(c.nro) + '</span>' : 'Sin comprobante') +
+        return '<div class="dep-fila"><span class="u-f1m">' + ((c.nro || c.nro_factura) ? 'FC <span class="m">' + esc(c.nro || c.nro_factura) + '</span>' : 'Sin comprobante') +
           (c.concepto ? ' · <span class="u-c-mt">' + esc(c.concepto) + '</span>' : '') + '</span><span class="m">' + fmt(c.monto) + '</span></div>'; }).join('') + '</div>' +
       '<div class="dep-imp"><div><span class="fl">Recibo del cliente</span><b class="m m-cobrado">' + fmt(tot) + '</b></div>' +
         '<div><span class="fl">Le toca al socio (' + pct + '%)</span><b class="m m-pendiente">' + fmt(soc) + '</b></div></div>' +
@@ -374,49 +374,77 @@
         opt('sinfc', 'Cobros sin factura', F.dep) + opt('depositado', 'Depositados', F.dep) + '</select>' +
       '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Quién facturó: todos', F.own) +
         Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select>' +
-      '<button class="btn bp sm" data-adm="cb-fact">' + ico('factura') + ' Nueva factura</button><button class="btn bp sm" data-adm="cb-pago">' + ico('cobro') + ' Registrar pago</button></div>';
+      '<button class="btn bp sm" data-adm="cb-fact">' + ico('factura') + ' Nueva factura</button></div>';
     var list = filtrarFact(), pend = list.filter(sinDep);
     h += '<div class="g3 u-mb12">' +
       '<div class="kpi k-cobrado"><div class="kpi-lbl">Total cobrado ARS (neto)</div><div class="kpi-val">' + fmt(suma(list, 'monto')) + '</div><div class="kpi-sub">' + n(list.length, 'cobro') + '</div></div>' +
       '<div class="kpi k-usd"><div class="kpi-lbl">Total USD</div><div class="kpi-val">' + fmt(Math.round(suma(list, 'total_usd')), 'USD') + '</div><div class="kpi-sub">al TC de cada comprobante</div></div>' +
       '<div class="kpi ' + (pend.length ? 'k-alerta' : 'k-neutro') + '"><div class="kpi-lbl">Sin depósito</div><div class="kpi-val">' + pend.length + '</div><div class="kpi-sub">' + (pend.length ? fmt(suma(pend, 'monto')) : 'todo depositado') + '</div></div></div>';
     if (!list.length) return h + '<div class="empty">Sin cobros para este filtro.</div>';
-    var porE = {}; list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
+    // Empresa › Proyecto, plegables; los títulos de columna van una sola vez, arriba de todo
+    document.querySelectorAll('.ui-d[data-fa]').forEach(function (d, i) { if (!i) A.fOpen = {}; if (d.classList.contains('open')) A.fOpen[d.getAttribute('data-fa')] = 1; });
+    var abiertos = A.fOpen || {}, porE = {};
+    list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
+    h += '<div class="u-ovx"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th>Comprobante</th><th>Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
     Object.keys(porE).sort().forEach(function (emp) {
-      var cs = porE[emp], e0 = cs[0], logo = e0.empresa_id && A.f.logos[e0.empresa_id];
-      h += '<div class="card card-tabla u-p0 u-mb10"><div class="card-h u-row8">' +
-        // logo de Drive; si no se puede ver (archivo sin compartir: 403), la inicial
-        (logo ? '<img class="proy-emp-logo" src="' + esc(logo) + '" referrerpolicy="no-referrer" alt="" onerror="this.outerHTML=this.getAttribute(\'data-ini\')" data-ini="' +
-                esc('<div class="proy-emp-initial">' + esc(emp.charAt(0).toUpperCase()) + '</div>') + '">'
-              : '<div class="proy-emp-initial">' + esc(emp.charAt(0).toUpperCase()) + '</div>') +
-        '<span class="u-fw6">' + esc(emp) + '</span><span class="u-s10-mt">' + n(cs.length, 'cobro') + '</span>' +
-        '<span class="m m-cobrado u-mla">' + fmt(suma(cs, 'monto')) + '</span></div>' +
-        '<div class="u-ovx"><table class="tbl"><thead><tr><th>Concepto</th><th>Comprobante</th><th>Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead><tbody>';
-      var porP = {}, ordP = [];
-      cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; if (!porP[k]) { porP[k] = []; ordP.push(k); } porP[k].push(c); });
-      ordP.sort().forEach(function (pn) {
-        h += '<tr class="pc-emp-f"><td colspan="7"><span class="u-s11 u-fw6">' + esc(pn) + '</span> <span class="m m-cobrado u-s10">' + fmt(suma(porP[pn], 'monto')) + '</span></td></tr>';
-        porP[pn].forEach(function (c) {
-          var nc = c.monto < 0, editable = sinDep(c) || nc;
-          // el color del monto dice si la plata entró: cobrado · pendiente · nota de crédito (neutra)
-          var mc = nc ? 'm-neutro' : sinDep(c) ? 'm-pendiente' : 'm-cobrado';
-          h += '<tr><td><span class="u-fw6">' + esc(c.concepto || '—') + '</span>' + (c.cuota_nro ? ' <span class="u-s10-mt">· cuota ' + esc(c.cuota_nro) + '</span>' : '') + '</td>' +
-            '<td class="u-nw">' + esc(c.tipo_comp || '—') + (c.nro_factura ? ' <span class="u-s10-mt">#' + esc(c.nro_factura) + '</span>' : ' <span class="u-s10 u-c-wa">sin N°</span>') + '</td>' +
-            '<td class="u-c-mt u-nw">' + esc(ff(c.fecha_comp)) + '</td>' +
-            '<td class="m ' + mc + ' u-tr u-nw">' + fmt(c.monto) + '</td>' +
-            '<td class="m m-usd u-tr u-nw">' + (c.total_usd > 0 ? fmt(Math.round(c.total_usd), 'USD') : '—') + '</td>' +
-            '<td>' + (c.link_fc ? '<a class="btn bg xs" href="' + esc(c.link_fc) + '" target="_blank" rel="noopener">' + ico('documento') + ' Ver</a>'
-                                : '<button class="btn bg xs btn-ico" data-adm="fa-link" data-id="' + esc(c.id) + '" data-tip="Adjuntar el PDF (link)" aria-label="Adjuntar el PDF">' + ico('clip') + '</button>') + '</td>' +
-            '<td class="u-nw u-tr">' + (editable
-              ? viejo().replace('btn bg xs"', 'btn bg xs btn-ico" data-tip="Editar en el CRM actual" aria-label="Editar"') + ico('editar') + '</a>' +
-                '<button class="btn bg xs btn-ico" data-adm="fa-borrar" data-id="' + esc(c.id) + '" data-tip="Eliminar este cobro" aria-label="Eliminar">' + ico('borrar') + '</button>'
-              : '<button class="btn bg xs btn-ico" data-adm="fa-com" data-id="' + esc(c.id) + '" data-tip="Ya cobrado: sólo se le puede comentar" aria-label="Comentar">' + ico('chat') + '</button>') +
-            '</td></tr>';
-        });
+      var cs = porE[emp], porP = {}, cuerpo = '';
+      cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; (porP[k] = porP[k] || []).push(c); });
+      Object.keys(porP).sort().forEach(function (pn) {
+        var k2 = emp + '|' + pn;
+        cuerpo += uiDesp({ t: pn, n2: true, n: porP[pn].length, open: abiertos[k2], v: fmt(suma(porP[pn], 'monto')), attrs: 'data-fa="' + esc(k2) + '"' },
+          '<table class="tbl fa-tb"><tbody>' + porP[pn].map(filaFact).join('') + '</tbody></table>');
       });
-      h += '</tbody></table></div></div>';
+      h += uiDesp({ t: emp, logo: uiLogo(emp, cs[0].empresa_id && A.f.logos[cs[0].empresa_id]), n: cs.length, open: abiertos[emp] || !!F.emp, v: fmt(suma(cs, 'monto')), attrs: 'data-fa="' + esc(emp) + '"' }, cuerpo);
     });
-    return h;
+    return h + '</div></div>';
+  }
+  function filaFact(c) {
+    var nc = c.monto < 0, editable = sinDep(c) || nc;
+    // el color del monto dice si la plata entró: cobrado · pendiente · nota de crédito (neutra)
+    var mc = nc ? 'm-neutro' : sinDep(c) ? 'm-pendiente' : 'm-cobrado';
+    var ib = function (acc, icono, tip) { return '<button class="btn bg xs btn-ico" data-adm="' + acc + '" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icono) + '</button>'; };
+    return '<tr><td>' + esc(c.concepto || '—') + (c.cuota_nro ? ' <span class="u-s10-mt">· cuota <span class="m">' + esc(c.cuota_nro) + '</span></span>' : '') + '</td>' +
+      '<td class="u-nw">' + esc(c.tipo_comp || '—') + (c.nro_factura ? ' <span class="m u-s10-mt">#' + esc(c.nro_factura) + '</span>' : '') + '</td>' +
+      '<td class="m u-c-mt u-nw">' + esc(ff(c.fecha_comp)) + '</td>' +
+      '<td class="m ' + mc + ' u-tr u-nw">' + fmt(c.monto) + '</td>' +
+      '<td class="m m-usd u-tr u-nw">' + (c.total_usd > 0 ? fmt(Math.round(c.total_usd), 'USD') : '—') + '</td>' +
+      '<td>' + (c.link_fc ? '<a class="btn bg xs" href="' + esc(c.link_fc) + '" target="_blank" rel="noopener">' + ico('documento') + ' Ver</a>' : ib('fa-link', 'clip', 'Adjuntar el PDF')) + '</td>' +
+      '<td class="u-nw u-tr">' +
+        (sinDep(c) && !nc ? ib('fa-pago', 'cobro', 'Registrar pago') : '') +
+        (sinDep(c) && !nc && c.nro_factura ? ib('fa-mail', 'mail', 'Reclamar por mail') : '') +
+        (editable
+          ? viejo().replace('btn bg xs"', 'btn bg xs btn-ico" data-tip="Editar en el CRM actual" aria-label="Editar"') + ico('editar') + '</a>' + ib('fa-borrar', 'borrar', 'Eliminar este cobro')
+          : ib('fa-com', 'chat', 'Ya cobrado: sólo se le puede comentar')) +
+      '</td></tr>';
+  }
+  // Reclamo de una factura sin pagar: borrador en Gmail, con el PDF y la antigüedad
+  async function reclamarFact(c) {
+    var rz = await db().from('razones_sociales').select('nombre,mail_facturacion').eq('empresa_id', c.empresa_id).order('por_defecto', { ascending: false });
+    if (rz.error) return toast(rz.error.message, 'err');
+    var u = rz.data.find(function (x) { return x.nombre === c.razon; }) || rz.data[0], para = u && String(u.mail_facturacion || '').trim();
+    if (!para) return toast('Falta el Mail de facturación en la razón social de ' + c.empresa, 'err');
+    if (!(await ask('¿Preparo el reclamo de la factura ' + c.nro_factura + ' para ' + para + '?\n\nQueda como BORRADOR en tu Gmail: lo revisás y lo enviás desde ahí.', 'Reclamar por mail', { ok: 'Preparar' }))) return;
+    var dias = Math.floor((Date.now() - new Date(c.fecha_comp).getTime()) / 864e5);
+    toast('Preparando el borrador…', 'inf');
+    try {
+      var r = await puente('mailFactura', { para: para, cliente: c.empresa, numero: c.nro_factura, fecha_emision: ff(c.fecha_comp), concepto: c.concepto, monto: fmt(c.monto), pdf_id: c.link_fc,
+        nota: 'Esta factura fue emitida hace ' + dias + ' días y todavía no figura acreditada. Si ya la abonaron, por favor desestimen este aviso.' });
+      toast('Borrador creado en tu Gmail' + (r.aviso ? ' · ' + r.aviso : ''), 'ok'); if (r.url) window.open(r.url, '_blank', 'noopener');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+  // Adjuntar: el PDF va a la carpeta de Drive de quien facturó y el link queda en el cobro
+  function adjuntarFact(el, c) {
+    var inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.pdf,application/pdf';
+    inp.onchange = async function () {
+      if (!inp.files[0]) return;
+      toast('Subiendo el PDF…', 'inf');
+      try {
+        var up = await puente('subirFactura', { archivo: inp.files[0], owner: c.factura_owner || (CRM_USUARIO && CRM_USUARIO.mail) || '' });
+        var l = await db().rpc('cobro_link', { cid: c.id, link: up.url }); if (l.error) throw new Error(l.error.message);
+        toast('Factura adjuntada', 'ok'); await cargarFact(); pintar(el);
+      } catch (e) { toast(e.message, 'err'); }
+    };
+    inp.click();
   }
   async function accionFact(el, a, id) {
     var c = A.f.cobros.find(function (x) { return x.id === id; }); if (!c) return;
@@ -435,14 +463,9 @@
       if (r.error) return toast(r.error.message, 'err');
       return toast('Comentario guardado', 'ok');
     }
-    if (a === 'fa-link') {
-      // Subir el archivo a Drive llega con el puente de Google; mientras, el link del PDF
-      var l = await pedir('Link del PDF de la factura (Drive)', '', 'Adjuntar factura');
-      if (!l || !String(l).trim()) return;
-      r = await db().rpc('cobro_link', { cid: id, link: String(l).trim() });
-      if (r.error) return toast(r.error.message, 'err');
-      toast('Factura adjuntada', 'ok');
-    }
+    if (a === 'fa-link') return adjuntarFact(el, c);
+    if (a === 'fa-mail') return reclamarFact(c);
+    if (a === 'fa-pago') return abrirDeposito(async function () { await cargarFact(); pintar(el); }, [c]);
     await cargarFact(); pintar(el);
   }
 

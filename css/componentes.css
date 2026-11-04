@@ -334,3 +334,19 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .cot-re { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--e5); align-items: start; }
 .cot-re-txt { width: 100%; min-height: 360px; line-height: 1.6; }
 .cot-re-tot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e4); margin-top: var(--e4); padding-top: var(--e3); border-top: 1px solid var(--marco); font-size: var(--t-m); }
+
+/* Nueva factura: el concepto de cada línea y la zona del PDF (03/11/2026) */
+.cb-concepto { margin-top: var(--e1); }
+.cb-adj { border: 1px dashed var(--marco); border-radius: var(--r); padding: var(--e3); font-size: var(--t-m); color: var(--texto2); text-align: center; margin-bottom: var(--e3); }
+.cb-adj.on { border-color: var(--brillo); background: var(--suave-brillo); }
+
+/* Facturación: una sola fila de títulos y las mismas columnas en cada proyecto (03/11/2026) */
+.fa-lista { min-width: 860px; }
+.fa-lista .ui-cuerpo { padding: 0; }
+.fa-lista .fa-tb { table-layout: fixed; width: 100%; }
+.fa-tb th:nth-child(2), .fa-tb td:nth-child(2) { width: 170px; }
+.fa-tb th:nth-child(3), .fa-tb td:nth-child(3) { width: 90px; }
+.fa-tb th:nth-child(4), .fa-tb td:nth-child(4) { width: 130px; }
+.fa-tb th:nth-child(5), .fa-tb td:nth-child(5) { width: 100px; }
+.fa-tb th:nth-child(6), .fa-tb td:nth-child(6) { width: 70px; }
+.fa-tb th:nth-child(7), .fa-tb td:nth-child(7) { width: 120px; }
