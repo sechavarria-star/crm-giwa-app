@@ -224,12 +224,12 @@
     if (!L.length) return '<div class="empty">No hay abonos en curso.</div>';
     var pot = 0, prev = 0;
     var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th>Abono</th><th class="u-tr">Por mes</th><th class="u-tr">Cuotas</th>' +
-      '<th class="u-tr">Quedan</th><th class="u-tr">Pendiente</th><th>Termina</th></tr></thead><tbody>' + L.map(function (a) {
+      '<th class="u-tr">Quedan</th><th class="u-tr">Pendiente</th><th class="u-tr">Termina</th></tr></thead><tbody>' + L.map(function (a) {
         pot += a.cu * 12; prev += a.quedan != null ? a.cu * a.quedan : 0;
         return '<tr><td>' + esc(a.emp || '') + '</td><td class="u-s11">' + esc(a.tit || '') + '</td>' + td(a.cu, 'm-abono') +
           '<td class="m u-tr">' + (a.tot ? a.cob + ' de ' + a.tot : '<span class="u-c-wa">sin dato</span>') + '</td>' +
           '<td class="m u-tr">' + (a.quedan != null ? a.quedan : '—') + '</td>' + td(a.quedan != null ? a.cu * a.quedan : 0, 'm-pendiente') +
-          '<td class="m">' + (a.fin ? ff(a.fin) : '<span class="u-c-wa">' + (a.finMal ? 'fecha mal cargada' : 'sin fecha') + '</span>') + '</td></tr>';
+          '<td class="m u-tr">' + (a.fin ? ff(a.fin) : '<span class="u-c-wa">' + (a.finMal ? 'fecha mal cargada' : 'sin fecha') + '</span>') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
     return h + '<div class="ft-info u-mt6">Potencial anual (cuota × 12): <span class="m m-abono">' + fmt(pot) + '</span> · Previsto según las cuotas que quedan: <span class="m m-pendiente">' + fmt(prev) + '</span>. ' +
       'Mes a mes, en «Proyección próximos 12 meses».</div>';

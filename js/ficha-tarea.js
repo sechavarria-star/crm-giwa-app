@@ -60,6 +60,7 @@
         // Igual que _FichaTarea (26/10): Qué · Proyecto (o «Sólo cliente») · Para quién · Vence · Prioridad · detalle opcional
         // Formato de la ficha original (27/10): rótulos en mayúsculas, prioridad con banderitas, personas y tareas rápidas en botones
         '<div class="fg"><label class="fl ft-lbl" for="ftn-tit">Qué hay que hacer <span class="req">*</span></label><div class="ft-pills u-mb6" id="ftn-rap"></div><input class="fc" id="ftn-tit"></div>' +
+        '<div class="fg"><label class="fl ft-lbl" for="ftn-cli">Cliente</label><select class="fc" id="ftn-cli"></select></div>' +
         '<div class="fg"><label class="fl ft-lbl" for="ftn-proy">Proyecto</label><select class="fc" id="ftn-proy"></select></div>' +
         '<div class="g2"><div class="fg"><span class="fl ft-lbl">Para quién</span><div class="ft-pills" id="ftn-who" role="radiogroup" aria-label="Para quién"></div></div>' +
           '<div class="fg"><label class="fl ft-lbl" for="ftn-vence">Vence</label><input class="fc" type="date" id="ftn-vence"></div></div>' +
@@ -117,6 +118,7 @@
       $(id).addEventListener('click', function (e) { var b = e.target.closest('.ft-pill'); if (!b) return;
         this.querySelectorAll('.ft-pill').forEach(function (x) { x.classList.toggle('on', x === b); }); });
     });
+    $('ftn-cli').onchange = function () { llenarProyectos(''); };
     $('ftn-rap').onclick = function (e) { var b = e.target.closest('[data-rap]'); if (b) { $('ftn-tit').value = b.getAttribute('data-rap'); $('ftn-tit').focus(); } };
   });
 
@@ -409,19 +411,21 @@
 
   // ── nueva ────────────────────────────────────────────────────
   // Proyecto: agrupado por cliente; «Sólo cliente · X» (cli:ID) es la tarea a nivel cliente
+  // Cliente y Proyecto en cascada; ninguno es obligatorio
+  function opcion(val, txt, sel) { return '<option value="' + esc(val) + '"' + (val === sel ? ' selected' : '') + '>' + esc(txt) + '</option>'; }
+  function llenarClientes(sel) {
+    $('ftn-cli').innerHTML = '<option value="">— Sin cliente —</option>' + T.base.clientes.map(function (c) { return opcion(c.id, c.nombre, sel); }).join('');
+  }
   function llenarProyectos(sel) {
-    var B = T.base, op = function (val, txt) { return '<option value="' + esc(val) + '"' + (val === sel ? ' selected' : '') + '>' + esc(txt) + '</option>'; };
-    $('ftn-proy').innerHTML = '<option value="">— Sin proyecto ni cliente —</option>' + B.clientes.map(function (c) {
-      var ps = B.proyectos.filter(function (p) { return p.empresa_id === c.id; });
-      return '<optgroup label="' + esc(c.nombre) + '">' + op('cli:' + c.id, 'Sólo cliente · ' + c.nombre) +
-        ps.map(function (p) { return op(p.id, p.nombre || p.id); }).join('') + '</optgroup>';
-    }).join('');
+    var cli = v('ftn-cli');
+    $('ftn-proy').innerHTML = '<option value="">— Sin proyecto —</option>' + T.base.proyectos.filter(function (p) { return cli && p.empresa_id === cli; }).map(function (p) { return opcion(p.id, p.nombre || p.id, sel); }).join('');
   }
   window.nuevaTarea = async function (ctx, opts) {
     ctx = ctx || {}; T.onSave = (opts || {}).onSave || null;
     try {
       var B = await base();
-      llenarProyectos(ctx.projectId || (ctx.clientId ? 'cli:' + ctx.clientId : ''));
+      var p0 = B.proyectos.find(function (p) { return p.id === ctx.projectId; });
+      llenarClientes(ctx.clientId || (p0 ? p0.empresa_id : '')); llenarProyectos(ctx.projectId || '');
       var tono = function (p) { return /alta/i.test(p) ? 't-rd' : /media/i.test(p) ? 't-yl' : 't-mt'; };
       $('ftn-prio').innerHTML = B.prio.map(function (p) { return '<button type="button" class="ft-pill ' + tono(p) + (p === 'Media' ? ' on' : '') + '" data-v="' + esc(p) + '">' + ico('bandera') + ' ' + esc(p) + '</button>'; }).join('');
       $('ftn-who').innerHTML = B.users.map(function (u) { return '<button type="button" class="ft-pill' + (u.mail === yo() ? ' on' : '') + '" data-v="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('');
@@ -435,16 +439,16 @@
   };
   async function guardarNueva() {
     if (!v('ftn-tit')) return toast('Falta «Qué hay que hacer».', 'err');
-    var pv = v('ftn-proy'), pj = T.base.proyectos.find(function (p) { return p.id === pv; }), pr = elegido('ftn-prio');
-    var b = $('ftn-ok'), docs = Array.prototype.slice.call($('ftn-doc').files), emp = pv.indexOf('cli:') === 0 ? pv.slice(4) : (pj ? pj.empresa_id : ''), subidos = [];
-    if (docs.length && !emp) return toast('Elegí el proyecto o cliente: los documentos van a la carpeta de su empresa.', 'err');
+    var pv = v('ftn-proy'), pr = elegido('ftn-prio');
+    var b = $('ftn-ok'), docs = Array.prototype.slice.call($('ftn-doc').files), emp = v('ftn-cli'), subidos = [];
+    if (docs.length && !emp) return toast('Elegí el cliente: los documentos van a la carpeta de su empresa.', 'err');
     b.disabled = true;
     try {   // Primero los archivos: si no suben, no queda la tarea sin ellos
       var em = T.base.clientes.find(function (c) { return c.id === emp; });
       for (var i = 0; i < docs.length; i++) { toast('Subiendo ' + docs[i].name + '…', 'inf'); subidos.push(await puente('subirDoc', { archivo: docs[i], empresa: em ? em.nombre : '' })); }
     } catch (e) { b.disabled = false; return toast(e.message, 'err'); }
     var creada = await hacer('nueva_tarea', { p: { title: v('ftn-tit'), detail: v('ftn-det'),
-      clientId: pv.indexOf('cli:') === 0 ? pv.slice(4) : (pj ? pj.empresa_id : ''), projectId: pv.indexOf('cli:') === 0 ? '' : pv,
+      clientId: emp, projectId: pv,
       priority: pr, assignees: elegido('ftn-who'), due: v('ftn-vence') } }, function (r) { return 'Tarea creada · ' + r.id; }, 'm-ftn');
     if (creada && subidos.length) { try { await rpc('comentar', { p: { tarea_id: creada.id, texto: 'Documentos: ' + subidos.map(function (d) { return d.nombre + ' ' + d.url; }).join(' · '), estado: 'Normal' } }); } catch (e) { toast('Los archivos subieron pero no se anotaron: ' + e.message, 'err'); } }
     b.disabled = false;

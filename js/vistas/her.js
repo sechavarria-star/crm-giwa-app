@@ -407,10 +407,10 @@
     el.innerHTML = uiHd('Valores de mercado', 'Referencias en USD por hora. Se editan en Datos.',
         '<select class="fc u-wauto" id="mk-tipo" aria-label="Tipo"><option value="">Todos los tipos</option>' + Object.keys(tipos).sort().map(function (t) { return '<option value="' + esc(t) + '"' + (t === MK.tipo ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>') +
       (!L.length ? '<div class="empty">Sin valores para este tipo.</div>' :
-      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Rol</th><th>Tipo</th><th>Fuente</th><th class="u-tr">Mínimo</th><th class="u-tr">Referencia</th><th class="u-tr">Máximo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>' +
+      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Rol</th><th>Tipo</th><th>Fuente</th><th class="u-tr">Mínimo</th><th class="u-tr">Referencia</th><th class="u-tr">Máximo</th><th class="u-tr">Fecha</th><th>Estado</th></tr></thead><tbody>' +
       L.map(function (x) {
         return '<tr><td>' + esc(x.rol || '—') + '</td><td>' + esc(x.tipo || '—') + '</td><td>' + esc(x.fuente || '—') + '</td>' + usd(x.usd_min) + usd(x.usd_ref) + usd(x.usd_max) +
-          '<td class="m u-nw">' + esc(x.fecha ? ff(x.fecha) : '—') + '</td><td class="' + (x.estado === 'Vigente' ? 'ui-p-cobrado' : 'ui-p-pendiente') + '">' + esc(x.estado) + '</td></tr>'; }).join('') +
+          '<td class="m u-nw u-tr">' + esc(x.fecha ? ff(x.fecha) : '—') + '</td><td class="' + (x.estado === 'Vigente' ? 'ui-p-cobrado' : 'ui-p-pendiente') + '">' + esc(x.estado) + '</td></tr>'; }).join('') +
       '</tbody></table></div>');
   }
   // ── Análisis: qué herramienta conviene y cuánto cuesta (misma regla que «Evaluar costos») ──

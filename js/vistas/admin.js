@@ -385,7 +385,7 @@
     document.querySelectorAll('.ui-d[data-fa]').forEach(function (d, i) { if (!i) A.fOpen = {}; if (d.classList.contains('open')) A.fOpen[d.getAttribute('data-fa')] = 1; });
     var abiertos = A.fOpen || {}, porE = {};
     list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
-    h += '<div class="u-ovx"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th>Comprobante</th><th>Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
+    h += '<div class="u-ovx"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th>Comprobante</th><th class="u-tr">Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
     Object.keys(porE).sort().forEach(function (emp) {
       var cs = porE[emp], porP = {}, cuerpo = '';
       cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; (porP[k] = porP[k] || []).push(c); });
@@ -405,7 +405,7 @@
     var ib = function (acc, icono, tip) { return '<button class="btn bg xs btn-ico" data-adm="' + acc + '" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icono) + '</button>'; };
     return '<tr><td>' + esc(c.concepto || '—') + (c.cuota_nro ? ' <span class="u-s10-mt">· cuota <span class="m">' + esc(c.cuota_nro) + '</span></span>' : '') + '</td>' +
       '<td class="u-nw">' + esc(c.tipo_comp || '—') + (c.nro_factura ? ' <span class="m u-s10-mt">#' + esc(c.nro_factura) + '</span>' : '') + '</td>' +
-      '<td class="m u-c-mt u-nw">' + esc(ff(c.fecha_comp)) + '</td>' +
+      '<td class="m u-c-mt u-nw u-tr">' + esc(ff(c.fecha_comp)) + '</td>' +
       '<td class="m ' + mc + ' u-tr u-nw">' + fmt(c.monto) + '</td>' +
       '<td class="m m-usd u-tr u-nw">' + (c.total_usd > 0 ? fmt(Math.round(c.total_usd), 'USD') : '—') + '</td>' +
       '<td>' + (c.link_fc ? '<a class="btn bg xs" href="' + esc(c.link_fc) + '" target="_blank" rel="noopener">' + ico('documento') + ' Ver</a>' : ib('fa-link', 'clip', 'Adjuntar el PDF')) + '</td>' +
@@ -505,9 +505,9 @@
       return true;
     }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); });
     if (!L.length) return h + '<div class="empty">' + (G.length ? 'Nada coincide con el filtro.' : 'Sin gastos cargados. Agregá el primero.') + '</div>';
-    return h + '<div class="card u-p0 u-ov"><table class="tbl"><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th class="u-tr">ARS</th><th class="u-tr">USD</th>' +
+    return h + '<div class="card u-p0 u-ov"><table class="tbl"><thead><tr><th class="u-tr">Fecha</th><th>Categoría</th><th>Descripción</th><th class="u-tr">ARS</th><th class="u-tr">USD</th>' +
       '<th>Frecuencia</th><th>Pagador</th><th>Prorratea</th><th></th></tr></thead><tbody>' + L.map(function (g) {
-        return '<tr><td class="m">' + esc(ff(g.fecha)) + '</td><td>' + esc(g.categoria || '—') + '</td><td>' + esc(g.descripcion || '') + '</td>' +
+        return '<tr><td class="m u-tr">' + esc(ff(g.fecha)) + '</td><td>' + esc(g.categoria || '—') + '</td><td>' + esc(g.descripcion || '') + '</td>' +
           '<td class="u-tr">' + fmt(g.monto_ars || 0) + '</td><td class="u-tr m m-usd">' + (Number(g.monto_usd) ? fmt(g.monto_usd, 'USD') : '') + '</td>' +
           '<td>' + esc(g.recurrencia || '') + '</td><td>' + esc(nomUsr(g.pagador)) + '</td><td>' + (g.prorratear ? 'Sí' : 'No') + '</td>' +
           '<td class="u-nw"><button class="btn bg xs btn-ico" data-tip="Editar" aria-label="Editar" data-adm="gas-edit" data-id="' + esc(g.id) + '">' + ico('editar') + '</button>' +

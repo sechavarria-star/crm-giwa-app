@@ -121,10 +121,10 @@
     var L = C.ini.lista || [];
     var tabla = function (arr, vacioTxt) {
       if (!arr.length) return '<div class="ui-nota-t">' + vacioTxt + '</div>';
-      return '<table class="ui-tbl"><thead><tr><th>Proyecto</th><th>Empresa</th><th>Estado</th><th>Creado</th><th class="ui-r">Implementación</th><th></th></tr></thead><tbody>' +
+      return '<table class="ui-tbl"><thead><tr><th>Proyecto</th><th>Empresa</th><th>Estado</th><th class="ui-r">Creado</th><th class="ui-r">Implementación</th><th></th></tr></thead><tbody>' +
         arr.map(function (p) { var id = esc(p.id);
           return '<tr><td>' + esc(p.nombre) + ' <span class="ui-nota-t ui-num">' + id + '</span></td><td>' + esc(p.empresa || '') + '</td><td>' + uiEstado(p.estado) + '</td>' +
-            '<td class="ui-num">' + (ff(p.fecha) || '') + '</td><td class="ui-r">' + fmt(p.total) + '</td>' +
+            '<td class="ui-num ui-r">' + (ff(p.fecha) || '') + '</td><td class="ui-r">' + fmt(p.total) + '</td>' +
             '<td><span class="ui-fila-ic">' + uiIb('ficha', 'Ver', '', 'data-cot="ver" data-id="' + id + '"') + uiAcc('editar', 'data-cot="editar" data-id="' + id + '"') +
               uiIb('borrar', p.borrador ? 'Descartar el borrador' : 'Borrar', 'bor', 'data-cot="borrar" data-id="' + id + '"') + '</span></td></tr>'; }).join('') + '</tbody></table>';
     };

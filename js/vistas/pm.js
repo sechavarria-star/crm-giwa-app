@@ -528,10 +528,10 @@
     var ini = _pd(it.fecha_est), fin = _pd(it.fecha_fin || it.fecha_cierre), h = '';
     if (ini && fin) { var d = Math.round((fin - ini) / 864e5); h += '<div class="ui-linea-sub">Duró <span class="ui-num">' + d + '</span> días' + (d >= 45 ? ' (≈ <span class="ui-num">' + Math.round(d / 30.4) + '</span> meses)' : '') + '</div>'; }
     var cs = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id; });
-    h += cs.length ? '<table class="ui-tbl"><thead><tr><th>Comprobante</th><th>Fecha</th><th>Cobrado el</th><th class="ui-r">Monto</th></tr></thead><tbody>' +
+    h += cs.length ? '<table class="ui-tbl"><thead><tr><th>Comprobante</th><th class="ui-r">Fecha</th><th class="ui-r">Cobrado el</th><th class="ui-r">Monto</th></tr></thead><tbody>' +
       cs.map(function (c) {
-        return '<tr><td>' + esc([c.tipo_comprobante, c.comprobante_nro].filter(Boolean).join(' ') || '—') + '</td><td class="ui-num">' + (ff(c.comprobante_fecha) || '—') + '</td>' +
-          '<td class="ui-num">' + (c.deposito_fecha ? ff(c.deposito_fecha) : '<span class="ui-p-pendiente">sin cobrar</span>') + '</td><td class="ui-r ui-p-cobrado">' + fmt(c.monto_ars) + '</td></tr>';
+        return '<tr><td>' + esc([c.tipo_comprobante, c.comprobante_nro].filter(Boolean).join(' ') || '—') + '</td><td class="ui-num ui-r">' + (ff(c.comprobante_fecha) || '—') + '</td>' +
+          '<td class="ui-num ui-r">' + (c.deposito_fecha ? ff(c.deposito_fecha) : '<span class="ui-p-pendiente">sin cobrar</span>') + '</td><td class="ui-r ui-p-cobrado">' + fmt(c.monto_ars) + '</td></tr>';
       }).join('') + '</tbody></table>' : '<div class="ui-nota-t">Sin cobros cargados.</div>';
     return h;
   }
