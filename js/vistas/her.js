@@ -15,9 +15,16 @@
                                plantilla con JSZip (se carga sólo al descargar).
                                No guarda nada. DNI y cargo del socio salen de
                                Configuración › Usuarios.
+
+     Valores de mercado (04/11/2026) = v_mercado_referencias, para consultar; se
+                               edita en Datos. Filtro por tipo.
+     Análisis (04/11/2026)   = «Evaluar costos» del Cotizador suelto
+                               (cot_herramientas): no guarda nada.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA']];
+  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis']];
+  var MK = { filas: null, tipo: '' }, EV = { categoria: 'Hosting', backend: true, db: true, evitar_tarjeta: false, presupuesto: 'Bajo', complejidad: 'Baja', costo_max: '' };
+  function subValida(s) { return SUBS.some(function (x) { return x[0] === s; }) ? s : 'meta'; }
   var TABS = [['calc', 'Calculadora'], ['vivo', 'Probalo en vivo'], ['mrr', 'MRR y conveniencia'], ['tg', 'Comparativa con Telegram']];
   var META_USD = 0.026, UTIL_USD = 0.026, FRANQ = 1000, SEM = 4.33, ESCALA = [2, 5, 10, 20, 40, 80, 120];
 
@@ -384,9 +391,54 @@
         '<button class="btn bp sm" data-nda="descargar">' + ico('documento') + ' Descargar NDA</button>') + htmlNda();
   }
 
+  // ── Valores de mercado ──
+  async function pintarMercado(el) {
+    marcarSub('mercado');
+    if (!MK.filas) {
+      el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando valores…</div>';
+      var r = await db().from('v_mercado_referencias').select('*').order('rol');
+      if (r.error) { el.innerHTML = '<div class="card">No pude cargar los datos: ' + esc(r.error.message) + '</div>'; return; }
+      MK.filas = r.data;
+      if (_montado !== 'her' || S.sub !== 'mercado') return;
+    }
+    var tipos = {}; MK.filas.forEach(function (x) { if (x.tipo) tipos[x.tipo] = 1; });
+    var L = MK.filas.filter(function (x) { return !MK.tipo || x.tipo === MK.tipo; });
+    var usd = function (n) { return '<td class="m u-tr u-nw">' + (n == null ? '—' : fmt(Math.round(n), 'USD')) + '</td>'; };
+    el.innerHTML = uiHd('Valores de mercado', 'Referencias en USD por hora. Se editan en Datos.',
+        '<select class="fc u-wauto" id="mk-tipo" aria-label="Tipo"><option value="">Todos los tipos</option>' + Object.keys(tipos).sort().map(function (t) { return '<option value="' + esc(t) + '"' + (t === MK.tipo ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>') +
+      (!L.length ? '<div class="empty">Sin valores para este tipo.</div>' :
+      '<div class="u-ovx"><table class="tbl"><thead><tr><th>Rol</th><th>Tipo</th><th>Fuente</th><th class="u-tr">Mínimo</th><th class="u-tr">Referencia</th><th class="u-tr">Máximo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>' +
+      L.map(function (x) {
+        return '<tr><td>' + esc(x.rol || '—') + '</td><td>' + esc(x.tipo || '—') + '</td><td>' + esc(x.fuente || '—') + '</td>' + usd(x.usd_min) + usd(x.usd_ref) + usd(x.usd_max) +
+          '<td class="m u-nw">' + esc(x.fecha ? ff(x.fecha) : '—') + '</td><td class="' + (x.estado === 'Vigente' ? 'ui-p-cobrado' : 'ui-p-pendiente') + '">' + esc(x.estado) + '</td></tr>'; }).join('') +
+      '</tbody></table></div>');
+  }
+  // ── Análisis: qué herramienta conviene y cuánto cuesta (misma regla que «Evaluar costos») ──
+  function pintarAnalisis(el) {
+    marcarSub('analisis');
+    var c = EV, sel = function (k, ops) { return '<select class="fc" data-ev="' + k + '">' + ops.map(function (o) { return '<option' + (c[k] === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; };
+    var ck = function (k, t) { return '<label class="u-row6 u-s11"><input type="checkbox" data-ev="' + k + '"' + (c[k] ? ' checked' : '') + '> ' + t + '</label>'; };
+    el.innerHTML = uiHd('Análisis', 'Compará la opción más económica, una intermedia y la recomendada.', uiBtn('Evaluar', 'buscar', 'p', 'data-her-ev="1"')) +
+      '<div class="g2"><div class="fg"><label class="fl">Qué se busca</label>' + sel('categoria', ['Hosting', 'Base de datos', 'App no-code', 'Automatización', 'IA']) + '</div>' +
+      '<div class="fg"><label class="fl">Presupuesto</label>' + sel('presupuesto', ['Bajo', 'Medio', 'Alto']) + '</div>' +
+      '<div class="fg"><label class="fl">Complejidad</label>' + sel('complejidad', ['Baja', 'Media', 'Alta']) + '</div>' +
+      '<div class="fg"><label class="fl">Costo máximo USD por mes</label><input class="fc u-tr" type="number" min="0" data-ev="costo_max" value="' + esc(c.costo_max) + '"></div></div>' +
+      ck('backend', 'Necesita backend') + ck('db', 'Necesita base de datos') + ck('evitar_tarjeta', 'Evitar tarjeta (el cliente no tiene)') + '<div id="her-ev-res" class="u-mt10"></div>';
+  }
+  async function evaluarHer(el) {
+    el.querySelectorAll('[data-ev]').forEach(function (x) { EV[x.getAttribute('data-ev')] = x.type === 'checkbox' ? x.checked : x.value; });
+    var box = document.getElementById('her-ev-res'), r = await db().rpc('cot_herramientas', { c: EV });
+    if (r.error) { box.innerHTML = '<div class="ui-p-error">' + esc(r.error.message) + '</div>'; return; }
+    box.innerHTML = !r.data.opciones.length ? '<div class="ui-nota-t">Ninguna herramienta de esa categoría cumple lo pedido.</div>' : r.data.opciones.map(function (o) {
+      return '<div class="ui-linea"><span class="ui-f1">' + esc(o.rol) + ' · ' + esc(o.producto) + '<div class="ui-nota-t">' + esc(o.ideal || '') + ' · <span class="ui-num">' + o.puntos + '</span> de <span class="ui-num">' + r.data.maximo + '</span> puntos</div></span>' +
+        '<span class="ui-num">' + fmt(o.usd, 'USD') + '/mes</span></div>'; }).join('');
+  }
+
   function pintar(el) {
     if (_montado !== 'her') return;
     if (S.sub === 'nda') return pintarNda(el);
+    if (S.sub === 'mercado') return pintarMercado(el);
+    if (S.sub === 'analisis') return pintarAnalisis(el);
     marcarSub('meta');
     el.innerHTML = uiHd('Simulador Costos Meta', 'WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.',
         '<span class="u-s11 u-c-mt">Dólar oficial ' + ars(S.tc) + '</span>' +
@@ -401,7 +453,7 @@
 
   VISTAS.her = async function (el, op) {
     if (!S.mix.length) sector('odontologia');
-    S.sub = subPedida() === 'nda' ? 'nda' : 'meta';
+    S.sub = subValida(subPedida());
     if (op && op.forzar) N.ok = false;
     await abrirModulo(el, { id: 'her', texto: 'Cargando Herramientas…', forzar: op && op.forzar, cargar: cargar,
       cargado: function () { return S.tc > 0; }, firma: function () { return String(S.tc); }, pintar: function () { pintar(el); } });
@@ -416,6 +468,7 @@
     };
     el.onchange = function (ev) {
       var id = ev.target.id;
+      if (id === 'mk-tipo') { MK.tipo = ev.target.value; return pintar(el); }
       if (id === 'sm-franq') { S.franq = ev.target.checked; calcular(); }
       if (id === 'nd-emp') elegirEmp(ev.target.value);
       if (id === 'nd-cont') elegirCont(ev.target.value);
@@ -424,6 +477,7 @@
     el.onclick = function (ev) {
       if (_montado !== 'her') return;
       var nb = ev.target.closest('[data-nda="descargar"]'); if (nb) return descargarNda(nb);
+      if (ev.target.closest('[data-her-ev]')) return evaluarHer(el);
       var b = ev.target.closest('[data-sim]'); if (!b) return;
       var a = b.getAttribute('data-sim'), k = b.getAttribute('data-k');
       if (a === 'tab') { S.tab = k; return pintar(el); }
@@ -436,6 +490,6 @@
       if (a === 'imprimir') return window.print();
     };
   };
-  VISTAS.her.irA = function (s) { S.sub = s === 'nda' ? 'nda' : 'meta'; pintar(document.getElementById('vista')); };
+  VISTAS.her.irA = function (s) { S.sub = subValida(s); pintar(document.getElementById('vista')); };
   VISTAS.her.precargar = cargar;
 })();

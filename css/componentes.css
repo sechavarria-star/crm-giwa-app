@@ -186,7 +186,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 
 /* ── C10 · Botón: siempre ícono + contorno ── */
 .ui-btn { display: inline-flex; align-items: center; gap: var(--e2); height: var(--alto-btn); padding: 0 var(--e3); border-radius: var(--r);
-  background: transparent; font-family: var(--f-texto); font-size: var(--t-m); cursor: pointer; white-space: nowrap; text-decoration: none; }
+  background: transparent; font-family: var(--f-texto); font-size: 11px; cursor: pointer; white-space: nowrap; text-decoration: none; }
 .ui-btn .ui-ico { width: var(--ico-s); height: var(--ico-s); }
 .ui-btn.ui-p { border: 1px solid var(--principal); color: var(--principal); }
 .ui-btn.ui-p:hover { background: var(--suave-principal); }

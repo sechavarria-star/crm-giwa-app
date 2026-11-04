@@ -25,9 +25,9 @@ var TareasUI = (function () {
     var id = esc(t.id), ab = !!st.ab[t.id], fin = t.is_alert ? 'Cerrar' : 'Finalizar';
     var acc = function (a, icon, tip, cls) { return '<button class="btn bg xs btn-ico' + (cls || '') + '" data-tar="' + a + '" data-id="' + id + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icon) + '</button>'; };
     var acciones = t.closed ? '' : ab
-      ? acc('hecho', 'check', fin, ' h-ok') + (esMia(t) ? acc('p-del', 'personas', 'Delegar') : '') + acc('p-pos', 'arena', 'Postergar') +
+      ? (esMia(t) ? acc('hecho', 'check', fin, ' h-ok') + acc('p-del', 'personas', 'Delegar') : '') + acc('p-pos', 'arena', 'Postergar') +
         (t.is_alert ? '' : acc('p-rec', 'campana', 'Recordatorio (con aviso por Telegram)'))
-      : acc('manana', 'manana', 'Pasar a mañana') + acc('hecho', 'check', fin, ' h-ok');
+      : acc('manana', 'manana', 'Pasar a mañana') + (esMia(t) ? acc('hecho', 'check', fin, ' h-ok') : '');
     var h = '<div class="hoy-item' + (ab ? ' ab' : '') + '"><div class="hoy-row" data-tar="tog" data-id="' + id + '"><span class="hoy-bar ' + barra + '"></span>' +
       '<span class="chev">' + ico('derecha') + '</span>' +
       '<div class="hoy-main"><div class="hoy-t" title="' + esc(t.title) + '">' + esc(t.title) + '</div>' +
@@ -41,7 +41,7 @@ var TareasUI = (function () {
     var id = esc(t.id), P = st.panel[t.id], cs = st.coms[t.id], h = '<div class="hoy-body">';
     if (P === 'del') h += '<div class="hoy-panel"><span class="fl ft-lbl">Delegar a</span><div class="ft-pills">' +
         (users || []).filter(function (u) { return !esMia(t) || u.mail !== yo(); }).map(function (u) {
-          return '<button type="button" class="ft-pill" data-tar="del-a" data-id="' + id + '" data-m="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('') + '</div></div>';
+          return '<button type="button" class="ft-pill" data-tar="del-a" data-id="' + id + '" data-m="' + esc(u.mail) + '">' + ico('personas') + ' ' + esc(u.name) + '</button>'; }).join('') + '</div><div class="u-tr u-mt6"><button class="btn bp sm" data-tar="del-ok" data-id="' + id + '">Delegar</button></div></div>';
     if (P === 'pos' || P === 'rec') h += '<div class="hoy-panel u-row8"><label class="fl ft-lbl u-m0" for="tp-f-' + id + '">' + (P === 'pos' ? 'Nueva fecha' : 'Recordarme el') + '</label>' +
         '<input class="fc hoy-fecha" type="date" id="tp-f-' + id + '" min="' + isoMas(P === 'pos' ? 0 : 1) + '" value="' + isoMas(P === 'pos' ? 7 : 1) + '">' +
         (P === 'rec' ? '<label class="u-row6 u-s12"><input type="checkbox" id="tp-tg-' + id + '" checked> Avisar por Telegram</label>' : '') +
@@ -96,13 +96,13 @@ var TareasUI = (function () {
       if (a === 'p-del' || a === 'p-pos' || a === 'p-rec') { var k = a.slice(2); st.panel[t.id] = st.panel[t.id] === k ? '' : k; ctx.repintar(); return true; }
       if (a === 'todos') { st.todos = t.id; ctx.repintar(); return true; }
       if (a === 'pos-ok') { var f = document.getElementById('tp-f-' + t.id).value; if (!f) toast('Elegí la fecha', 'err'); else mover(ctx, t, f, 'Postergar'); return true; }
-      if (a === 'del-a') {
-        var m = b.getAttribute('data-m');
-        ask('«' + t.title + '» pasa a ' + nombreDe(ctx.users, m) + '. Le llega el aviso por Telegram.', 'Delegar', { ok: 'Delegar' }).then(async function (ok) {
+      if (a === 'del-a') { b.classList.toggle('on'); return true; }   // uno o más socios
+      if (a === 'del-ok') {
+        var ms = Array.prototype.map.call(document.querySelectorAll('[data-tar="del-a"].on[data-id="' + t.id + '"]'), function (x) { return x.getAttribute('data-m'); });
+        if (!ms.length) { toast('Elegí a quién se la delegás.', 'err'); return true; }
+        ask('«' + t.title + '» pasa a ' + ms.map(function (m) { return nombreDe(ctx.users, m); }).join(', ') + '. Cada uno tiene su tarea.', 'Delegar', { ok: 'Delegar' }).then(async function (ok) {
           if (!ok) return;
-          var rd = await db().rpc('delegar_tarea', { tid: t.id, a: m, nota: '' });
-          if (rd.error) return toast(rd.error.message, 'err');
-          toast('Delegada a ' + nombreDe(ctx.users, m), 'ok'); delete st.panel[t.id]; ctx.refrescar();
+          try { await window.delegarTarea(t, ms, ''); toast('Delegada', 'ok'); delete st.panel[t.id]; ctx.refrescar(); } catch (e) { toast(e.message, 'err'); }
         });
         return true;
       }

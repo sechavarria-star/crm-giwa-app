@@ -61,9 +61,9 @@
     var id = esc(t.id), ab = !!H.ab[t.id], fin = t.is_alert ? 'Cerrar' : 'Finalizar';
     var acc = function (a, icon, tip, cls) { return '<button class="btn bg xs btn-ico' + (cls || '') + '" data-hoy="' + a + '" data-id="' + id + '" data-tip="' + tip + '" aria-label="' + tip + '">' + ico(icon) + '</button>'; };
     var acciones = t.closed ? '' : ab
-      ? acc('hecho', 'check', fin, ' h-ok') + (esMia(t) ? acc('p-del', 'personas', 'Delegar') : '') + acc('p-pos', 'arena', 'Postergar') +
+      ? (esMia(t) ? acc('hecho', 'check', fin, ' h-ok') + acc('p-del', 'personas', 'Delegar') : '') + acc('p-pos', 'arena', 'Postergar') +
         (t.is_alert ? '' : acc('p-rec', 'campana', 'Recordatorio (con aviso por Telegram)'))
-      : acc('manana', 'manana', 'Pasar a mañana') + acc('hecho', 'check', fin, ' h-ok');
+      : acc('manana', 'manana', 'Pasar a mañana') + (esMia(t) ? acc('hecho', 'check', fin, ' h-ok') : '');
     var h = '<div class="hoy-item' + (ab ? ' ab' : '') + '"><div class="hoy-row" data-hoy="tog" data-id="' + id + '"><span class="hoy-bar ' + barra + '"></span>' +
       '<span class="chev">' + ico('derecha') + '</span>' +
       '<div class="hoy-main"><div class="hoy-t" title="' + esc(t.title) + '">' + esc(t.title) + '</div>' +

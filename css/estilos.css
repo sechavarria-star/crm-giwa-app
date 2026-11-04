@@ -97,7 +97,7 @@ nav{flex:1;padding:8px 0;overflow-y:auto}
 .top-t{font-size:16px;font-weight:300}
 .content{padding:12px 16px;flex:1}
 .views>div{display:none}.views>div.on{display:flex;flex-direction:column;flex:1}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--r);border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:500;transition:.15s;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--r);border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:500;transition:.15s;white-space:nowrap}
 /* ── LOS BOTONES · un solo color para la acción primaria ─────────────
    Agregar, guardar, facturar, nuevo: todos iguales, no hay que pensar.
    Va el azul de las pestañas (--b2), no el celeste: el celeste quedó
