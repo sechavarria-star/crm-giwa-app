@@ -376,8 +376,10 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .tbl.fin-an th { white-space: normal; padding: 6px 3px; vertical-align: bottom; line-height: 1.25; letter-spacing: 0; font-size: 9.5px; }
 .tbl.fin-an td { padding: 4px 3px; font-size: 10.5px; line-height: 1.25; }
 .tbl.fin-an td.m { white-space: nowrap; }
-.tbl.fin-an td:first-child { min-width: 105px; }
-.tbl.fin-an td:last-child { min-width: 90px; }
+/* Columnas de números del mismo ancho: las fija el primer y el último título, el resto se reparte igual */
+.tbl.fin-an { table-layout: fixed; }
+.tbl.fin-an th:first-child { width: 190px; }
+.tbl.fin-an th:last-child { width: 165px; }
 /* Configuración: tarjetas en bloque, separadas como el resto de la app */
 #vista > .ui-tarjeta, #vista > .ui-tarjeta + .ui-tarjeta { margin-bottom: var(--e3); }
 

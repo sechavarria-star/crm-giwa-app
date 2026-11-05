@@ -82,12 +82,12 @@
   }
   // Estatus: cuántos meses de abono hacen falta para cubrir lo que quedó abajo de la referencia
   function celdasAnalisis(c) {
-    if (!c) return td(0) + td(0) + td(0) + '<td></td>';
+    if (!c) return td(0) + td(0) + '<td></td>';
     var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
     var lect = c.dif < 0 ? (c.mmr ? 'Se compensa con ' + meses + (meses === 1 ? ' mes' : ' meses') + ' de abono' : 'Sin abono que lo compense') : 'Igual o arriba de la referencia';
     var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
     return (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
-      td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.ref) + '<td class="u-s10-mt">' + esc(lect) + '</td>';
+      td(c.ref) + '<td class="u-s10-mt">' + esc(lect) + '</td>';
   }
   function porCliente() {
     var interno = function (n) { return /^giwa/i.test(n || ''); };   // Giwa-IA no es un cliente
@@ -95,7 +95,7 @@
     if (!E.length && !A.length) return '<div class="empty">Sin datos.</div>';
     var h = '<div class="u-ovx"><table class="tbl fin-an"><thead><tr><th>Cliente / Proyecto</th><th class="u-tr">Contratado</th><th class="u-tr">Cobrado</th>' +
       '<th class="u-tr">Saldo</th><th class="u-tr">Abono / mes</th><th class="u-tr">Cobrado abono</th>' +
-      '<th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>';
+      '<th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>';
     var t = { c: 0, k: 0, b: 0, s: 0, m: 0, cm: 0 }, usados = {};
     var deCliente = function (nom) { var c = A.find(function (a) { return a.nombre === nom; }); if (c) usados[nom] = 1; return c; };
     E.forEach(function (x) {
@@ -107,7 +107,7 @@
       if (ab) F.d.proy.filter(function (p) { return p.empresa === x.empresa; }).forEach(function (p) {
         h += '<tr class="fin-pro"><td>' + esc(p.nombre || '—') + ' <span class="u-s10-mt">' + esc(p.estado_proyecto || '') + '</span></td>' +
           td(N(p.monto_final_ars)) + td(N(p.cobrado_dev)) +
-          td(N(p.saldo)) + td(N(p.recurrente_mensual)) + td(N(p.cobrado_mant)) + '<td colspan="4"></td></tr>';
+          td(N(p.saldo)) + td(N(p.recurrente_mensual)) + td(N(p.cobrado_mant)) + '<td colspan="3"></td></tr>';
       });
     });
     // En negociación y todavía sin contratado: no están en el resumen, pero sí en el análisis
@@ -115,7 +115,7 @@
       h += '<tr><td>' + esc(c.nombre || '—') + '</td>' + td(0) + td(0) + td(0) + td(c.mmr, 'm-abono') + td(0) + celdasAnalisis(c) + '</tr>';
     });
     h += '<tr class="fin-tot"><td>Total</td>' + td(t.c, 'm-contratado') + td(t.k, 'm-cobrado') +
-      td(t.s, 'm-pendiente') + td(t.m, 'm-abono') + td(t.cm, 'm-abono') + '<td colspan="4"></td></tr></tbody></table></div>';
+      td(t.s, 'm-pendiente') + td(t.m, 'm-abono') + td(t.cm, 'm-abono') + '<td colspan="3"></td></tr></tbody></table></div>';
     return h;
   }
 
