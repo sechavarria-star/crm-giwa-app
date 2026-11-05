@@ -76,20 +76,20 @@
               ['tareas', 'Tareas', [7, 11, 15, 16]], ['cobros', 'Cobros y gastos', [13, 14, 18]], ['equipo', 'Equipo', [4]]];
   function htmlListas() {
     var tab = TABS.find(function (t) { return t[0] === C.tab; }) || TABS[0];
-    var h = '<div class="filtros" role="group" aria-label="Listas">' + TABS.map(function (t) {
-      return '<button class="ptab' + (t === tab ? ' on' : '') + '" data-cfg="tab" data-t="' + t[0] + '">' + t[1] + '</button>';
+    var h = '<div class="ui-tabs" role="group" aria-label="Listas">' + TABS.map(function (t) {
+      return '<button class="ui-tab' + (t === tab ? ' on' : '') + '" data-cfg="tab" data-t="' + t[0] + '">' + t[1] + '</button>';
     }).join('') + '</div><div class="gauto">';
     tab[2].forEach(function (i) {
       var li = LISTAS[i], k = C.clave[li[0]], d = C.desc[k];
-      h += '<div class="card"><div class="card-t">' + esc(li[0]) + '</div>' + (d ? '<div class="hint">' + esc(d) + '</div>' : '') +
+      h += '<div class="ui-tarjeta"><div class="ui-lat-h">' + esc(li[0]) + '</div>' + (d ? '<div class="ui-nota-t">' + esc(d) + '</div>' : '') +
         '<div id="tags-' + esc(k) + '" class="tag-list"></div><div class="tag-add u-mt6"><input class="fc u-f1" data-cfgadd="' + i + '" placeholder="Nuevo valor..." aria-label="Nuevo valor de ' + esc(li[0]) + '">' +
-        '<button class="btn bp sm" data-cfg="add" data-i="' + i + '">+</button></div></div>';
+        '<button class="ui-btn ui-p" data-cfg="add" data-i="' + i + '">+</button></div></div>';
     });
-    if (tab[0] === 'cobros') h += '<div class="card"><div class="card-t">Valores por defecto</div>' + NUMS.map(function (n) {
+    if (tab[0] === 'cobros') h += '<div class="ui-tarjeta"><div class="ui-lat-h">Valores por defecto</div>' + NUMS.map(function (n) {
       return '<label class="fl u-mt6" for="cf-' + n[0] + '">' + n[1] + '</label><input class="fc" type="number" id="cf-' + n[0] + '" value="' + esc(C.num[n[0]]) + '">';
     }).join('') + '</div>';
-    return h + '</div><div class="u-row8 u-mt10"><button class="btn bp" data-cfg="listas">' + ico('guardar') + ' Guardar</button>' +
-      '<span class="hint">Los cambios afectan los selectores en todo el sistema.</span></div>';
+    return h + '</div><div class="u-row8 u-mt10"><button class="ui-btn ui-p" data-cfg="listas">' + ico('guardar') + ' Guardar</button>' +
+      '<span class="ui-nota-t">Los cambios afectan los selectores en todo el sistema.</span></div>';
   }
   function hsHint() {
     var ars = Number((document.getElementById('cf-hs-ars') || {}).value || C.cfg.valor_hora_soporte_ars) || 0;
@@ -108,39 +108,39 @@
                especialidad: ['Multiplicador por especialidad', 'Ajusta el valor hora, no las horas. La hora especializada en datos e IA se paga más que la de desarrollo general.', 0.05] };
   function htmlVh() {
     var p = C.vh, h = '<div class="gauto">';
-    h += '<div class="card"><div class="card-t">Valor hora de soporte</div><div class="hint">Lo que se cobra cada hora de soporte.</div>' +
+    h += '<div class="ui-tarjeta"><div class="ui-lat-h">Valor hora de soporte</div><div class="ui-nota-t">Lo que se cobra cada hora de soporte.</div>' +
       '<label class="fl" for="cf-hs-ars">ARS por hora</label><input class="fc" type="number" id="cf-hs-ars" data-monto value="' + esc(C.cfg.valor_hora_soporte_ars || '') + '">' +
       '<label class="fl u-mt10" for="cf-hs-usd">USD por hora</label><input class="fc" type="number" id="cf-hs-usd" data-monto value="' + esc(C.cfg.valor_hora_soporte_usd || '') + '">' +
-      '<div class="hint u-mt10" id="cf-hs-hint">' + hsHint() + '</div>' +
-      '<button class="btn bg sm u-mt10" data-cfg="hs">' + ico('guardar') + ' Guardar valor de soporte</button></div>';
-    h += '<div class="card"><div class="card-t">Márgenes</div><div class="hint">El valor de mercado sale del catálogo. Sobre ese se calcula el resto.</div>' +
+      '<div class="ui-nota-t u-mt10" id="cf-hs-hint">' + hsHint() + '</div>' +
+      '<button class="ui-btn ui-s u-mt10" data-cfg="hs">' + ico('guardar') + ' Guardar valor de soporte</button></div>';
+    h += '<div class="ui-tarjeta"><div class="ui-lat-h">Márgenes</div><div class="ui-nota-t">El valor de mercado sale del catálogo. Sobre ese se calcula el resto.</div>' +
       '<label class="fl">Margen de venta (% sobre el valor de mercado)</label><input class="fc" id="vh-mv" type="number" step="1" min="1" value="' + p.margen_venta + '">' +
       '<label class="fl u-mt10">Margen de horas (cuánto baja tu costo interno respecto de la venta, %)</label><input class="fc" id="vh-mh" type="number" step="1" min="1" max="99" value="' + p.margen_horas + '">' +
       '<label class="fl u-mt10">Horas por mes (con cuánta dedicación se calcula el plazo)</label><input class="fc" id="vh-hm" type="number" step="1" min="1" value="' + p.horas_mes + '">' +
-      '<div id="vh-ej" class="hint u-mt10">' + vhEjemplo() + '</div></div>';
+      '<div id="vh-ej" class="ui-nota-t u-mt10">' + vhEjemplo() + '</div></div>';
     ['mercado', 'dificultad', 'especialidad'].forEach(function (t) {
-      h += '<div class="card"><div class="card-t">' + VH_T[t][0] + '</div><div class="hint">' + VH_T[t][1] + '</div><div id="vh-l-' + t + '">' + vhLista(t) + '</div>' +
+      h += '<div class="ui-tarjeta"><div class="ui-lat-h">' + VH_T[t][0] + '</div><div class="ui-nota-t">' + VH_T[t][1] + '</div><div id="vh-l-' + t + '">' + vhLista(t) + '</div>' +
         '<div class="tag-add u-mt6"><input class="fc u-f1" id="vh-k-' + t + '" placeholder="Nombre" aria-label="Nombre">' +
         '<input class="fc" id="vh-v-' + t + '" type="number" step="' + VH_T[t][2] + '" min="0" placeholder="' + (t === 'mercado' ? '66617' : '1') + '" aria-label="Valor" style="width:90px">' +
-        '<button class="btn bp sm" data-cfg="vh-add" data-t="' + t + '">+</button></div></div>';
+        '<button class="ui-btn ui-p" data-cfg="vh-add" data-t="' + t + '">+</button></div></div>';
     });
-    h += '</div><div class="u-row8 u-mt10"><button class="btn bp" data-cfg="vh">' + ico('guardar') + ' Guardar</button>' +
-      '<span class="hint">Cambia lo que se cotiza de acá en adelante. Las cotizaciones ya hechas no se tocan.</span></div>';
+    h += '</div><div class="u-row8 u-mt10"><button class="ui-btn ui-p" data-cfg="vh">' + ico('guardar') + ' Guardar</button>' +
+      '<span class="ui-nota-t">Cambia lo que se cotiza de acá en adelante. Las cotizaciones ya hechas no se tocan.</span></div>';
     if (p.seed_fecha) {
       var viejo = C.tc && p.seed_tc && C.tc > p.seed_tc * 1.15;
-      h += '<div class="hint u-mt10">Catálogo sembrado el <b>' + esc(p.seed_fecha) + '</b> con TC ' + fmt(p.seed_tc || 0) + '. Hoy el TC es ' + fmt(C.tc) + '.' +
+      h += '<div class="ui-nota-t u-mt10">Catálogo sembrado el <b>' + esc(p.seed_fecha) + '</b> con TC ' + fmt(p.seed_tc || 0) + '. Hoy el TC es ' + fmt(C.tc) + '.' +
         (viejo ? ' <b class="u-c-wa">El catálogo quedó viejo: conviene resembrar.</b>' : '') + '</div>';
     }
     return h;
   }
   function vhLista(t) {
     var arr = C.vhl[t], mer = t === 'mercado', mv = Number((document.getElementById('vh-mv') || {}).value || C.vh.margen_venta) / 100;
-    if (!arr.length) return '<div class="hint">Sin valores. Agregá al menos uno.</div>';
+    if (!arr.length) return '<div class="ui-nota-t">Sin valores. Agregá al menos uno.</div>';
     return arr.map(function (x, i) {
       return '<div class="u-row6 u-mb6"><span class="u-f1m u-s12">' + esc(x.k) + '</span>' +
         (mer ? '<span class="u-s10-mt">vende ' + fmt(x.v * (1 + mv)) + '</span>' : '') +
         '<input class="fc" type="number" step="' + VH_T[t][2] + '" min="0" value="' + x.v + '" data-vhset="' + t + '" data-i="' + i + '" aria-label="' + esc(x.k) + '" style="width:96px">' +
-        '<button class="btn bg sm" data-cfg="vh-del" data-t="' + t + '" data-i="' + i + '" title="Quitar" aria-label="Quitar">×</button></div>';
+        '<button class="ui-btn ui-s" data-cfg="vh-del" data-t="' + t + '" data-i="' + i + '" title="Quitar" aria-label="Quitar">×</button></div>';
     }).join('');
   }
   // Una hora concreta, para no tener que imaginarse el efecto (con la dificultad Media)
@@ -159,17 +159,17 @@
       var c = r.categoria || 'General'; if (!by[c]) { by[c] = []; ord.push(c); } by[c].push(r);
     });
     var h = '<div class="u-row8 u-mb10"><div class="sw u-f1"><input class="fc" id="cf-q" placeholder="Buscar contratación..." value="' + esc(C.q) + '" aria-label="Buscar contratación"></div>' +
-      '<button class="btn bp sm" data-cfg="cont" data-id="">' + ico('mas') + ' Nueva contratación</button></div>' +
-      '<div class="hint u-mb10">Recursos y servicios contratados por categoría. Editá el monto en ARS o USD: el que no cargues se calcula solo al TC actual.</div>';
+      '<button class="ui-btn ui-p" data-cfg="cont" data-id="">' + ico('mas') + ' Nueva contratación</button></div>' +
+      '<div class="ui-nota-t u-mb10">Recursos y servicios contratados por categoría. Editá el monto en ARS o USD: el que no cargues se calcula solo al TC actual.</div>';
     if (!ord.length) return h + '<div class="empty">' + (C.cont.length ? 'Nada coincide con la búsqueda.' : 'Sin contrataciones. Agregá la primera.') + '</div>';
     return h + '<div class="gauto">' + ord.sort().map(function (c) {
-      return '<div class="card u-p0"><div class="u-row8 u-p1214"><span class="sec u-f1">' + esc(c) + '</span><span class="u-s10-mt">' + by[c].length + ' ítem' + (by[c].length === 1 ? '' : 's') + '</span></div>' +
+      return '<div class="ui-tarjeta u-p0"><div class="u-row8 u-p1214"><span class="sec u-f1">' + esc(c) + '</span><span class="u-s10-mt">' + by[c].length + ' ítem' + (by[c].length === 1 ? '' : 's') + '</span></div>' +
         by[c].map(function (r) {
           var usd = Number(r.costo_usd) || 0, ars = Number(r.costo_ars) || 0;
           return '<div class="rowb u-row8 u-p1214"><div class="u-f1m"><div class="u-fw6">' + esc(r.producto) + (r.nivel ? ' <span class="u-s10-mt">· ' + esc(r.nivel) + '</span>' : '') + '</div>' +
             '<div class="u-s10-mt">' + esc(r.unidad || 'Hora') + ' · ' + (ars ? fmt(Math.round(ars)) : '—') + (usd ? ' · ' + fmt(usd, 'USD') : '') + '</div></div>' +
-            '<button class="btn bg xs btn-ico" data-cfg="cont" data-id="' + esc(r.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' +
-            '<button class="btn brd xs btn-ico" data-cfg="cont-del" data-id="' + esc(r.id) + '" data-tip="Eliminar" aria-label="Eliminar">' + ico('borrar') + '</button></div>';
+            '<button class="ui-ib ui-azul" data-cfg="cont" data-id="' + esc(r.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' +
+            '<button class="ui-ib ui-bor" data-cfg="cont-del" data-id="' + esc(r.id) + '" data-tip="Eliminar" aria-label="Eliminar">' + ico('borrar') + '</button></div>';
         }).join('') + '</div>';
     }).join('') + '</div>';
   }
@@ -205,15 +205,15 @@
   var ROLES = ['Administracion', 'Comercial', 'Desarrollo'];
   function htmlUsu() {
     var si = function (b) { return b ? ico('check') : '<span class="u-c-mt">—</span>'; };
-    return '<div class="u-row8 u-mb10"><div class="hint u-f1">Quién usa el CRM. El chat de Telegram es el que recibe los avisos y el resumen diario.' +
+    return '<div class="u-row8 u-mb10"><div class="ui-nota-t u-f1">Quién usa el CRM. El chat de Telegram es el que recibe los avisos y el resumen diario.' +
         (C.admin ? '' : ' Sólo Administración puede cambiarlos.') + '</div>' +
-        (C.admin ? '<button class="btn bp sm" data-cfg="usu" data-id="">' + ico('mas') + ' Nuevo usuario</button>' : '') + '</div>' +
-      '<div class="card u-p0 u-ovx"><table class="tbl"><thead><tr><th>Nombre</th><th>Mail</th><th>Rol</th><th class="u-tc">Factura</th>' +
-      '<th>Telegram</th><th class="u-tc">GIWA</th><th class="u-tc">Activo</th><th></th></tr></thead><tbody>' + C.usu.map(function (u) {
+        (C.admin ? '<button class="ui-btn ui-p" data-cfg="usu" data-id="">' + ico('mas') + ' Nuevo usuario</button>' : '') + '</div>' +
+      '<div class="ui-tarjeta u-p0 u-ovx"><table class="ui-tbl"><thead><tr><th>Nombre</th><th>Mail</th><th>Rol</th><th class="u-tc">Factura</th>' +
+      '<th>DNI</th><th>Cargo</th><th>Telegram</th><th class="u-tc">GIWA</th><th class="u-tc">Activo</th><th></th></tr></thead><tbody>' + C.usu.map(function (u) {
         return '<tr' + (u.activo ? '' : ' class="u-op6"') + '><td>' + esc(u.nombre || '') + '</td><td class="u-c-mt">' + esc(u.mail || '') + '</td><td>' + esc(u.rol || '—') + '</td>' +
-          '<td class="u-tc">' + si(u.factura) + '</td><td class="m">' + (u.telegram ? esc(u.telegram) : '<span class="u-c-wa">sin chat</span>') + '</td>' +
+          '<td class="u-tc">' + si(u.factura) + '</td><td class="m">' + esc(u.dni || '—') + '</td><td>' + esc(u.cargo || '—') + '</td><td class="m">' + (u.telegram ? esc(u.telegram) : '<span class="u-c-wa">sin chat</span>') + '</td>' +
           '<td class="u-tc">' + si(u.es_giwa) + '</td><td class="u-tc">' + si(u.activo) + '</td>' +
-          '<td class="u-tr">' + (C.admin ? '<button class="btn bg xs btn-ico" data-cfg="usu" data-id="' + esc(u.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' : '') + '</td></tr>';
+          '<td class="u-tr">' + (C.admin ? '<button class="ui-ib ui-azul" data-cfg="usu" data-id="' + esc(u.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
   function abrirUsu(id, alGuardar) {
@@ -266,11 +266,11 @@
     var nSel = Object.keys(REC.sel).filter(function (id) { return REC.sel[id]; }).length;
     var mono = { id: 1, item: 1, vencimiento: 1, creado: 1, repetida_con: 1 };
     var nom = function (m) { return String(m || '').split(',').map(function (x) { return x.trim().split('@')[0]; }).join(', '); };
-    c.innerHTML = '<div class="card u-mt12"><div class="u-row8"><div class="card-t u-f1">Todas las tareas y recordatorios <span class="u-s11-mt m">' + L.length + '</span></div>' +
-        '<button class="btn ' + (nSel ? 'bp' : 'bg') + ' sm" data-cfg="rec-tg"' + (nSel ? '' : ' disabled') + '>' + ico('chat') + ' Activar aviso por Telegram' + (nSel ? ' (' + nSel + ')' : '') + '</button>' +
+    c.innerHTML = '<div class="ui-tarjeta u-mt12"><div class="u-row8"><div class="ui-lat-h u-f1">Todas las tareas y recordatorios <span class="u-s11-mt m">' + L.length + '</span></div>' +
+        '<button class="ui-btn ' + (nSel ? 'ui-p' : 'ui-s') + '" data-cfg="rec-tg"' + (nSel ? '' : ' disabled') + '>' + ico('chat') + ' Activar aviso por Telegram' + (nSel ? ' (' + nSel + ')' : '') + '</button>' +
         '<label class="u-row6 u-s12"><input type="checkbox" id="rec-cerr"' + (REC.cerr ? ' checked' : '') + '> Ver cerrados</label>' +
-        '<button class="btn ' + (rep ? 'bp' : 'bg') + ' sm" data-cfg="rec-sim"' + (rep ? '' : ' disabled') + '>' + ico('check') + ' Cerrar repetidas' + (rep ? ' (' + rep + ')' : '') + '</button></div>' +
-      '<div class="hint">Tildá las tareas sin Telegram para que su aviso también llegue por Telegram (misma fecha). Los de Administración ya van en el resumen diario. Repetida = misma categoría y desarrollo (o mismo cliente en reuniones) con más de una abierta: queda la que vence primero.</div>' +
+        '<button class="ui-btn ' + (rep ? 'ui-p' : 'ui-s') + '" data-cfg="rec-sim"' + (rep ? '' : ' disabled') + '>' + ico('check') + ' Cerrar repetidas' + (rep ? ' (' + rep + ')' : '') + '</button></div>' +
+      '<div class="ui-nota-t">Tildá las tareas sin Telegram para que su aviso también llegue por Telegram (misma fecha). Los de Administración ya van en el resumen diario. Repetida = misma categoría y desarrollo (o mismo cliente en reuniones) con más de una abierta: queda la que vence primero.</div>' +
       '<div class="sw u-mt10"><input class="fc" id="rec-q" placeholder="Buscar en la tabla…" value="' + esc(REC.q) + '" aria-label="Buscar"></div>' +
       '<div class="u-ovx u-mt10"><table class="tbl rec-tbl"><thead><tr><th><input type="checkbox" id="rec-all" aria-label="Elegir todas"></th>' + REC_COL.map(function (col) {
         return '<th class="rec-th" data-cfg="rec-ord" data-k="' + col[0] + '">' + col[1] + (REC.ord === col[0] ? ' ' + ico(REC.asc ? 'arriba' : 'abajo') : '') + '</th>'; }).join('') + '</tr></thead><tbody>' +
@@ -309,31 +309,31 @@
     var r = await db().from('v_diag_alertas').select('*');
     if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
     var L = r.data;
-    c.innerHTML = '<div class="card u-mb12"><div class="u-row8"><div class="card-t u-f1">Alertas</div>' +
-        '<button class="btn bg sm" data-cfg="dg-ref">' + ico('recargar') + ' Revisar de nuevo</button>' +
-        '<button class="btn bp sm" data-cfg="dg-sinc">' + ico('repetir') + ' Crear recordatorios</button></div>' +
-        '<div class="hint">Busca alertas duplicadas, abiertas de algo que ya no se factura, sin responsable, y desarrollos con algo para facturar que no tienen alerta. ' +
+    c.innerHTML = '<div class="ui-tarjeta u-mb12"><div class="u-row8"><div class="ui-lat-h u-f1">Alertas</div>' +
+        '<button class="ui-btn ui-s" data-cfg="dg-ref">' + ico('recargar') + ' Revisar de nuevo</button>' +
+        '<button class="ui-btn ui-p" data-cfg="dg-sinc">' + ico('repetir') + ' Crear recordatorios</button></div>' +
+        '<div class="ui-nota-t">Busca alertas duplicadas, abiertas de algo que ya no se factura, sin responsable, y desarrollos con algo para facturar que no tienen alerta. ' +
         '«Crear recordatorios» crea los que faltan (nunca duplica) y cierra los que ya no tienen nada para facturar.</div>' +
-        (L.length ? '<div class="u-ovx u-mt10"><table class="tbl"><thead><tr><th>Problema</th><th>Alerta</th><th>Desarrollo</th><th>Detalle</th><th></th></tr></thead><tbody>' + L.map(function (x) {
+        (L.length ? '<div class="u-ovx u-mt10"><table class="ui-tbl"><thead><tr><th>Problema</th><th>Alerta</th><th>Desarrollo</th><th>Detalle</th><th></th></tr></thead><tbody>' + L.map(function (x) {
           return '<tr><td class="' + (x.problema === 'Falta la alerta' ? 'u-c-wa' : 'u-c-rd') + '">' + esc(x.problema) + '</td><td>' + (x.id ? '<span class="m">' + esc(x.id) + '</span> · ' : '') + esc(x.titulo || '') + '</td>' +
             '<td class="m">' + esc(x.item || '—') + '</td><td class="u-s11-mt">' + esc(x.detalle || '') + '</td>' +
-            '<td class="u-tr">' + (x.id ? '<button class="btn bg xs btn-ico" data-cfg="dg-ver" data-id="' + esc(x.id) + '" data-tip="Abrir la alerta" aria-label="Abrir la alerta">' + ico('abrir') + '</button>' : '') + '</td></tr>';
+            '<td class="u-tr">' + (x.id ? '<button class="ui-ib ui-azul" data-cfg="dg-ver" data-id="' + esc(x.id) + '" data-tip="Abrir la alerta" aria-label="Abrir la alerta">' + ico('abrir') + '</button>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="u-c-ok u-mt10">' + ico('check') + ' No hay alertas con problemas.</div>') + '</div>' +
-      '<div class="card"><div class="card-t">Telegram</div><div class="hint">Las pruebas te llegan sólo a vos, al chat cargado en Usuarios.</div>' +
-        '<div class="u-row8 u-mt10"><button class="btn bg sm" data-cfg="tg-probar">' + ico('chat') + ' Mandarme un mensaje de prueba</button>' +
-        '<button class="btn bg sm" data-cfg="tg-resumen">' + ico('campana') + ' Mandarme el resumen diario ahora</button></div></div>';
+      '<div class="ui-tarjeta"><div class="ui-lat-h">Telegram</div><div class="ui-nota-t">Las pruebas te llegan sólo a vos, al chat cargado en Usuarios.</div>' +
+        '<div class="u-row8 u-mt10"><button class="ui-btn ui-s" data-cfg="tg-probar">' + ico('chat') + ' Mandarme un mensaje de prueba</button>' +
+        '<button class="ui-btn ui-s" data-cfg="tg-resumen">' + ico('campana') + ' Mandarme el resumen diario ahora</button></div></div>';
   }
 
   function htmlOtros() {
-    return '<div class="card"><p>Estas herramientas siguen en el CRM actual: ' +
+    return '<div class="ui-tarjeta"><p>Estas herramientas siguen en el CRM actual: ' +
       '<b>Plantilla Doc</b> (la usa el documento de propuesta del Cotizador), <b>Mantenimiento de datos</b> y <b>Diagnósticos</b> (reparan la planilla).</p>' +
-      '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
+      '<a class="ui-btn ui-s" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
   }
 
   // ── Telegram (telegram_estado · guardar_token_telegram · probar_telegram) ──
   // El token se guarda en la base y no vuelve nunca al navegador. El resumen
   // diario de las 8 lo manda la base (pg_cron), no el navegador.
-  function htmlTelegram() { return '<div class="card" id="tg-c"><div class="loading"><div class="spin"></div></div></div>'; }
+  function htmlTelegram() { return '<div class="ui-tarjeta" id="tg-c"><div class="loading"><div class="spin"></div></div></div>'; }
   async function tgPintar() {
     var c = document.getElementById('tg-c'); if (!c) return;
     var r = await db().rpc('telegram_estado');
@@ -345,7 +345,7 @@
       '<div class="fg"><span class="fl">Bot</span><div>' + bot + '</div></div>' +
       '<div class="fg"><label class="fl" for="tg-tk">' + (e.configurado ? 'Cambiar el token' : 'Token del bot') + '</label>' +
         '<div class="u-row6"><input class="fc u-f1" id="tg-tk" type="password" autocomplete="off" placeholder="123456789:AA…">' +
-        '<button class="btn bp sm" data-cfg="tg-token">Guardar</button></div>' +
+        '<button class="ui-btn ui-p" data-cfg="tg-token">Guardar</button></div>' +
         '<div class="ft-info">Sólo Administración. Se guarda en la base y no se vuelve a mostrar.</div></div>' +
       '<div class="fg"><span class="fl">Quién recibe</span>' + (e.usuarios || []).map(function (u) {
         return '<div class="u-row6 u-mt4"><span class="u-f1">' + esc(u.name) + '</span>' +
@@ -355,8 +355,8 @@
         (e.ultimo_resumen ? 'Último envío: <span class="m">' + esc(ff(new Date(e.ultimo_resumen))) + '</span>' : 'Todavía no se envió ninguno.') + '</div></div>' +
       ((e.errores || []).length ? '<div class="fg"><span class="fl">Errores recientes</span>' + e.errores.map(function (x) {
         return '<div class="u-s11 u-c-rd u-mt4">' + esc(x.tipo) + (x.destino ? ' · ' + esc(x.destino) : '') + ': ' + esc(x.msg) + '</div>'; }).join('') + '</div>' : '') +
-      '<div class="u-row6 u-mt10"><button class="btn bg sm" data-cfg="tg-probar">' + ico('chat') + ' Mandarme una prueba</button>' +
-        '<button class="btn bg sm" data-cfg="tg-ref">' + ico('recargar') + ' Actualizar</button></div>';
+      '<div class="u-row6 u-mt10"><button class="ui-btn ui-s" data-cfg="tg-probar">' + ico('chat') + ' Mandarme una prueba</button>' +
+        '<button class="ui-btn ui-s" data-cfg="tg-ref">' + ico('recargar') + ' Actualizar</button></div>';
   }
 
   // ── pintar ───────────────────────────────────────────────────

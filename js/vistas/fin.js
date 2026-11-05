@@ -6,7 +6,7 @@
      los 7 recuadros            v_resumen_financiero + v_fin_caja_mes (= getDashboardFinanciero)
      Análisis por Cliente       v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado);
                                 margen y referencia, v_analisis_clientes (= getAnalisisCliente)
-     ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion)
+     ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion); al final, v_fin_no_aceptados
      Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha; el gráfico, lo cobrado en v_cobrado_12m
      Negocios a seguir          v_fin_negocios (= getNegociosASeguir)
    Acá no se calcula plata: se muestra lo que da la base. Lo único que se suma
@@ -30,13 +30,14 @@
       db().from('v_proyectos_clasif').select('id,estado_proyecto'),
       db().from('v_pm_proyectos').select('empresa,items'),
       db().from('v_cobrado_12m').select('*').order('orden'),
+      db().from('v_fin_no_aceptados').select('*').order('una_vez', { ascending: false }),
       db().from('cot_config').select('clave,valor').in('clave', ['target_fee_mensual', 'target_proyectos_mes'])
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
             esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data,
-            proyItems: r[10].data, cob12: r[11].data,
-            targets: r[12].data.reduce(function (o, c) { o[c.clave] = Number(c.valor) || 0; return o; }, {}),
+            proyItems: r[10].data, cob12: r[11].data, noAc: r[12].data,
+            targets: r[13].data.reduce(function (o, c) { o[c.clave] = Number(c.valor) || 0; return o; }, {}),
             estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
 
@@ -93,58 +94,61 @@
   }
   // Estatus: cuántos meses de abono hacen falta para cubrir lo que quedó abajo de la referencia
   function celdasAnalisis(c) {
-    if (!c) return td(0) + td(0) + td(0) + td(0) + '<td></td>';
+    if (!c) return td(0) + td(0) + td(0) + '<td></td>';
     var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
     var lect = c.dif < 0 ? (c.mmr ? 'Se compensa con ' + meses + (meses === 1 ? ' mes' : ' meses') + ' de abono' : 'Sin abono que lo compense') : 'Igual o arriba de la referencia';
     var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
-    return td(c.dif, c.dif < 0 ? 'm-pendiente' : 'm-cobrado', c.dif < 0) +
-      (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
+    return (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
       td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.ref) + '<td class="u-s10-mt">' + esc(lect) + '</td>';
   }
   function porCliente() {
-    var E = F.d.emp, A = clientesVigentes(); if (!E.length && !A.length) return '<div class="empty">Sin datos.</div>';
+    var interno = function (n) { return /^giwa/i.test(n || ''); };   // Giwa-IA no es un cliente
+    var E = F.d.emp.filter(function (x) { return !interno(x.empresa); }), A = clientesVigentes().filter(function (c) { return !interno(c.nombre); });
+    if (!E.length && !A.length) return '<div class="empty">Sin datos.</div>';
     var hayBon = E.some(function (x) { return N(x.bonificado) > 1; });
-    var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente / Proyecto</th><th class="u-tr">Contratado</th><th class="u-tr">Cobrado</th>' +
+    var h = '<div class="u-ovx"><table class="tbl fin-an"><thead><tr><th>Cliente / Proyecto</th><th class="u-tr">Contratado</th><th class="u-tr">Cobrado</th>' +
       (hayBon ? '<th class="u-tr">Bonificación</th>' : '') + '<th class="u-tr">Saldo</th><th class="u-tr">Abono / mes</th><th class="u-tr">Cobrado abono</th>' +
-      '<th class="u-tr">Margen neto proyectado</th><th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>';
+      '<th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>';
     var t = { c: 0, k: 0, b: 0, s: 0, m: 0, cm: 0 }, usados = {};
     var deCliente = function (nom) { var c = A.find(function (a) { return a.nombre === nom; }); if (c) usados[nom] = 1; return c; };
     E.forEach(function (x) {
       var ab = !!F.ab[x.empresa];
       t.c += N(x.contratado); t.k += N(x.cobrado); t.b += N(x.bonificado); t.s += N(x.saldo); t.m += N(x.mant_mes); t.cm += N(x.cobrado_mant);
-      h += '<tr class="fin-cli" data-fcli="' + esc(x.empresa) + '"><td class="u-nw"><span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span> ' + esc(x.empresa) + '</td>' +
+      h += '<tr class="fin-cli" data-fcli="' + esc(x.empresa) + '"><td><span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span> ' + esc(x.empresa) + '</td>' +
         td(N(x.contratado), 'm-contratado') + td(N(x.cobrado), 'm-cobrado') + (hayBon ? td(N(x.bonificado), 'm-neutro', true) : '') +
         td(N(x.saldo), N(x.saldo) < 0 ? 'm-neutro' : 'm-pendiente') + td(N(x.mant_mes), 'm-abono') + td(N(x.cobrado_mant), 'm-abono') + celdasAnalisis(deCliente(x.empresa)) + '</tr>';
       if (ab) F.d.proy.filter(function (p) { return p.empresa === x.empresa; }).forEach(function (p) {
         h += '<tr class="fin-pro"><td>' + esc(p.nombre || '—') + ' <span class="u-s10-mt">' + esc(p.estado_proyecto || '') + '</span></td>' +
           td(N(p.monto_final_ars)) + td(N(p.cobrado_dev)) + (hayBon ? td(N(p.bonificacion) + N(p.bonificacion_mant), '', true) : '') +
-          td(N(p.saldo)) + td(N(p.recurrente_mensual)) + td(N(p.cobrado_mant)) + '<td colspan="5"></td></tr>';
+          td(N(p.saldo)) + td(N(p.recurrente_mensual)) + td(N(p.cobrado_mant)) + '<td colspan="4"></td></tr>';
       });
     });
     // En negociación y todavía sin contratado: no están en el resumen, pero sí en el análisis
     A.filter(function (c) { return !usados[c.nombre]; }).forEach(function (c) {
-      h += '<tr><td class="u-nw">' + esc(c.nombre || '—') + '</td>' + td(0) + td(0) + (hayBon ? td(0) : '') + td(0) + td(c.mmr, 'm-abono') + td(0) + celdasAnalisis(c) + '</tr>';
+      h += '<tr><td>' + esc(c.nombre || '—') + '</td>' + td(0) + td(0) + (hayBon ? td(0) : '') + td(0) + td(c.mmr, 'm-abono') + td(0) + celdasAnalisis(c) + '</tr>';
     });
     h += '<tr class="fin-tot"><td>Total</td>' + td(t.c, 'm-contratado') + td(t.k, 'm-cobrado') + (hayBon ? td(t.b, 'm-neutro', true) : '') +
-      td(t.s, 'm-pendiente') + td(t.m, 'm-abono') + td(t.cm, 'm-abono') + '<td colspan="5"></td></tr></tbody></table></div>';
+      td(t.s, 'm-pendiente') + td(t.m, 'm-abono') + td(t.cm, 'm-abono') + '<td colspan="4"></td></tr></tbody></table></div>';
     return h;
   }
 
   // ── ¿Dónde podríamos estar? · tildá los negocios y a la derecha se suman ──
   function escenarios() {
-    var E = F.d.esc, s = { u: 0, m: 0, det: 0, neg: 0 }, n = 0;
-    E.forEach(function (x) {
+    var E = F.d.esc, NA = F.d.noAc || [], s = { u: 0, m: 0, det: 0, neg: 0 }, n = 0;
+    E.concat(NA).forEach(function (x) {
       if (!F.esc[x.proy_id]) return; n++;
       s.u += N(x.una_vez); s.m += N(x.por_mes);
       if (x.origen === 'detenido') s.det += N(x.una_vez); else if (/negoci/i.test(x.estado || '')) s.neg += N(x.una_vez);
     });
-    var izq = E.length ? E.map(function (x) {
+    var fila = function (x) {
       return '<label class="fin-esc"><input type="checkbox" data-fesc="' + esc(x.proy_id) + '"' + (F.esc[x.proy_id] ? ' checked' : '') + '>' +
         '<span class="fin-esc-e">' + esc(x.empresa) + '</span><span class="u-f1m u-corta">' + esc(x.proyecto) +
         (x.origen === 'detenido' ? ' <span class="u-c-rd u-s10">' + ico('pausa') + ' detenido</span>' : '') + '</span>' +
         (N(x.una_vez) ? '<span class="m m-contratado">+' + fmt(x.una_vez) + '</span>' : '') +
         (N(x.por_mes) ? '<span class="m m-abono">+' + fmt(x.por_mes) + '/mes</span>' : '') + '</label>';
-    }).join('') + '<div class="ft-info u-mt6">' + (n ? 'Sumando a la derecha · destildá para sacarlo.' : 'Tildá los negocios que quieras combinar.') + '</div>'
+    };
+    // Los no aceptados, al final: quizás los quieren retomar
+    var izq = E.length + NA.length ? E.map(fila).join('') + (NA.length ? '<div class="ui-lat-h u-mt10">No aceptados</div>' + NA.map(fila).join('') : '') + '<div class="ft-info u-mt6">' + (n ? 'Sumando a la derecha · destildá para sacarlo.' : 'Tildá los negocios que quieras combinar.') + '</div>'
       : '<div class="u-s11-mt">Nada en pipeline ni detenido para simular.</div>';
     return '<div class="fin-dos"><div>' + izq + '</div><div><div class="sec">' + (n ? 'Situación actual + ' + n + (n === 1 ? ' negocio' : ' negocios') : 'Situación actual') + '</div>' +
       '<div class="kpi-grid fin-sim">' + kpis(s) + '</div></div></div>';

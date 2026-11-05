@@ -388,3 +388,12 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .fin-ley i.fin-l-os { background: var(--p-contratado); height: 3px; vertical-align: 3px; }
 .fin-ley i.fin-l-tf { background: none; border-top: 2px dashed var(--p-pendiente); border-radius: 0; height: 0; vertical-align: 3px; width: 16px; }
 .fin-ley i.fin-l-tp { background: none; border: 1px dashed var(--p-pendiente); }
+
+/* Análisis por Cliente: entra en pantalla sin desplazamiento lateral (05/11/2026) */
+.tbl.fin-an th { white-space: normal; padding: 6px 3px; vertical-align: bottom; line-height: 1.25; letter-spacing: 0; font-size: 9.5px; }
+.tbl.fin-an td { padding: 4px 3px; font-size: 10.5px; line-height: 1.25; }
+.tbl.fin-an td.m { white-space: nowrap; }
+.tbl.fin-an td:first-child { min-width: 105px; }
+.tbl.fin-an td:last-child { min-width: 90px; }
+/* Configuración: tarjetas en bloque, separadas como el resto de la app */
+#vista > .ui-tarjeta, #vista > .ui-tarjeta + .ui-tarjeta { margin-bottom: var(--e3); }
