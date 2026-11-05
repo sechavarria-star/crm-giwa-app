@@ -169,7 +169,9 @@
     var sf = F.d.sinFecha.map(function (x) { return x.texto; }).filter(Boolean);
     if (sf.length) h += '<div class="aviso aviso-wa u-mt8">' + ico('alerta') + ' ' + sf.length + ' desarrollo(s) sin fecha de cierre: ahí la proyección se estima por duración. ' +
       '<span class="u-c-mt">' + sf.map(esc).join(' · ') + '</span></div>';
-    return '<div class="sec">Cobrado por mes · últimos 12 meses</div>' + grafCobrado(F.d.cob12, F.d.targets) + '<br>' + h;
+    var T = F.d.targets, campo = function (k, l) { return '<div class="fg"><label class="fl" for="ftg-' + k + '">' + l + '</label><input class="fc u-tr ui-num" type="number" min="0" data-monto data-ftg="' + k + '" id="ftg-' + k + '" value="' + (N(T[k]) || '') + '"></div>'; };
+    return '<div class="sec">Cobrado por mes · últimos 12 meses</div><div class="g2 fin-tg">' + campo('target_fee_mensual', 'Target de fee mensual') + campo('target_proyectos_mes', 'Target de facturación de proyectos') + '</div>' +
+      '<div id="fin-graf">' + grafCobrado(F.d.cob12, T) + '</div><br>' + h;
   }
   // Una sola escala en ARS. Detrás los targets (punteados, secundarios); adelante lo cobrado.
   // Sin etiquetas por punto: el detalle de cada mes está en el tooltip.
@@ -264,7 +266,14 @@
     };
     el.onchange = function (ev) {
       if (_montado !== 'fin') return;
-      var t = ev.target, id = t.getAttribute && t.getAttribute('data-fesc'); if (!id) return;
+      var t = ev.target, tg = t.getAttribute && t.getAttribute('data-ftg');
+      if (tg) {   // el target se ve en el gráfico al instante y queda guardado para todos
+        F.d.targets[tg] = Number(t.value) || 0; document.getElementById('fin-graf').innerHTML = grafCobrado(F.d.cob12, F.d.targets);
+        var cambios = {}; cambios[tg] = t.value;
+        db().rpc('guardar_config', { cambios: cambios }).then(function (r) { if (r.error) toast(r.error.message, 'err'); else toast('Target guardado', 'ok'); });
+        return;
+      }
+      var id = t.getAttribute && t.getAttribute('data-fesc'); if (!id) return;
       F.esc[id] = t.checked; pintar(el);
     };
   };

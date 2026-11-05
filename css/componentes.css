@@ -220,7 +220,7 @@ button.ui-lnk { background: none; border: 0; padding: 0; font-family: var(--f-te
 
 /* ── C13 · Logo ── */
 .ui-logo { width: var(--logo); height: var(--logo); border-radius: var(--r); background: var(--logo-fondo); border: 1px solid var(--marco);
-  display: flex; align-items: center; justify-content: center; color: var(--brillo); font-size: var(--t-xl); flex: none; overflow: hidden; }
+  display: flex; align-items: center; justify-content: center; color: var(--modal); font-size: var(--t-xl); flex: none; overflow: hidden; }
 .ui-logo.ui-img { background: var(--logo-claro); }
 .ui-logo img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
 
@@ -397,3 +397,22 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .tbl.fin-an td:last-child { min-width: 90px; }
 /* Configuración: tarjetas en bloque, separadas como el resto de la app */
 #vista > .ui-tarjeta, #vista > .ui-tarjeta + .ui-tarjeta { margin-bottom: var(--e3); }
+
+/* Ordenar por columna, en todas las tablas (js/orden.js · 05/11/2026) */
+table.tbl th:not(:empty), table.ui-tbl th:not(:empty) { cursor: pointer; user-select: none; }
+table.tbl th:not(:empty):hover, table.ui-tbl th:not(:empty):hover { color: var(--brillo); }
+table.tbl th[data-orden], table.ui-tbl th[data-orden] { color: var(--brillo); }
+th[data-orden="asc"]::after { content: " ▲"; font-size: 8px; }
+th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
+/* Modal de facturas: líneas Proyecto › Solución y campos sin contorno luminoso (05/11/2026) */
+#m-cobro .fc { border-color: var(--marco); }
+#m-cobro .fc:hover:not(:disabled) { border-color: var(--texto2); }
+#m-cobro .fc:focus { border-color: var(--brillo); box-shadow: 0 0 0 2px var(--suave-brillo); }
+.cb-lin { display: grid; grid-template-columns: 1.1fr 1.3fr 2fr 56px 124px 24px; gap: var(--e2); align-items: center; margin-bottom: var(--e2); }
+.cb-lin-h { font-size: var(--t-xs); color: var(--texto2); margin-bottom: var(--e1); }
+.cb-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e1) var(--e4); font-size: var(--t-s); color: var(--texto2); margin: 0 0 var(--e3); }
+.cb-sub.ui-p-pendiente { color: var(--p-pendiente); }
+.cb-ren .fc { width: 110px; }
+.cb-ren .fl { margin: 0; }
+@media (max-width: 800px) { .cb-lin { grid-template-columns: 1fr 1fr; } .cb-lin-h { display: none; } }
+.fin-tg { max-width: 560px; }
