@@ -32,7 +32,7 @@ Idioma: español rioplatense, informal. Respuestas cortas.
 
 ## Trabajo
 
-- **Trabajamos dos personas en este repo (Santiago y Vicky).** Antes de tocar nada en cada
+- **Trabajamos dos personas en este repo (Sebastián y Vicky).** Antes de tocar nada en cada
   sesión: `git pull --ff-only origin main` y leer `git log` de lo nuevo (código y
   `supabase/migrations/`), así no se pisan cambios del otro. Si hay cambios locales sin
   subir, `git pull --rebase` y resolver antes de seguir. Antes de cada `git push`, volver a
