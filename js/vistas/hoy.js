@@ -39,10 +39,14 @@
       db().from('v_facturar_saldos').select('item_id'),
       db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 }),
       db().from('usuarios').select('mail,nombre').eq('es_giwa', true).eq('activo', true).order('orden'),
-      db().from('v_mis_menciones').select('*').order('creado', { ascending: false }).limit(30)
+      db().from('v_mis_menciones').select('*').order('creado', { ascending: false }).limit(30),
+      db().from('entregables').select('id,titulo,tipo,accesos,proyecto_id,creado').not('proyecto_id', 'is', null).gte('creado', isoMas(-14)).order('creado', { ascending: false }).limit(20),
+      db().from('proyectos').select('id,nombre')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     H.tareas = r[0].data; H.menc = r[6].data;
+    var nomP = {}; r[8].data.forEach(function (p) { nomP[p.id] = p.nombre; });
+    H.nov = r[7].data.map(function (e) { var a = (e.accesos || [])[0] || {}; return { proy: nomP[e.proyecto_id] || e.proyecto_id, tipo: e.tipo || '', titulo: e.titulo || a.nombre || '', url: String(a.url || ''), creado: e.creado }; });
     H.users = r[5].data.map(function (u) { return { mail: String(u.mail || '').trim().toLowerCase(), name: u.nombre || u.mail }; });
     var dv = Number(r[4].data) || 30;
     H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
@@ -97,6 +101,15 @@
   async function comentarios(el, id) {
     var r = await db().from('comentarios').select('id,texto,fecha,creador,creado').eq('tarea_id', id).order('fecha', { ascending: false }).order('creado', { ascending: false });
     H.coms[id] = r.error ? [] : r.data; pintar(el);
+  }
+
+  // Novedades de los proyectos: lo último que se cargó en Mockups y propuestas (14 días). Sin Telegram.
+  function novedades() {
+    var L = H.nov || []; if (!L.length) return '<div class="hoy-vacio">Sin novedades.</div>';
+    return L.map(function (n) {
+      var web = /^https?:\/\//i.test(n.url);
+      return '<div class="hoy-men nueva"><span class="hoy-men-h"><span>' + esc(n.proy) + ' · ' + esc(n.tipo) + '</span><span class="m u-nw">' + esc(ff(n.creado)) + '</span></span>' +
+        '<span class="hoy-men-t">' + (web ? '<a class="ui-lnk ui-azul" href="' + esc(n.url) + '" target="_blank" rel="noopener">' + esc(n.titulo) + '</a>' : esc(n.titulo)) + '</span></div>'; }).join('');
   }
 
   // Dónde me mencionaron: quién, en qué tarea, qué dijo y cuándo. Un clic abre la conversación.
@@ -171,6 +184,7 @@
         sec('despues', 'derecha', 'Más adelante', despues.length, lista(despues, 'Nada más adelante.'), '', '', !(H.q || H.cli || H.who || H.tipo)) +
         (H.fin ? sec('fin', 'check', 'Finalizadas', cerradas.length, lista(cerradas, 'Ninguna.')) : '')) +
       '</div><div>' +
+      sec('novedades', 'documento', 'Novedades', (H.nov || []).length, novedades(), '', '', !(H.nov || []).length) +
       sec('menciones', 'chat', 'Menciones', sinLeer, menciones(), '', '', !sinLeer) +
       sec('agenda', 'reloj', 'Agenda de hoy', null, '<div class="hoy-vacio">La agenda de Google Calendar llega con el puente de Google.</div>') +
       sec('plata', 'plata', 'Plata', null,
@@ -196,7 +210,7 @@
     var refrescar = async function () { await cargar(); pintar(el); };
     var alGuardar = { onSave: refrescar };
     await abrirModulo(el, { id: 'hoy', texto: 'Armando el día…', forzar: op && op.forzar, cargar: cargar,
-      cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata, H.menc]); }, pintar: function () { pintar(el); } });
+      cargado: function () { return H.ok; }, firma: function () { return JSON.stringify([H.tareas, H.plata, H.menc, H.nov]); }, pintar: function () { pintar(el); } });
     if (!el._hoySec) {                            // recordar qué bloque quedó plegado
       el._hoySec = true;
       el.addEventListener('toggle', function (ev) { var d = ev.target; if (_montado === 'hoy' && d.matches && d.matches('details[data-hsec]')) H.cerr[d.getAttribute('data-hsec')] = !d.open; }, true);

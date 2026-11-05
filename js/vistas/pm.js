@@ -367,6 +367,8 @@
       db().from('contactos').select('*').eq('empresa_id', p.empresa_id || '-').order('nombre'),
       db().from('proyecto_horas').select('desarrollo_id,modulo_nombre,etapa,horas_est,horas_reales').eq('proyecto_id', id),
       db().from('v_analisis_clientes').select('*').eq('empresa', p.empresa_id || '-'),
+      db().from('entregables').select('id,titulo,tipo,accesos').eq('proyecto_id', id).order('creado', { ascending: false }),
+      db().from('proyectos').select('fecha_cierre_probable').eq('id', id).maybeSingle(),
       db().from('cobros').select('desarrollo_id,tipo_comprobante,comprobante_nro,comprobante_fecha,deposito_fecha,monto_ars,link_fc').eq('proyecto_id', id).order('comprobante_fecha')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
@@ -376,7 +378,7 @@
       // comentarios del proyecto (la columna puede traer varios, separados por coma), los más nuevos primero
       coms: r[1].data.filter(function (c) { return crmLista(c.proyecto_id).indexOf(id) >= 0; })
         .sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')) || (a.orden - b.orden); }),
-      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null, cobros: r[5].data
+      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null, entregables: r[5].data, cierreProb: (r[6].data || {}).fecha_cierre_probable, cobros: r[7].data
     };
   }
   function crmLista(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
@@ -472,7 +474,7 @@
     var h = uiDesp({ t: 'Datos del proyecto', open: true, v: editar },
       dato('Descripción', esc(p.descripcion || '—')) + '<br><div class="ui-datos">' +
       [['Sponsor', esc(p.sponsor || '—')], ['Owner', esc(nombre(p.owner) || '—')], ['Probabilidad', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>'],
-       ['Duración', dur ? '<span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') : '—'], ['Fecha propuesta', '<span class="ui-num">' + (ff(p.fecha_propuesta) || '—') + '</span>'],
+       ['Duración', dur ? '<span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') : '—'], ['Fecha propuesta', '<span class="ui-num">' + (ff(p.fecha_propuesta) || '—') + '</span>'], ['Cierre probable de negociación', '<span class="ui-num">' + (ff(F.cierreProb) || '—') + '</span>'],
        ['Inicio', '<span class="ui-num">' + (ff(mInicio(p)) || '—') + '</span>'], ['Cierre estimado', cie.fecha ? '<span class="ui-num">' + ff(cie.fecha) + '</span>' + (cie.firme ? '' : ' (parcial)') : '—']].map(function (x) {
         return dato(x[0], x[1]);
       }).join('') + '</div>' +
@@ -622,6 +624,12 @@
     var lnk = function (u, t) { return '<a class="ui-lnk ui-azul" href="' + esc(u) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + t + '</a>'; };
     var h = '<div class="ui-barra">' + (drv ? lnk(drv, 'Carpeta del proyecto') : '') + (emp && emp !== drv ? lnk(emp, 'Drive de ' + esc(p.empresa || 'la empresa')) : '') + '</div>';
     if (!drv && !emp) h = uiAviso('Este proyecto no tiene carpeta de Drive cargada, ni su empresa.', 'adv');
+    // Mockups y propuestas: tabla entregables, accesos = [{ tipo, nombre, url }]. Se abren en otra pestaña.
+    h += '<div class="ui-barra ui-der">' + uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') + '</div><div class="ui-lat-h">Mockups y propuestas</div>' + ((P.f.entregables || []).length ? P.f.entregables.map(function (e) {
+      var ac = (e.accesos || [])[0] || {}, u = String(ac.url || ''), web = /^https?:\/\//i.test(u);
+      return '<div class="ui-linea"><span class="ui-f1">' + esc(e.titulo || ac.nombre || 'Sin título') + ' <span class="ui-nota-t">· ' + esc(e.tipo || '') + '</span></span>' +
+        (web ? '<a class="ui-ib" href="' + esc(u) + '" target="_blank" rel="noopener" data-tip="Abrir" aria-label="Abrir ' + esc(e.titulo || '') + '">' + uiIco('abrir') + '</a>' : '<span class="ui-nota-t">' + esc(u) + '</span>') + '</div>'; }).join('')
+      : '<div class="ui-nota-t">Sin mockups ni propuestas.</div>') + '<br>';
     var cs = (P.f.cobros || []).filter(function (c) { return c.link_fc; });
     h += '<div class="ui-lat-h">Comprobantes</div>' + (cs.length ? cs.map(function (c) {
       return '<div class="ui-linea"><span class="ui-f1">' + esc([c.tipo_comprobante, c.comprobante_nro].filter(Boolean).join(' ') || 'Comprobante') + '</span>' +
@@ -745,7 +753,8 @@
     var mon = function (m) { return '<button type="button" class="ui-mon-b ui-mon-' + m.toLowerCase() + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
     return '<div class="g2"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
         '<div class="fg"><label class="fl" for="nv-sp">Sponsor</label><select class="fc" id="nv-sp"><option value="">Elegí la empresa</option></select></div></div>' +
-      '<div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
+        '<div class="fg"><label class="fl" for="nv-cierre">Fecha probable de cierre de negociación <span class="req">*</span></label><input class="fc" type="date" id="nv-cierre"></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="nv-tipo">Desarrollo <span class="req">*</span></label><select class="fc" id="nv-tipo"></select></div>' +
         '<div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div></div>' +
       '<div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el título del proyecto"></div>' +
@@ -832,10 +841,10 @@
   async function nvGuardar(el) {
     var v = function (id) { return String(document.getElementById(id).value || '').trim(); };
     var falta = [!v('nv-emp') && 'la empresa', !v('nv-nom') && 'el título del proyecto', !v('nv-tipo') && 'el tipo de desarrollo',
-                 !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago'].filter(Boolean);
+                 !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago', !v('nv-cierre') && 'la fecha probable de cierre'].filter(Boolean);
     if (falta.length) return set('nv-err', 'Falta ' + falta.join(', ') + '.');
     var b = document.querySelector('#m-nv [data-pm="nv-ok"]'); b.disabled = true;
-    var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'),
+    var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'), fecha_cierre: v('nv-cierre'),
       titulo: v('nv-tit') || v('nv-nom'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
     b.disabled = false;
     if (r.error) return set('nv-err', esc(r.error.message));
@@ -872,6 +881,7 @@
           '<div class="fg"><label class="fl" for="ep-est">Estado</label><select class="fc" id="ep-est"></select></div></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ep-prob">Probabilidad (%)</label><input class="fc u-tr" type="number" min="0" max="100" id="ep-prob"></div>' +
           '<div class="fg"><label class="fl" for="ep-fecha">Fecha de propuesta</label><input class="fc" type="date" id="ep-fecha"></div></div>' +
+        '<div class="fg"><label class="fl" for="ep-cierre">Fecha probable de cierre de negociación</label><input class="fc" type="date" id="ep-cierre"></div>' +
         '</div><div class="mf"><button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button></div></div>';
       document.body.appendChild(m);
     }
@@ -892,6 +902,8 @@
     $e('ep-est').innerHTML = estadosProyecto().filter(function (o) { return o === act || puedeEstado(p, o).ok; })
       .map(function (o) { return '<option value="' + esc(o) + '"' + (o === act ? ' selected' : '') + '>' + esc(uiNombreEst(o)) + '</option>'; }).join('');
     $e('ep-prob').value = p.probabilidad || 50; $e('ep-fecha').value = p.fecha_propuesta ? String(p.fecha_propuesta).slice(0, 10) : '';
+    var fc = await db().from('proyectos').select('fecha_cierre_probable').eq('id', p.id).maybeSingle();
+    $e('ep-cierre').value = (fc.data && fc.data.fecha_cierre_probable) || '';
     // Aprobado o activo: nombre, empresa y lo comercial quedan fijos (29/10/2026). IPC y fechas van por su lado.
     var fijo = ['aprobado', 'activo'].indexOf(_canonProy(act)) >= 0;
     ['ep-nom', 'ep-emp', 'ep-prob', 'ep-fecha'].forEach(function (id) { $e(id).disabled = fijo; });
@@ -902,7 +914,7 @@
         closeM('m-eproy');
         res({ id: p.id, nombre: $e('ep-nom').value.trim(), descripcion: $e('ep-desc').value.trim(), empresa: $e('ep-emp').value,
               sponsor: $e('ep-sp').value, owner: $e('ep-owner').value, estado: $e('ep-est').value,
-              probabilidad: $e('ep-prob').value, fecha_propuesta: $e('ep-fecha').value });
+              probabilidad: $e('ep-prob').value, fecha_propuesta: $e('ep-fecha').value, fecha_cierre: $e('ep-cierre').value });
       };
     });
   }
@@ -1116,6 +1128,19 @@
       hacer('alta_desarrollo', { p: { padre: document.getElementById('ad-padre').value, clase: clase, titulo: document.getElementById('ad-tit').value.trim(), moneda: document.getElementById('ad-mon').value,
         monto: document.getElementById('ad-monto').value, horas: mej ? document.getElementById('ad-hs').value : '' } });
     };
+    // Mockup o propuesta: una fila en entregables, con su URL
+    var altaEnt = async function (id) {
+      var okE = await modal('Mockup o propuesta · ' + (proy(id).nombre || id),
+        '<div class="fg"><label class="fl" for="en-tipo">Tipo</label><select class="fc" id="en-tipo"><option>Mockup</option><option>Propuesta comercial</option><option>Demo</option><option>Aplicación</option></select></div>' +
+        '<div class="fg"><label class="fl" for="en-tit">Título <span class="req">*</span></label><input class="fc" id="en-tit"></div>' +
+        '<div class="fg"><label class="fl" for="en-url">URL <span class="req">*</span></label><input class="fc" id="en-url" placeholder="https://…"></div>', 'Guardar',
+        function () { return !document.getElementById('en-tit').value.trim() ? 'Poné un título' : !/^https?:\/\/\S+$/i.test(document.getElementById('en-url').value.trim()) ? 'La URL tiene que empezar con https://' : ''; });
+      if (!okE) return;
+      var ti = document.getElementById('en-tipo').value, tt = document.getElementById('en-tit').value.trim();
+      var rE = await db().from('entregables').insert({ proyecto_id: id, titulo: tt, tipo: ti, estado: 'activo', accesos: [{ tipo: ti, nombre: tt, url: document.getElementById('en-url').value.trim() }] });
+      if (rE.error) return toast(rE.error.message, 'err');
+      toast('Guardado', 'ok'); refrescar();
+    };
     var itemDe = function (iid) { var it = null; P.proys.some(function (p) { return (it = (p.items || []).find(function (x) { return x.id === iid; })); }); return it; };
     var cambiarEstado = async function (p, canon) {
       switch (canon) {
@@ -1167,6 +1192,7 @@
       if (a === 'sub') { P.sub = b.getAttribute('data-s'); return pintar(el); }
       if (a === 'arrancar') return arrancar(proy(id));
       if (a === 'alta-des') return altaDes(proy(id));
+      if (a === 'ent-nuevo') return altaEnt(id);
       if (a === 'fin-des') {
         var ffin = el.querySelector('[data-ffin="' + id + '"]');
         if (!ffin || !ffin.value) return toast('Elegí la fecha de fin', 'err');

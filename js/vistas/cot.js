@@ -159,6 +159,7 @@
         C.ini.empresas.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === CN.empresa ? ' selected' : '') + '>' + esc(x.nombre) + '</option>'; }).join('') + '</select>' +
         (e ? '<div class="u-s11-mt">' + uiTier(e.tier) + ' × <span class="ui-num">' + String(e.mult).replace('.', ',') + '</span></div>' : '') + '</div>' +
       '<div class="fg"><label class="fl" for="cot-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="cot-nom" value="' + esc(CN.nombre) + '"></div></div>' +
+      '<div class="fg"><label class="fl" for="cot-cierre">Fecha probable de cierre de negociación</label><input class="fc" type="date" id="cot-cierre" value="' + esc(CN.fecha_cierre || '') + '"></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="cot-sp">Sponsors</label><select class="fc" id="cot-sp"><option value="">' + (CN.empresa ? '+ Agregar sponsor' : 'Elegí la empresa') + '</option>' +
           cs.filter(function (c) { return CN.sponsors.indexOf(c.id) < 0; }).map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>'; }).join('') + '</select>' + sp +
           (CN.empresa ? '<button type="button" class="ui-lnk ui-azul" data-cot="contacto">+ Contacto nuevo</button>' : '') + '</div>' +
@@ -707,7 +708,7 @@
   function olvidar() { try { localStorage.removeItem(LS); } catch (e) {} }
   async function abrirCot(pid) {
     var r = await rpc('cot_leer', { pid: pid });
-    var x = nuevo(); x.pid = r.pid; x.estado = r.estado; x.empresa = r.empresa; x.nombre = r.nombre; x.minuta = r.minuta || {};
+    var x = nuevo(); x.pid = r.pid; x.estado = r.estado; x.empresa = r.empresa; x.nombre = r.nombre; x.fecha_cierre = r.fecha_cierre || ''; x.minuta = r.minuta || {};
     x.sponsors = String(r.contactos || r.sponsor || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     x.owners = (x.minuta.responsables && x.minuta.responsables.length ? x.minuta.responsables : [r.owner]).filter(Boolean);
     var idx = {}; r.devs.forEach(function (d, i) { idx[d.id] = i; });
@@ -722,7 +723,7 @@
   function payload() {
     var con = CN.devs.filter(function (v) { return v.tipo; });
     CN.minuta.responsables = CN.owners;
-    return { pid: CN.pid, empresa: CN.empresa, nombre: CN.nombre, sponsor: CN.sponsors.join(','), owner: CN.owners[0] || '', minuta: CN.minuta, borrados: CN.borrados,
+    return { pid: CN.pid, empresa: CN.empresa, nombre: CN.nombre, fecha_cierre: CN.fecha_cierre || '', sponsor: CN.sponsors.join(','), owner: CN.owners[0] || '', minuta: CN.minuta, borrados: CN.borrados,
       devs: con.map(function (v) { var mt = Object.assign({}, v.mant), c = propio(v) ? null : CN.devs[v.mant.comparte];
         mt.comparte = c ? con.indexOf(c) : null;
         return { id: v.id, tipo: v.tipo, titulo: v.titulo, objetivo: v.objetivo, mejora: !!v.mejora, r: v.r, cant: v.cant, etapa: v.etapa, notas: v.notas, ext: v.ext, base: v.base, na: v.na,
@@ -732,6 +733,7 @@
     var d = payload();
     if (!d.empresa || !d.nombre) return aviso('Falta la empresa o el título del proyecto.');
     if (!d.devs.length) return aviso('Cargá al menos un desarrollo.');
+    if (crear && !d.fecha_cierre) return aviso('Falta la fecha probable de cierre de negociación.');
     var alta = !CN.pid, msg = crear ? (alta ? 'Se crea «' + d.nombre + '» como Prospecto, con sus horas, costos y tareas. Queda en Proyectos.' : 'El borrador «' + d.nombre + '» pasa a Prospecto y escribe sus horas, costos y tareas.')
       : (alta ? 'Se guarda «' + d.nombre + '» como Borrador. No se ve en Proyectos hasta que lo crees.' : 'Se guardan los cambios de «' + d.nombre + '» (' + CN.estado + ').');
     if (!(await ask(msg, crear ? 'Crear proyecto' : 'Guardar', { ok: crear ? 'Crear' : 'Guardar' }))) return;
@@ -807,6 +809,7 @@
       if (t.id === 'cot-sp' && t.value) { CN.sponsors.push(t.value); repintar(); return auto(); }
       if (t.id === 'cot-ow' && t.value) { CN.owners.push(t.value); repintar(); return auto(); }
       if (t.id === 'cot-nom') { CN.nombre = t.value.trim(); return auto(); }
+      if (t.id === 'cot-cierre') { CN.fecha_cierre = t.value; return auto(); }
       if (t.id === 'cot-min') { CN.minuta.texto = t.value; if (!CN.minuta.objetivo || CN.minuta.objetivo === CN.minuta._obj) { CN.minuta.objetivo = t.value; CN.minuta._obj = t.value; } return auto(); }
       if (t.hasAttribute('data-cot-ck')) { var k = t.getAttribute('data-cot-ck'), v = dev();
         if (k === 'mant') { v.mant.on = t.checked; if (t.checked) { if (!v.mant.manual) { v.mant.hs = mantHs(v); v.mant.abono = Math.round(v.mant.hs * soporte()); } mantPop(); } return cambio(); }
