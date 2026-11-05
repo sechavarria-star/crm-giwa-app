@@ -41,7 +41,7 @@
       db().from('usuarios').select('mail,nombre'),
       db().rpc('estados_spec'),
       db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
-      db().from('v_tareas').select('*').eq('closed', false),
+      db().from('v_tareas').select('*').eq('closed', false).eq('hidden', false),   // como Hoy: una alerta aparece recién en su ventana de aviso
       db().from('contactos').select('id,nombre,apellido,empresa_id,puesto,area_trabajo,email,telefono').order('nombre')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
@@ -217,7 +217,7 @@
     var its = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada'; });
     var add = function (icono, tip, attrs) { return uiIb(icono, tip, 'add', attrs); };
     var h = '<div class="ui-tarjeta' + (p.detenido || rev ? ' ui-apagada' : '') + '"><span class="ui-tarjeta-barra ui-e-' + uiClaveEst(e, p.detenido) + '"></span>';
-    h += '<div class="ui-tarjeta-top">' + uiBtn('Ver proyecto', 'documento', 's', 'data-pm="ficha" data-id="' + pid + '"') + '</div>';
+    h += '<div class="ui-tarjeta-top">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + uiBtn('Ver proyecto', 'documento', 's', 'data-pm="ficha" data-id="' + pid + '"') + '</div>';
     // Las acciones del estado, como íconos con su tooltip (todas con confirmación)
     var ICO = { negociacion: ['mail', 'Enviar la propuesta', ''], aprobado: ['check', 'Aprobar', 'fin'], rechazado: ['cerrar', 'No aceptar', 'bor'], finalizado: ['e_cuadrado', 'Finalizar', 'fin'] };
     var iconos = (can === 'finalizado' || can === 'rechazado' ? '' :
@@ -226,7 +226,7 @@
     h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div><div class="ui-sub-t">' + esc(p.empresa || '') + '</div></div>' +
       '<div class="ui-tarjeta-der"><div>' + uiEstado(e) + (p.detenido ? ' ' + uiEstado('Detenido', { detenido: true }) : '') + '</div>' +
         (iconos ? '<div class="ui-fila-ic ui-tarjeta-acc">' + iconos + '</div>' : '') + '</div></div>';
-    var pq = porQue(p, can); if (pq) h += uiMotivo(pq);
+    var pq = porQue(p, can); if (pq) h += '<div class="ui-motivo"><span class="ui-e-' + uiClaveEst(e, p.detenido) + '">' + esc(pq) + '</span></div>';
     var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
     // Sponsors: el de GIWA (owner) y el del cliente (contacto de proyecto.sponsor_id)
     var sc = p.sponsor_id && P.cons.filter(function (c) { return c.id === p.sponsor_id; })[0];
@@ -264,11 +264,11 @@
     var nv = ta.filter(function (t) { return t.overdue; }).length;
     sec += desp(p, 'tar', { th: 'Tareas', n: ta.length + (nv ? ' · ' : ''),
         v: (nv ? '<span class="ui-p-error ui-num">' + nv + ' vencida' + (nv > 1 ? 's' : '') + '</span> ' : '') +
-           '<span class="ui-fila-ic">' + add('tarea', 'Nueva tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + add('chat', 'Nuevo comentario', 'data-pm="nota-foco" data-id="' + pid + '"') + '</span>' },
+           '<span class="ui-fila-ic">' + add('tarea', 'Nueva tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</span>' },
       ta.length ? TareasUI.html(ta, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>');
     // d · Otros comentarios: los últimos 3 que no están debajo de una tarea
     var otros = (p.comentarios || []).filter(function (c) { return !c.tarea_id; }).slice(0, 3);
-    sec += desp(p, 'otros', { th: 'Otros comentarios', n: otros.length }, otros.length ? otros.map(comLinea).join('') : '<div class="ui-nota-t">Sin comentarios.</div>');
+    sec += desp(p, 'otros', { th: 'Otros comentarios', n: otros.length, v: '<span class="ui-fila-ic">' + add('chat', 'Nuevo comentario', 'data-pm="nota-foco" data-id="' + pid + '"') + '</span>' }, otros.length ? otros.map(comLinea).join('') : '<div class="ui-nota-t">Sin comentarios.</div>');
     h += '<div class="ui-rapido">' + sec + '</div>';
     h += '<input class="ui-campo ui-rapido" data-segnota="' + pid + '" placeholder="Comentario rápido y Enter…" aria-label="Comentario rápido">';
     h += '<div class="ui-tarjeta-pie">' + uiIb('revisado', rev ? 'Volver a su lugar' : 'Ya lo revisé', '', 'data-pm="rev" data-id="' + pid + '"').replace('class="ui-ib', 'class="ui-ib' + (rev ? ' on' : '')) + '</div>';

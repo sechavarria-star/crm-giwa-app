@@ -216,7 +216,7 @@
     D.mens.forEach(function (m) { fil.push({ titulo: m.titulo, ctx: [m.empresa, m.proyecto], det: m.periodo, monto: m.monto, item: m.item_id, cls: 'm-abono' }); });
     D.saldos.forEach(function (s) { fil.push({ titulo: s.titulo, ctx: [s.empresa, s.proyecto], det: 'Saldo' + (s.facturado > 0 ? ' · ya facturado ' + fmt(s.facturado) : ''), monto: s.saldo, item: s.item_id, cls: 'm-contratado' }); });
     var g = { toca: [], prox: [], sin: [] };
-    fil.forEach(function (f) { var a = altPorItem[f.item]; f.vence = a ? a.fecha : ''; (a ? (a.enviada ? g.prox : g.toca) : g.sin).push(f); });
+    fil.forEach(function (f) { var a = altPorItem[f.item]; f.vence = a ? a.fecha : ''; f.alerta = a ? a.id : ''; (a ? (a.enviada ? g.prox : g.toca) : g.sin).push(f); });
     var porVence = function (x, y) { return String(x.vence).localeCompare(String(y.vence)); };
     g.toca.sort(porVence); g.prox.sort(porVence);
     // Cada grupo (Toca facturar · Sin alerta · Próximas) es un desplegable con el mismo encabezado: flecha, título, cantidad y total
@@ -230,7 +230,8 @@
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
           '<td class="u-tr u-nw"><button class="btn bp xs" data-adm="cb-fact" data-id="' + esc(f.item) + '">' + ico('documento') + ' Facturar</button> ' +
-            '<button class="btn bg xs" data-adm="cb-pago" data-id="' + esc(f.item) + '">' + ico('cobro') + ' Registrar pago</button></td></tr>';
+            '<button class="btn bg xs" data-adm="cb-pago" data-id="' + esc(f.item) + '">' + ico('cobro') + ' Registrar pago</button>' +
+            (f.alerta ? ' <button class="btn bg xs btn-ico" data-adm="alt-posp" data-id="' + esc(f.alerta) + '" data-tip="Posponer" aria-label="Posponer">' + ico('calendario') + '</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></details>';
     };
     var h = fil.length ? '' : '<div class="empty u-p10">Nada pendiente de facturar.</div>';
