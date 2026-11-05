@@ -29,7 +29,7 @@ var MODULOS = [
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
     subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
-    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] },
+    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] },
   // Administración de datos (03/11/2026): el menú sólo se lo muestra a Victoria; el permiso real lo da la base (crm_giwa.es_duena)
   { id: 'datos',    nombre: 'Datos',          ico: 'lista',    listo: true, solo: 'v.gagey@giwa-ia.com' }
 ];

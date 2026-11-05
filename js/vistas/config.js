@@ -41,7 +41,7 @@
   var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %']];
   var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
-  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
+  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
   var C = { usu: [], admin: false, sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '', tab: 'clientes', num: {} };
 
   async function cargar() {
@@ -324,6 +324,13 @@
         '<button class="ui-btn ui-s" data-cfg="tg-resumen">' + ico('campana') + ' Mandarme el resumen diario ahora</button></div></div>';
   }
 
+  // ── Targets (05/11/2026): los lee Estado financiero › ¿Dónde podríamos estar? (la línea punteada) ──
+  function htmlTargets() {
+    return '<div class="gauto"><div class="ui-tarjeta"><div class="ui-lat-h">Target de facturación mensual</div>' +
+      '<div class="ui-nota-t">Cuánto se quiere facturar por mes, en pesos. Es la línea punteada del gráfico de Estado financiero.</div>' +
+      '<label class="fl" for="cf-tg-fee">Pesos por mes</label><input class="fc" type="number" min="0" id="cf-tg-fee" data-monto value="' + esc(C.cfg.target_fee_mensual || '') + '">' +
+      '<button class="ui-btn ui-p u-mt10" data-cfg="targets">' + ico('guardar') + ' Guardar target</button></div></div>';
+  }
   function htmlOtros() {
     return '<div class="ui-tarjeta"><p>Estas herramientas siguen en el CRM actual: ' +
       '<b>Plantilla Doc</b> (la usa el documento de propuesta del Cotizador), <b>Mantenimiento de datos</b> y <b>Diagnósticos</b> (reparan la planilla).</p>' +
@@ -369,11 +376,12 @@
       vh: 'Valor hora, tiers y márgenes que usa el Cotizador.',
       gastos: 'Los tipos para clasificar los gastos.',
       usu: 'Quién entra al CRM y con qué permisos.',
+      targets: 'Las metas que usa Estado financiero.',
       telegram: 'Los avisos que llegan por Telegram.',
       diag: 'Revisión de datos y procesos automáticos.',
       otros: 'Otros ajustes del CRM.'
     }[C.sub]);
-    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
+    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, targets: htmlTargets, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
     if (C.sub === 'telegram') tgPintar();
     if (C.sub === 'diag') { diagPintar(); recCargar(); }
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
@@ -429,6 +437,10 @@
         var ars = Number(document.getElementById('cf-hs-ars').value) || 0, usd = Number(document.getElementById('cf-hs-usd').value) || 0;
         if (!usd && ars && C.tc > 0) usd = Math.round(ars / C.tc * 100) / 100;
         return guardar('guardar_config', { cambios: { valor_hora_soporte_ars: ars ? String(ars) : '', valor_hora_soporte_usd: usd ? String(usd) : '' } }, 'Valores guardados');
+      }
+      if (a === 'targets') {
+        var tg = document.getElementById('cf-tg-fee').value.trim();
+        return guardar('guardar_config', { cambios: { target_fee_mensual: tg } }, 'Target guardado');
       }
       if (a === 'vh-add') {
         var kk = document.getElementById('vh-k-' + t).value.trim(), vv = _nFront(document.getElementById('vh-v-' + t).value);

@@ -6,17 +6,17 @@
      los 7 recuadros            v_resumen_financiero + v_fin_caja_mes (= getDashboardFinanciero)
      Análisis por Cliente       v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado);
                                 margen y referencia, v_analisis_clientes (= getAnalisisCliente)
-     ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion); al final, v_fin_no_aceptados. Sobre v_proyeccion_12m
-                                suma lo tildado y las opciones, y lo compara con los targets. Es un «¿y si…?»: no guarda
-                                nada salvo los targets, y el ajuste por IPC es una estimación trimestral sobre los abonos.
-     Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha
+     ¿Dónde podríamos estar?    la lista: v_fin_escenarios (= getProyeccion) y v_fin_no_aceptados. El gráfico:
+                                barras = abonos (v_proyeccion_12m) + el fee de lo tildado; líneas = ventas de proyectos
+                                de v_fin_ventas_mes (forecast = venta × probabilidad; lo tildado, al 100%). La línea
+                                punteada es el target de facturación mensual, que se carga en Configuración › Targets.
      Negocios a seguir          v_fin_negocios (= getNegociosASeguir)
    Acá no se calcula plata: se muestra lo que da la base. Lo único que se suma
    es lo tildado en «¿Dónde podríamos estar?», que es un «¿y si…?» (igual que el Portal).
    Los gráficos son SVG propios: la app no tiene librería de gráficos.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var F = { d: null, tab: 'cli', ab: {}, esc: {}, sim: { mant: 0, abono: null, proy: 0, monto: 0, ipc: null, conIpc: true } };
+  var F = { d: null, tab: 'cli', ab: {}, esc: {} };
 
   async function cargar() {
     var r = await Promise.all([
@@ -27,21 +27,18 @@
       db().from('v_analisis_clientes').select('*').order('nombre'),
       db().from('v_fin_escenarios').select('*').order('por_mes', { ascending: false }).order('una_vez', { ascending: false }),
       db().from('v_proyeccion_12m').select('*').order('orden'),
-      db().from('v_proy_sin_fecha').select('*'),
+      db().from('v_fin_ventas_mes').select('proy_id,orden,prob,venta,fee'),
       db().from('v_fin_negocios').select('*').order('esperado', { ascending: false }),
       db().from('v_proyectos_clasif').select('id,estado_proyecto'),
       db().from('v_pm_proyectos').select('empresa,items'),
-      db().from('v_desarrollos_plata').select('cuota').eq('es_mantenimiento', true).eq('es_facturable', true).gt('cuota', 0),
       db().from('v_fin_no_aceptados').select('*').order('una_vez', { ascending: false }),
-      db().from('cot_config').select('clave,valor').in('clave', ['target_fee_mensual', 'target_proyectos_mes']),
-      db().from('indices_ipc').select('ipc').not('ipc', 'is', null).order('mes', { ascending: false }).limit(3)
+      db().from('cot_config').select('clave,valor').eq('clave', 'target_fee_mensual')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
-            esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data,
-            proyItems: r[10].data, abonoProm: r[11].data.length ? Math.round(r[11].data.reduce(function (a, x) { return a + N(x.cuota); }, 0) / r[11].data.length) : 0, noAc: r[12].data,
-            ipcProm: r[14].data.length ? Math.round(r[14].data.reduce(function (a, x) { return a + N(x.ipc); }, 0) / r[14].data.length * 10) / 10 : 0,
-            targets: r[13].data.reduce(function (o, c) { o[c.clave] = Number(c.valor) || 0; return o; }, {}),
+            esc: r[5].data, p12: r[6].data, vm: r[7].data, neg: r[8].data,
+            proyItems: r[10].data, noAc: r[11].data,
+            target: N((r[12].data[0] || {}).valor),
             estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
 
@@ -50,38 +47,25 @@
   function chev() { return '<span class="chev">' + ico('derecha') + '</span>'; }
   function td(v, cls, neg) { return '<td class="m u-tr' + (cls ? ' ' + cls : '') + '">' + (v ? (neg ? '−' : '') + fmt(Math.abs(v)) : '—') + '</td>'; }
 
-  // ── los 7 recuadros (_kpisFin) · s = lo tildado en «¿Dónde podríamos estar?» ──
-  function kpis(s) {
-    var d = F.d.res; s = s || { u: 0, m: 0, det: 0, neg: 0 };
+  // ── los 7 recuadros (_kpisFin): lo actual ──
+  function kpis() {
+    var d = F.d.res;
     var pct = function (v, t) { return t > 0 ? Math.round(v * 100 / t) + '% sobre el total' : '—'; };
-    var mas = function (v) { return v > 0 ? ' <span class="u-c-ok">(+' + fmt(v) + ')</span>' : (v < 0 ? ' <span class="u-c-mt">(−' + fmt(-v) + ')</span>' : ''); };
-    var tot = N(d.cobrado) + s.u, dev = N(d.cobrado_dev) + s.u, mant = N(d.cobrado_mant), mrr = N(d.contratado_mant_mes || d.recurrente_mensual) + s.m;
+    var tot = N(d.cobrado), dev = N(d.cobrado_dev), mant = N(d.cobrado_mant), mrr = N(d.contratado_mant_mes || d.recurrente_mensual);
     var k = [
-      ['Facturado total', fmt(tot), N(d.cant_ganados) + ' proyectos · MRR ' + fmt(mrr) + mas(s.u), 'k-neutro'],
-      ['Cobrado desarrollos', fmt(dev), pct(dev, tot) + mas(s.u), 'k-cobrado'],
+      ['Facturado total', fmt(tot), N(d.cant_ganados) + ' proyectos · MRR ' + fmt(mrr), 'k-neutro'],
+      ['Cobrado desarrollos', fmt(dev), pct(dev, tot), 'k-cobrado'],
       ['Cobrado abonos', fmt(mant), pct(mant, tot), 'k-abono'],
       ['Cobrado este mes', fmt(F.d.caja), 'caja del mes', 'k-cobrado'],
-      ['Contratado mant. / mes', fmt(mrr), 'suma de las cuotas por mes' + mas(s.m), 'k-abono'],
-      ['Detenido', fmt(Math.max(0, N(d.detenido) - s.det)), 'contratado, pero frenado' + mas(-s.det), 'k-neutro'],
-      ['En negociación', fmt(Math.max(0, N(d.monto_negociacion) - s.neg)), N(d.cant_negociacion) + ' proyectos · ' + N(d.dev_negociacion) + ' desarrollos' + mas(-s.neg), 'k-negociacion']
+      ['Contratado mant. / mes', fmt(mrr), 'suma de las cuotas por mes', 'k-abono'],
+      ['Detenido', fmt(N(d.detenido)), 'contratado, pero frenado', 'k-neutro'],
+      ['En negociación', fmt(N(d.monto_negociacion)), N(d.cant_negociacion) + ' proyectos · ' + N(d.dev_negociacion) + ' desarrollos', 'k-negociacion']
     ];
     return k.map(function (x) {
       return '<div class="kpi ' + x[3] + '"><div class="kpi-lbl">' + x[0] + '</div><div class="kpi-val">' + x[1] + '</div><div class="kpi-sub">' + x[2] + '</div></div>';
     }).join('');
   }
 
-  // ── Cobrado vs Contratado por empresa (las 6 más grandes) ──
-  function grafEmpresas() {
-    var e = F.d.emp.filter(function (x) { return N(x.contratado) > 0; }).slice(0, 6);
-    if (!e.length) return '<div class="empty">Sin datos.</div>';
-    var max = Math.max.apply(null, e.map(function (x) { return Math.max(N(x.contratado), N(x.cobrado)); }));
-    return '<div class="fin-barras">' + e.map(function (x) {
-      return '<div class="fin-bf"><span class="fin-bn" title="' + esc(x.empresa) + '">' + esc(x.empresa) + '</span><div class="fin-bb">' +
-        '<i class="fin-c" style="width:' + (N(x.contratado) * 100 / max).toFixed(1) + '%" title="Contratado ' + fmt(x.contratado) + '"></i>' +
-        '<i class="fin-k" style="width:' + (N(x.cobrado) * 100 / max).toFixed(1) + '%" title="Cobrado ' + fmt(x.cobrado) + '"></i></div>' +
-        '<span class="m m-contratado u-tr">' + fmt(x.contratado) + '</span><span class="m m-cobrado u-tr">' + fmt(x.cobrado) + '</span></div>';
-    }).join('') + '<div class="fin-ley"><span><i class="fin-c"></i> Contratado</span><span><i class="fin-k"></i> Cobrado</span></div></div>';
-  }
 
   // ── Por cliente: el cliente y adentro sus proyectos ──
   // Análisis por Cliente (05/11/2026): unifica «Por cliente» y «Análisis por cliente». Cada cliente se
@@ -136,21 +120,9 @@
     return h;
   }
 
-  // ── ¿Dónde podríamos estar? · tildá los negocios y a la derecha se suman ──
-  function simSuma() {
-    var E = F.d.esc.concat(F.d.noAc || []), s = { u: 0, m: 0, det: 0, neg: 0 }, n = 0, S = F.sim;
-    E.forEach(function (x) {
-      if (!F.esc[x.proy_id]) return; n++;
-      s.u += N(x.una_vez); s.m += N(x.por_mes);
-      if (x.origen === 'detenido') s.det += N(x.una_vez); else if (/negoci/i.test(x.estado || '')) s.neg += N(x.una_vez);
-    });
-    s.m += N(S.mant) * N(S.abono); s.u += N(S.proy) * N(S.monto);
-    return { s: s, n: n };
-  }
+  // ── ¿Dónde podríamos estar? · tildá los negocios y el gráfico se mueve ──
   function escenarios() {
-    var E = F.d.esc, NA = F.d.noAc || [], S = F.sim, T = F.d.targets, n = simSuma().n;
-    if (S.abono === null) S.abono = F.d.abonoProm;
-    if (S.ipc === null) S.ipc = F.d.ipcProm;
+    var E = F.d.esc, NA = F.d.noAc || [];
     var fila = function (x) {
       return '<label class="fin-esc"><input type="checkbox" data-fesc="' + esc(x.proy_id) + '"' + (F.esc[x.proy_id] ? ' checked' : '') + '>' +
         '<span class="fin-esc-e">' + esc(x.empresa) + '</span><span class="u-f1m u-corta">' + esc(x.proyecto) +
@@ -158,63 +130,87 @@
         (N(x.una_vez) ? '<span class="m m-contratado">+' + fmt(x.una_vez) + '</span>' : '') +
         (N(x.por_mes) ? '<span class="m m-abono">+' + fmt(x.por_mes) + '/mes</span>' : '') + '</label>';
     };
-    var num = function (k, l, val, monto) { return '<div class="fg"><label class="fl" for="fs-' + k + '">' + l + '</label><input class="fc u-tr ui-num" type="number" min="0" step="any"' + (monto ? ' data-monto' : '') + ' data-fsim="' + k + '" id="fs-' + k + '" value="' + (N(val) || '') + '"></div>'; };
-    var tg = function (k, l) { return '<div class="fg"><label class="fl" for="ftg-' + k + '">' + l + '</label><input class="fc u-tr ui-num" type="number" min="0" data-monto data-ftg="' + k + '" id="ftg-' + k + '" value="' + (N(T[k]) || '') + '"></div>'; };
-    var izq = '<div class="ui-lat-h">Targets</div><div class="g2">' + tg('target_fee_mensual', 'Fee mensual') + tg('target_proyectos_mes', 'Proyectos por mes') + '</div>' +
-      '<div class="ui-lat-h">Sumar opciones</div><div class="g2">' + num('mant', 'Mantenimientos a vender', S.mant) + num('abono', 'Abono de cada uno', S.abono, true) + num('proy', 'Proyectos nuevos', S.proy) + num('monto', 'Monto de cada uno', S.monto, true) + '</div>' +
-      '<div class="g2">' + num('ipc', 'IPC mensual estimado (%)', S.ipc) + '<div class="fg fin-ipc"><label class="u-row6 u-s12"><input type="checkbox" id="fs-conipc"' + (S.conIpc ? ' checked' : '') + '> Ajustar los abonos cada 3 meses</label></div></div>' +
-      '<div class="ui-lat-h">Negocios en curso</div>' + (E.length ? E.map(fila).join('') : '<div class="ui-nota-t">Nada en pipeline ni detenido.</div>') +
+    var izq = '<div class="ui-lat-h">Negocios en curso</div><div class="ui-nota-t u-mb8">Tildá los que querés sumar: su fee se apila en las barras y su venta va a la línea naranja.</div>' +
+      (E.length ? E.map(fila).join('') : '<div class="ui-nota-t">Nada en pipeline ni detenido.</div>') +
       (NA.length ? '<div class="ui-lat-h u-mt10">No aceptados</div>' + NA.map(fila).join('') : '');
-    return '<div class="fin-dos"><div>' + izq + '</div><div id="fin-der">' + simDerecha() + '</div></div>';
+    return '<div class="fin-dos"><div>' + izq + '</div><div id="fin-der" class="ui-tarjeta">' + simDerecha() + '</div></div>';
   }
-  // Lo de la derecha: 12 meses de v_proyeccion_12m + lo sumado. Lo de una sola vez cae en el mes que viene.
-  function simDerecha() {
-    var R = simSuma(), s = R.s, S = F.sim, T = F.d.targets, P = F.d.p12, tf = N(T.target_fee_mensual), tp = N(T.target_proyectos_mes);
-    var ipc = S.conIpc ? N(S.ipc) / 100 : 0, fac = function (i) { return Math.pow(1 + ipc, 3 * Math.floor(i / 3)); };
-    var fee = P.map(function (m, i) { return { et: m.etiqueta, base: N(m.mantenimiento) * fac(i), suma: i ? s.m * fac(i) : 0 }; });
-    var pro = P.map(function (m, i) { return { et: m.etiqueta, base: N(m.desarrollo), suma: i === 1 ? s.u : 0 }; });
-    var f1 = fee[1] ? fee[1].base + fee[1].suma : 0, faltaFee = tf - f1, ab = N(S.abono), cuantos = ab > 0 && faltaFee > 0 ? Math.ceil(faltaFee / ab) : 0;
-    var totPro = pro.reduce(function (a, x) { return a + x.base + x.suma; }, 0), faltaPro = tp * pro.length - totPro;
-    var resp = (tf ? (faltaFee > 0 ? 'Para el target de fee faltan <b class="ui-num">' + cuantos + '</b> mantenimiento' + (cuantos === 1 ? '' : 's') + ' de <span class="ui-num">' + fmt(ab) + '</span>.' : 'Target de fee cubierto.') : 'Cargá los targets para ver cuánto falta.') +
-      (tp ? (faltaPro > 0 ? ' En proyectos faltan <span class="ui-num">' + fmt(faltaPro) + '</span> en 12 meses.' : ' Target de proyectos cubierto.') : '');
-    return '<div class="fs-resp">' + resp + '</div>' + grafSim('Fee de mantenimiento', fee, tf, 'fs-fee') + grafSim('Facturación de proyectos', pro, tp, 'fs-pro') +
-      '<div class="fin-ley"><span><i class="fs-l-b"></i> Proyectado</span><span><i class="fs-l-s"></i> Sumado</span><span><i class="fs-l-t"></i> Target</span></div>' +
-      '<div class="ui-lat-h u-mt10">' + (R.n ? 'Situación actual + ' + R.n + (R.n === 1 ? ' negocio' : ' negocios') : 'Situación actual') + '</div><div class="kpi-grid fin-sim">' + kpis(s) + '</div>';
-  }
-  function grafSim(tit, F2, target, cls) {
-    var W = 560, H = 170, izq = 54, abajo = 20, arriba = 8, n = F2.length || 1, bw = (W - izq) / n;
-    var tope = Math.max.apply(null, [target, 1].concat(F2.map(function (x) { return x.base + x.suma; })));
-    var base = Math.pow(10, Math.floor(Math.log10(tope))), paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * base / 2; }).find(function (x) { return tope / x <= 4; }) || base;
-    var max = Math.ceil(tope / paso) * paso, piso = H - abajo, y = function (v) { return piso - v * (piso - arriba) / max; }, f = function (v) { return v.toFixed(1); };
-    var h = '';
-    for (var g = 0; g <= max + paso / 2; g += paso) h += '<line class="fs-grid" x1="' + izq + '" x2="' + W + '" y1="' + f(y(g)) + '" y2="' + f(y(g)) + '"/><text class="fs-eje" x="' + (izq - 6) + '" y="' + f(y(g) + 3) + '">$ ' + (g / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M</text>';
-    F2.forEach(function (x, i) {
-      var a = izq + i * bw + bw * 0.2, w = bw * 0.6, yb = y(x.base), ys = y(x.base + x.suma);
-      if (x.base > 0) h += '<rect class="' + cls + '" x="' + f(a) + '" y="' + f(yb) + '" width="' + f(w) + '" height="' + f(piso - yb) + '" rx="2"/>';
-      if (x.suma > 0) h += '<rect class="' + cls + ' fs-suma" x="' + f(a) + '" y="' + f(ys) + '" width="' + f(w) + '" height="' + f(Math.max(0, yb - ys - 1)) + '" rx="2"/>';
-      h += '<text class="fs-mes" x="' + f(a + w / 2) + '" y="' + (H - 6) + '">' + esc(String(x.et || '').slice(0, 3)) + '</text>' +
-        '<rect class="fs-hit" x="' + f(izq + i * bw) + '" y="0" width="' + f(bw) + '" height="' + H + '"><title>' + esc(x.et || '') + '\nProyectado ' + fmt(Math.round(x.base)) + (x.suma ? '\nSumado ' + fmt(Math.round(x.suma)) : '') + (target ? '\nTarget ' + fmt(target) : '') + '</title></rect>';
+  // Los 12 meses: abonos activos, fee y venta de lo tildado, forecast de ventas (venta × probabilidad)
+  function simSeries() {
+    var P = F.d.p12, z = function () { return P.map(function () { return 0; }); }, S = { ab: P.map(function (m) { return N(m.mantenimiento); }), fee: z(), vta: z(), fc: z(), n: 0 };
+    (F.d.vm || []).forEach(function (r) {
+      var i = r.orden; if (i == null || i < 0 || i >= P.length) return;
+      S.fc[i] += N(r.venta) * N(r.prob) / 100;
+      if (F.esc[r.proy_id]) { S.fee[i] += N(r.fee); S.vta[i] += N(r.venta); }
     });
-    if (target) h += '<line class="fs-tg" x1="' + izq + '" x2="' + W + '" y1="' + f(y(target)) + '" y2="' + f(y(target)) + '"/>';
-    return '<div class="sec">' + tit + '</div><svg class="fin-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(tit) + ' de los próximos 12 meses">' + h + '</svg>';
+    S.n = Object.keys(F.esc).filter(function (k) { return F.esc[k]; }).length;
+    return S;
   }
-
-  // ── Proyección próximos 12 meses: tabla y gráfico con los mismos números ──
-  function proyeccion() {
-    var P = F.d.p12; if (!P.length) return '<div class="empty">Sin proyectos activos para proyectar.</div>';
-    var t = { d: 0, m: 0, g: 0 };
-    var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Mes</th><th class="u-tr">Desarrollo</th><th class="u-tr">Mantenimiento</th><th class="u-tr">Total</th>' +
-      '<th class="u-tr">Gastos</th><th class="u-tr">Neto</th></tr></thead><tbody>' + P.map(function (m) {
-        t.d += N(m.desarrollo); t.m += N(m.mantenimiento); t.g += N(m.gastos);
-        return '<tr><td>' + esc(m.etiqueta || m.mes) + '</td>' + td(N(m.desarrollo)) + td(N(m.mantenimiento), 'm-abono') + td(N(m.total)) +
-          td(N(m.gastos), 'm-pendiente', true) + td(N(m.neto), N(m.neto) >= 0 ? 'm-cobrado' : 'u-c-rd', N(m.neto) < 0) + '</tr>';
-      }).join('') + '</tbody></table></div>' +
-      '<div class="ft-info u-mt6">12 meses — Desarrollo <span class="m">' + fmt(t.d) + '</span> · Mantenimiento <span class="m m-abono">' + fmt(t.m) + '</span> · Gastos <span class="m m-pendiente">' + fmt(t.g) + '</span></div>' +
-      '<div class="ft-info">Gastos = gastos internos del mes, sin impuestos. Desarrollo = saldo de cada desarrollo repartido según su modelo de pago.</div>';
-    var sf = F.d.sinFecha.map(function (x) { return x.texto; }).filter(Boolean);
-    if (sf.length) h += '<div class="aviso aviso-wa u-mt8">' + ico('alerta') + ' ' + sf.length + ' desarrollo(s) sin fecha de cierre: ahí la proyección se estima por duración. ' +
-      '<span class="u-c-mt">' + sf.map(esc).join(' · ') + '</span></div>';
-    return h;
+  function simDerecha() {
+    var S = simSeries(), T = F.d.target;
+    var tot = S.ab.map(function (a, i) { return a + S.fee[i] + S.vta[i]; }), falta = T - (tot[1] || 0), llega = tot.filter(function (x) { return x >= T; }).length;
+    var resp = !T ? 'Cargá el target de facturación mensual en Configuración › Targets.' :
+      (S.n ? 'Con ' + S.n + (S.n === 1 ? ' negocio tildado' : ' negocios tildados') + ', ' : 'Con lo activo, ') +
+      (falta > 0 ? 'al target del mes que viene le faltan <span class="ui-num">' + fmt(falta) + '</span>.' : 'el target del mes que viene está cubierto.') +
+      ' Se llega al target en <b>' + llega + ' de ' + tot.length + '</b> meses.';
+    return '<div class="fs-resp">' + resp + '</div><div class="sec">Facturación mensual · próximos 12 meses</div>' + grafVentas(S, T) +
+      '<div class="fin-ley"><span class="fin-ley-g">Barras · abonos</span><span><i class="fs-l-ab"></i> Abonos activos</span><span><i class="fs-l-fee"></i> Fee mensual de lo tildado</span>' +
+      '<span class="fin-ley-g">Líneas · ventas de proyectos</span><span><i class="fs-l-vta"></i> Ventas tildadas</span><span><i class="fs-l-fc"></i> Forecast de ventas (pipeline × probabilidad)</span>' +
+      '<span><i class="fs-l-t"></i> Target de facturación mensual</span></div>' +
+      '<div class="ft-info u-mt6">Cada negocio cierra a los 60 días de la propuesta (o el mes que viene, si ya pasó). La venta se cobra 50% al cerrar y 50% a los 2 meses; ' +
+      'el fee, desde el mes de la firma y todos los meses siguientes. Lo tildado entra al 100%. El target se compara con el total del mes (abonos + ventas).</div>';
+  }
+  // Curva suave que no se pasa de los valores (Fritsch-Carlson): no inventa picos
+  function curva(P) {
+    var n = P.length, d = [], m = [], i, s = 'M' + P[0][0].toFixed(1) + ',' + P[0][1].toFixed(1);
+    if (n < 2) return s;
+    for (i = 0; i < n - 1; i++) d.push((P[i + 1][1] - P[i][1]) / (P[i + 1][0] - P[i][0]));
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+    for (i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = m[i + 1] = 0; continue; }
+      var a = m[i] / d[i], b = m[i + 1] / d[i], t = a * a + b * b;
+      if (t > 9) { t = 3 / Math.sqrt(t); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+    }
+    for (i = 0; i < n - 1; i++) {
+      var h = (P[i + 1][0] - P[i][0]) / 3;
+      s += ' C' + (P[i][0] + h).toFixed(1) + ',' + (P[i][1] + m[i] * h).toFixed(1) + ' ' + (P[i + 1][0] - h).toFixed(1) + ',' + (P[i + 1][1] - m[i + 1] * h).toFixed(1) + ' ' + P[i + 1][0].toFixed(1) + ',' + P[i + 1][1].toFixed(1);
+    }
+    return s;
+  }
+  function grafVentas(S, T) {
+    var P = F.d.p12, n = P.length; if (!n) return '<div class="empty">Sin meses para proyectar.</div>';
+    var W = 640, H = 300, izq = 92, abajo = 24, arriba = 10, bw = (W - izq) / n;
+    var tope = Math.max.apply(null, [T, 1].concat(S.ab.map(function (a, i) { return Math.max(a + S.fee[i], S.fc[i], S.vta[i]); })));
+    var base = Math.pow(10, Math.floor(Math.log10(tope))), paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * base / 2; }).find(function (x) { return tope / x <= 5; }) || base;
+    var max = Math.ceil(tope / paso) * paso, piso = H - abajo, y = function (v) { return piso - v * (piso - arriba) / max; }, f = function (v) { return v.toFixed(1); };
+    var cx = function (i) { return izq + i * bw + bw / 2; }, pts = function (V) { return V.map(function (v, i) { return [cx(i), y(v)]; }); };
+    var h = '<defs><linearGradient id="fs-g-fc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fs-st-fc1"/><stop offset="1" class="fs-st-fc2"/></linearGradient>' +
+      '<linearGradient id="fs-g-ab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fs-st-ab1"/><stop offset="1" class="fs-st-ab2"/></linearGradient>' +
+      '<linearGradient id="fs-g-fee" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fs-st-fee1"/><stop offset="1" class="fs-st-fee2"/></linearGradient></defs>';
+    for (var g = 0; g <= max + paso / 2; g += paso) h += '<line class="fs-grid" x1="' + izq + '" x2="' + W + '" y1="' + f(y(g)) + '" y2="' + f(y(g)) + '"/><text class="fs-eje" x="' + (izq - 6) + '" y="' + f(y(g) + 3) + '">' + fmt(g) + '</text>';
+    // forecast de ventas: área suave por detrás de las barras
+    var PF = pts(S.fc), dF = curva(PF);
+    h += '<path class="fs-fc-a" d="' + dF + ' L' + f(PF[n - 1][0]) + ',' + piso + ' L' + f(PF[0][0]) + ',' + piso + ' Z"/>';
+    // barras: abonos activos y, apilado, el fee de lo tildado
+    S.ab.forEach(function (a, i) {
+      var x = izq + i * bw + bw * 0.25, w = bw * 0.5, fe = S.fee[i];
+      if (a > 0) h += '<rect class="fs-ab" x="' + f(x) + '" y="' + f(y(a)) + '" width="' + f(w) + '" height="' + f(piso - y(a)) + '" rx="3"/>';
+      if (fe > 0) h += '<rect class="fs-fee2" x="' + f(x) + '" y="' + f(y(a + fe)) + '" width="' + f(w) + '" height="' + f(Math.max(0, y(a) - y(a + fe) - 1.5)) + '" rx="3"/>';
+    });
+    h += '<path class="fs-fc" d="' + dF + '"/>' + PF.map(function (p) { return '<circle class="fs-fc-p" cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="2.5"/>'; }).join('');
+    if (S.vta.some(function (v) { return v > 0; })) {
+      var PV = pts(S.vta);
+      h += '<path class="fs-vta" d="' + curva(PV) + '"/>' + PV.map(function (p) { return '<circle class="fs-vta-p" cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="3"/>'; }).join('');
+    }
+    if (T) h += '<line class="fs-tg" x1="' + izq + '" x2="' + W + '" y1="' + f(y(T)) + '" y2="' + f(y(T)) + '"/><text class="fs-tg-t" x="' + (W - 2) + '" y="' + f(y(T) - 5) + '">Target ' + fmt(T) + '</text>';
+    P.forEach(function (m, i) {
+      h += '<text class="fs-mes" x="' + f(cx(i)) + '" y="' + (H - 7) + '">' + esc(m.etiqueta || '') + '</text>' +
+        '<rect class="fs-hit" x="' + f(izq + i * bw) + '" y="0" width="' + f(bw) + '" height="' + piso + '"><title>' + esc(m.etiqueta || '') +
+        '\nAbonos activos ' + fmt(Math.round(S.ab[i])) + (S.fee[i] ? '\nFee tildado ' + fmt(Math.round(S.fee[i])) : '') + (S.vta[i] ? '\nVentas tildadas ' + fmt(Math.round(S.vta[i])) : '') +
+        '\nTotal ' + fmt(Math.round(S.ab[i] + S.fee[i] + S.vta[i])) + '\nForecast de ventas ' + fmt(Math.round(S.fc[i])) + (T ? '\nTarget ' + fmt(T) : '') + '</title></rect>';
+    });
+    return '<svg class="fin-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Facturación mensual de los próximos 12 meses: abonos, ventas de proyectos y target">' + h + '</svg>';
   }
 
   // ── Negocios a seguir: el pipeline por valor esperado (monto × probabilidad) ──
@@ -255,11 +251,11 @@
           '<td class="m u-tr">' + (a.fin ? ff(a.fin) : '<span class="u-c-wa">' + (a.finMal ? 'fecha mal cargada' : 'sin fecha') + '</span>') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
     return h + '<div class="ft-info u-mt6">Potencial anual (cuota × 12): <span class="m m-abono">' + fmt(pot) + '</span> · Previsto según las cuotas que quedan: <span class="m m-pendiente">' + fmt(prev) + '</span>. ' +
-      'Mes a mes, en «Proyección próximos 12 meses».</div>';
+      '</div>';
   }
 
-  var TABS = [['cli', 'Análisis por Cliente', porCliente], ['graf', 'Cobrado vs Contratado', grafEmpresas], ['esc', '¿Dónde podríamos estar?', escenarios],
-              ['p12', 'Proyección 12 meses', proyeccion], ['abo', 'Abonos en curso', abonos], ['neg', 'Negocios a seguir', negocios]];
+  var TABS = [['cli', 'Análisis por Cliente', porCliente], ['esc', '¿Dónde podríamos estar?', escenarios],
+              ['abo', 'Abonos en curso', abonos], ['neg', 'Negocios a seguir', negocios]];
   function pintar(el) {
     if (_montado !== 'fin') return;
     el.innerHTML = uiHd('Estado financiero', 'Cómo está parado el negocio: lo cobrado, lo contratado y lo que viene.') +
@@ -276,24 +272,11 @@
       var tb = ev.target.closest('[data-ftab]'); if (tb) { F.tab = tb.getAttribute('data-ftab'); return pintar(el); }
       var c = ev.target.closest('[data-fcli]'); if (c) { var e = c.getAttribute('data-fcli'); F.ab[e] = !F.ab[e]; return pintar(el); }
     };
-    var derecha = function () { var d = document.getElementById('fin-der'); if (d) d.innerHTML = simDerecha(); };
-    el.oninput = function (ev) {   // se ve al instante en los gráficos, sin perder el foco
+    el.onchange = function (ev) {   // tildar un negocio mueve el gráfico al instante
       if (_montado !== 'fin') return;
-      var t = ev.target, k = t.getAttribute && t.getAttribute('data-fsim'), tg = t.getAttribute && t.getAttribute('data-ftg');
-      if (k) { F.sim[k] = Number(t.value) || 0; derecha(); }
-      if (tg) { F.d.targets[tg] = Number(t.value) || 0; derecha(); }
-    };
-    el.onchange = function (ev) {
-      if (_montado !== 'fin') return;
-      var t = ev.target, tg = t.getAttribute && t.getAttribute('data-ftg');
-      if (t.id === 'fs-conipc') { F.sim.conIpc = t.checked; return derecha(); }
-      if (tg) {   // el target queda guardado para todos
-        var cambios = {}; cambios[tg] = t.value;
-        db().rpc('guardar_config', { cambios: cambios }).then(function (r) { if (r.error) toast(r.error.message, 'err'); else toast('Target guardado', 'ok'); });
-        return;
-      }
-      var id = t.getAttribute && t.getAttribute('data-fesc'); if (!id) return;
-      F.esc[id] = t.checked; pintar(el);
+      var id = ev.target.getAttribute && ev.target.getAttribute('data-fesc'); if (!id) return;
+      F.esc[id] = ev.target.checked;
+      var d = document.getElementById('fin-der'); if (d) d.innerHTML = simDerecha();
     };
   };
   VISTAS.fin.precargar = cargar;

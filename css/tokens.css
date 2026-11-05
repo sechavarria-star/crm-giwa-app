@@ -38,6 +38,10 @@
   --p-cobrado: #2BE28A;
   --p-pendiente: #FF9F1C;
   --p-abono: #A855F7;
+  --p-abono-claro: #C084FC;  /* gráfico de Estado financiero: degradé de la barra de abonos (05/11/2026) */
+  --p-abono-osc: #7C3AED;
+  --p-fee: #F0ABFC;          /* fee de lo tildado, apilado sobre los abonos */
+  --p-fee-osc: #D946EF;
   --p-usd: #90D5FF;
   --p-error: #FF4D6D;
   --p-neutro: #94A3B8;

@@ -400,22 +400,34 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .cb-ren .fl { margin: 0; }
 @media (max-width: 800px) { .cb-lin { grid-template-columns: 1fr 1fr; } .cb-lin-h { display: none; } }
 
-/* ¿Dónde podríamos estar?: dos gráficos simples con target (05/11/2026) */
+/* ¿Dónde podríamos estar?: barras = abonos, líneas = ventas de proyectos, punteada = target (05/11/2026) */
 .fs-resp { font-size: var(--t-m); margin-bottom: var(--e3); }
 .fs-grid { stroke: var(--marco); stroke-width: 1; }
 .fs-eje, .fs-mes { fill: var(--texto2); font-family: var(--f-num); font-size: 10px; }
 .fs-eje { text-anchor: end; }
-.fs-mes { text-anchor: middle; font-family: var(--f-texto); }
-.fs-fee { fill: var(--p-abono); }
-.fs-pro { fill: var(--p-contratado); }
-.fs-suma { opacity: .45; }
-.fs-tg { stroke: var(--p-pendiente); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.fs-mes { text-anchor: middle; }
+.fs-st-ab1 { stop-color: var(--p-abono-claro); } .fs-st-ab2 { stop-color: var(--p-abono-osc); }
+.fs-st-fee1 { stop-color: var(--p-fee); } .fs-st-fee2 { stop-color: var(--p-fee-osc); }
+.fs-st-fc1 { stop-color: var(--brillo); stop-opacity: .3; } .fs-st-fc2 { stop-color: var(--brillo); stop-opacity: .02; }
+.fs-ab { fill: url(#fs-g-ab); }
+.fs-fee2 { fill: url(#fs-g-fee); }
+.fs-fc-a { fill: url(#fs-g-fc); }
+.fs-fc { fill: none; stroke: var(--brillo); stroke-width: 2; }
+.fs-fc-p { fill: var(--fondo); stroke: var(--brillo); stroke-width: 1.5; }
+.fs-vta { fill: none; stroke: var(--p-pendiente); stroke-width: 2.5; }
+.fs-vta-p { fill: var(--fondo); stroke: var(--p-pendiente); stroke-width: 2; }
+.fs-tg { stroke: var(--texto); stroke-width: 1.5; stroke-dasharray: 6 5; opacity: .85; }
+.fs-tg-t { fill: var(--texto); font-family: var(--f-num); font-size: 10px; text-anchor: end; }
 .fs-hit { fill: transparent; }
 .fs-hit:hover { fill: var(--suave-brillo); }
-.fin-ley i.fs-l-b { background: var(--texto2); }
-.fin-ley i.fs-l-s { background: var(--texto2); opacity: .45; }
-.fin-ley i.fs-l-t { background: none; border-top: 2px dashed var(--p-pendiente); border-radius: 0; height: 0; width: 16px; vertical-align: 3px; }
-.fin-ipc { display: flex; align-items: flex-end; padding-bottom: var(--e2); }
+.fin-ley { flex-wrap: wrap; row-gap: var(--e1); }
+.fin-ley-g { flex-basis: 100%; font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: var(--e1); }
+.fin-ley i.fs-l-ab { background: linear-gradient(var(--p-abono-claro), var(--p-abono-osc)); }
+.fin-ley i.fs-l-fee { background: linear-gradient(var(--p-fee), var(--p-fee-osc)); }
+.fin-ley i.fs-l-vta, .fin-ley i.fs-l-fc, .fin-ley i.fs-l-t { background: none; border-radius: 0; height: 0; width: 16px; vertical-align: 3px; }
+.fin-ley i.fs-l-vta { border-top: 2.5px solid var(--p-pendiente); }
+.fin-ley i.fs-l-fc { border-top: 2px solid var(--brillo); }
+.fin-ley i.fs-l-t { border-top: 2px dashed var(--texto); }
 .fin-mj { white-space: pre-wrap; }
 
 /* Aprobar propuesta: cada campo con su rótulo (05/11/2026) */
