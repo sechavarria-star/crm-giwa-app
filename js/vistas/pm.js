@@ -476,7 +476,10 @@
        ['Inicio', '<span class="ui-num">' + (ff(mInicio(p)) || '—') + '</span>'], ['Cierre estimado', cie.fecha ? '<span class="ui-num">' + ff(cie.fecha) + '</span>' + (cie.firme ? '' : ' (parcial)') : '—']].map(function (x) {
         return dato(x[0], x[1]);
       }).join('') + '</div>' +
-      (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') : ''));
+      (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') +
+        _devsDe(p).filter(function (it) { return !_pd(it.fecha_fin) && !_pd(it.fecha_cierre); }).map(function (it) {
+          return '<div class="ui-linea"><span class="ui-f1">' + esc(it.titulo || it.id) + '</span><input class="fc u-wauto ui-num" type="date" data-ffin="' + esc(it.id) + '" aria-label="Fecha de fin de ' + esc(it.titulo || it.id) + '">' +
+            uiBtn('Guardar', 'check', 's', 'data-pm="fin-des" data-id="' + esc(it.id) + '"') + '</div>'; }).join('') : ''));
     // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
     h += uiDesp({ t: 'Contactos · ' + (p.empresa || ''), n: F.cons.length,
@@ -540,10 +543,9 @@
     var ord = { curso: 0, garantia: 1, aprobada: 2, nueva: 3, finalizada: 4, rechazada: 5 };
     var k = function (it) { return it.detenido ? 3.5 : (ord[_canonSol(it.estado)] === undefined ? 3 : ord[_canonSol(it.estado)]); };
     var lista = (p.items || []).slice().sort(function (a, b) { return k(a) - k(b); });
-    // Nueva mejora / Nuevo soporte: acciones del PROYECTO (el modal pregunta de qué desarrollo depende)
+    // Mejora o soporte: una sola acción del PROYECTO; el modal pregunta cuál y de qué desarrollo depende
     var bases = basesAlta(p);
-    var alta = bases.length ? '<div class="ui-barra">' + uiBtn('Nueva mejora', 'mas', 's', 'data-pm="alta-des" data-clase="mejora" data-id="' + esc(p.id) + '"') +
-      uiBtn('Nuevo soporte', 'mas', 's', 'data-pm="alta-des" data-clase="soporte" data-id="' + esc(p.id) + '"') + '</div>' : '';
+    var alta = bases.length ? '<div class="ui-barra ui-der">' + uiBtn('Desarrollo', 'mas', 's', 'data-pm="alta-des" data-id="' + esc(p.id) + '"') + '</div>' : '';
     if (!lista.length) return alta + '<div class="ui-nota-t">Sin desarrollos.</div>';
     return alta + lista.map(function (it) {
       var rec = esMant(it), det = !!it.detenido || !!p.detenido, can = _canonSol(it.estado);
@@ -601,7 +603,7 @@
   // Tareas y comentarios con la forma de HOY (js/tareas.js)
   function tabTareas(p) {
     var F = P.f, pid = esc(p.id);
-    var h = '<div class="ui-barra">' + uiBtn('Nueva tarea', 'tarea', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div><div class="ui-lat-h">Tareas</div>';
+    var h = '<div class="ui-barra ui-der">' + uiBtn('Nueva tarea', 'mas', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div><div class="ui-lat-h">Tareas</div>';
     var ab = F.tareas.filter(function (t) { return !t.closed; }).sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
     var tid = {}; F.tareas.forEach(function (t) { tid[t.id] = t; });
     h += ab.length ? TareasUI.html(ab, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>';
@@ -710,7 +712,7 @@
           var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
         (aprob && !p.detenido ? uiBtn('Arrancar', 'play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
         ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
-      iconosEstado(p) + uiAcc('tarea', 'data-pm="nueva-tarea" data-id="' + pid + '"') + uiAcc('comentar', 'data-pm="comentar-proy" data-id="' + pid + '"');
+      iconosEstado(p);
   }
   // C5 · la ficha: motivo en gris y, junto al estado, Detener y Finalizar; botones secundarios; pestañas; lateral de plata
   // C5 · la ficha: el motivo en el color del estado; arriba a la derecha las acciones del proyecto;
@@ -1050,12 +1052,16 @@
       if (!ok) return;
       var sel = Array.prototype.filter.call(document.querySelectorAll('#m-pm [data-arr]'), function (x) { return x.checked; }).map(function (x) {
         var did = x.getAttribute('data-arr'); return { did: did, f: document.querySelector('#m-pm [data-arrf="' + did + '"]').value }; });
-      for (var i = 0; i < sel.length; i++) {
-        var r1 = await db().rpc('fecha_desarrollo', { did: sel[i].did, campo: 'fecha_ini', fecha: sel[i].f });
-        if (r1.error) return toast(r1.error.message, 'err');
-        var r2 = await db().rpc('accion_desarrollo', { did: sel[i].did, accion: 'arrancar' });
-        if (r2.error) return toast(r2.error.message, 'err');
-      }
+      var hecho = await conDeshacer('Arrancar', 'desarrollos', sel.map(function (x) { return x.did; }), async function () {
+        for (var i = 0; i < sel.length; i++) {
+          var r1 = await db().rpc('fecha_desarrollo', { did: sel[i].did, campo: 'fecha_ini', fecha: sel[i].f });
+          if (r1.error) { toast(r1.error.message, 'err'); return false; }
+          var r2 = await db().rpc('accion_desarrollo', { did: sel[i].did, accion: 'arrancar' });
+          if (r2.error) { toast(r2.error.message, 'err'); return false; }
+        }
+        return true;
+      });
+      if (!hecho) return;
       toast(sel.length + ' desarrollo(s) arrancado(s)', 'ok'); refrescar();
     };
     // No aceptar o detener: el proyecto completo o algunos desarrollos, siempre con un comentario del proyecto
@@ -1088,19 +1094,20 @@
       toast(rech ? 'No aceptado' : 'Detenido', 'ok'); if (rech) toast(AVISO_ALERTAS, 'inf'); refrescar();
     };
     // Nueva mejora / Nuevo soporte: una línea simple en Nuevo, que depende del desarrollo elegido
-    var altaDes = async function (p, clase) {
+    var altaDes = async function (p) {
       var bases = basesAlta(p); if (!bases.length) return;
-      var mej = clase === 'mejora';
-      var ok = await modal((mej ? 'Nueva mejora' : 'Nuevo soporte') + ' · ' + (p.nombre || p.id),
+      var ok = await modal('Nuevo desarrollo · ' + (p.nombre || p.id),
+        '<div class="fg"><label class="fl" for="ad-clase">Tipo <span class="req">*</span></label><select class="fc" id="ad-clase" onchange="document.getElementById(\'ad-hs-w\').hidden = this.value !== \'mejora\'"><option value="mejora">Mejora</option><option value="soporte">Soporte</option></select></div>' +
         '<div class="fg"><label class="fl" for="ad-padre">Depende de <span class="req">*</span></label><select class="fc" id="ad-padre">' +
           bases.map(function (it) { return '<option value="' + esc(it.id) + '">' + esc(it.titulo || it.id) + '</option>'; }).join('') + '</select></div>' +
         '<div class="fg"><label class="fl" for="ad-tit">Título <span class="req">*</span></label><input class="fc" id="ad-tit"></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ad-mon">Moneda</label><select class="fc" id="ad-mon"><option>ARS</option><option>USD</option></select></div>' +
         '<div class="fg"><label class="fl" for="ad-monto">Monto <span class="req">*</span></label><input class="fc" type="number" id="ad-monto" data-monto></div></div>' +
-        (mej ? '<div class="fg"><label class="fl" for="ad-hs">Horas</label><input class="fc" type="number" min="0" id="ad-hs"></div>' : '') +
+        '<div class="fg" id="ad-hs-w"><label class="fl" for="ad-hs">Horas</label><input class="fc" type="number" min="0" id="ad-hs"></div>' +
         '<div class="u-s11-mt">Nace en Nuevo y se aprueba como cualquier desarrollo.</div>', 'Crear',
         function () { return !document.getElementById('ad-tit').value.trim() ? 'Poné un título' : !(Number(document.getElementById('ad-monto').value) > 0) ? 'El monto tiene que ser mayor a 0' : ''; });
       if (!ok) return;
+      var clase = document.getElementById('ad-clase').value, mej = clase === 'mejora';
       hacer('alta_desarrollo', { p: { padre: document.getElementById('ad-padre').value, clase: clase, titulo: document.getElementById('ad-tit').value.trim(), moneda: document.getElementById('ad-mon').value,
         monto: document.getElementById('ad-monto').value, horas: mej ? document.getElementById('ad-hs').value : '' } });
     };
@@ -1152,11 +1159,12 @@
       if (a === 'ficha') return abrirFicha(el, id);
       if (a === 'sub') { P.sub = b.getAttribute('data-s'); return pintar(el); }
       if (a === 'arrancar') return arrancar(proy(id));
-      if (a === 'alta-des') return altaDes(proy(id), b.getAttribute('data-clase'));
-      if (a === 'comentar-proy') return pedir('Comentario para el proyecto', '', 'Comentar').then(function (txt) {
-        if (!txt || !String(txt).trim()) return;
-        db().rpc('comentar', { p: { proyecto_id: id, texto: String(txt).trim() } }).then(function (r) { if (r.error) return toast(r.error.message, 'err'); toast('Comentario guardado', 'ok'); refrescar(); });
-      });
+      if (a === 'alta-des') return altaDes(proy(id));
+      if (a === 'fin-des') {
+        var ffin = el.querySelector('[data-ffin="' + id + '"]');
+        if (!ffin || !ffin.value) return toast('Elegí la fecha de fin', 'err');
+        return hacer('fecha_desarrollo', { did: id, campo: 'fecha_fin', fecha: ffin.value }, 'Fecha de fin guardada');
+      }
       if (a === 'nv-abrir') return nvAbrir(el);
       if (a === 'contactos') { var pc = proy(id); return abrirFichaEmpresa(pc.empresa_id, { onSave: refrescar }); }
       if (a === 'seg-contacto') { ev.preventDefault(); return abrirContacto(null, { empresa: proy(id).empresa_id, onSave: refrescar }); }
@@ -1191,9 +1199,9 @@
         ev.preventDefault();
         var acc = b.getAttribute('data-acc');
         // accion_desarrollo crea sola las alertas de facturación y los recordatorios del desarrollo
-        var go = function () { hacer('accion_desarrollo', { did: id, accion: acc }, function (r) {
+        var go = function () { conDeshacer('Cambio de estado', 'desarrollos', [id], function () { return hacer('accion_desarrollo', { did: id, accion: acc }, function (r) {
           var f = r.alertas_facturacion || {}, extra = (f.creadas ? ' · ' + f.creadas + ' alerta(s) de facturación' : '') + (f.cerradas ? ' · ' + f.cerradas + ' cerrada(s)' : '');
-          return r.de + ' → ' + r.a + extra; }).then(function (r) {
+          return r.de + ' → ' + r.a + extra; }); }).then(function (r) {
             // Al finalizar un desarrollo, ¿arranca ya el mantenimiento (MMR) que lo cubre?
             var it0 = itemDe(id); if (!r || acc !== 'cerrar' || !it0 || esMant(it0)) return;
             var pp = P.proys.find(function (x) { return (x.items || []).some(function (y) { return y.id === id; }); });

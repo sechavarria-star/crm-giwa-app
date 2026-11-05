@@ -160,6 +160,7 @@
         : { tipo_comp: v('cb-tipo'), nro_fact: v('cb-nro'), fecha: v('cb-fecha'), fecha_deposito: v('cb-dep'), moneda: v('cb-mon'), forma_pago: nc ? 'Nota de crédito' : 'Factura emitida', partes: P } });
       if (r.error) throw new Error(r.error.message);
       var ids = r.data.ids || [];
+      if (pago) deshacerCreados('Registrar pago', 'cobros', ids);
       for (var i = 0; link && i < ids.length; i++) { var l = await db().rpc('cobro_link', { cid: ids[i], link: link }); if (l.error) throw new Error(l.error.message); }
       if (rs && razones().length > 1 && ids.length) { var u = await db().from('cobros').update({ razon_social_fc: rs.nombre, cuit_destino: rs.cuit || '' }).in('id', ids); if (u.error) toast('La razón social no se pudo guardar: ' + u.error.message, 'err'); }
       toast(pago ? 'Pago registrado' : 'Factura guardada · ' + r.data.filas + ' fila(s)', 'ok');

@@ -366,3 +366,8 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .hoy-men.nueva { color: var(--texto); }
 .hoy-men-h { display: flex; justify-content: space-between; gap: var(--e2); font-size: var(--t-s); }
 .hoy-men-t { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Barra de acción alineada a la derecha del tab (05/11/2026) */
+.ui-barra.ui-der { justify-content: flex-end; }
+/* Línea abierta: el contorno en azul GIWA, para ver qué sección está desplegada (05/11/2026) */
+.ui-d.open, .ui-d.open + .ui-cuerpo, .ui-fp.open, .ui-fp.open + .ui-ficha, .ui-dev.open, .ui-dev.open + .ui-devc { border-color: var(--brillo); }

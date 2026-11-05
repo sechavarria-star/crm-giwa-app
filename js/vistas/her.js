@@ -300,20 +300,20 @@
   function nomCont(c) { return [c.nombre, c.apellido].filter(Boolean).join(' '); }
 
   function htmlNda() {
-    return '<div class="card u-mb12"><div class="card-t">Cliente</div>' +
-        '<div class="g2 u-mt10"><div class="fg"><label class="fl" for="nd-emp">Empresa</label><select class="fc" id="nd-emp">' + opc(N.emp, function (e) { return e.nombre; }, 'Elegí la empresa') + '</select></div>' +
+    return uiDesp({ t: 'Cliente', open: true },
+        '<div class="g2"><div class="fg"><label class="fl" for="nd-emp">Empresa</label><select class="fc" id="nd-emp">' + opc(N.emp, function (e) { return e.nombre; }, 'Elegí la empresa') + '</select></div>' +
           '<div class="fg"><label class="fl" for="nd-cont">Firma por el cliente</label><select class="fc" id="nd-cont"><option value="">Elegí primero la empresa</option></select></div></div>' +
         '<div class="g2">' + campo('nd-rz', 'Razón social / Nombre') + campo('nd-cuit', 'DNI / CUIT') + '</div>' +
         '<div class="g2">' + campo('nd-dom', 'Domicilio') + campo('nd-act', 'Actividad') + '</div>' +
-        '<div class="g2">' + campo('nd-rep', 'Representante') + campo('nd-car', 'Cargo') + '</div></div>' +
-      '<div class="card u-mb12"><div class="card-t">Proveedor (GIWA)</div>' +
-        '<div class="g3 u-mt10"><div class="fg"><label class="fl" for="nd-soc">Socio que firma</label><select class="fc" id="nd-soc">' + opc(N.usu, function (u) { return u.nombre; }, 'Elegí el socio') + '</select></div>' +
+        '<div class="g2">' + campo('nd-rep', 'Representante') + campo('nd-car', 'Cargo') + '</div>') +
+      uiDesp({ t: 'Proveedor (GIWA)', open: true },
+        '<div class="g3"><div class="fg"><label class="fl" for="nd-soc">Socio que firma</label><select class="fc" id="nd-soc">' + opc(N.usu, function (u) { return u.nombre; }, 'Elegí el socio') + '</select></div>' +
           campo('nd-sdni', 'DNI del socio') + campo('nd-scar', 'Cargo del socio') + '</div>' +
-        '<div class="hint" id="nd-shint"></div></div>' +
-      '<div class="card"><div class="card-t">Condiciones</div>' +
-        '<div class="g3 u-mt10"><div class="fg"><label class="fl" for="nd-fec">Fecha de firma</label><input class="fc" type="date" id="nd-fec" value="' + _hoyLocal() + '"></div></div>' +
+        '<div class="ui-nota-t" id="nd-shint"></div>') +
+      uiDesp({ t: 'Condiciones', open: true },
+        '<div class="g3"><div class="fg"><label class="fl" for="nd-fec">Fecha de firma</label><input class="fc" type="date" id="nd-fec" value="' + _hoyLocal() + '"></div></div>' +
         '<div class="fg"><label class="fl" for="nd-pro">Propósito</label><textarea class="fc" id="nd-pro" rows="3" placeholder="Ej.: evaluar la automatización de la atención por WhatsApp"></textarea></div>' +
-        '<div class="hint">Plazos, tipo de acuerdo y jurisdicción son los de la plantilla: mutuo, 1 año de vigencia y 5 de confidencialidad.</div></div>';
+        '<div class="ui-nota-t">Plazos, tipo de acuerdo y jurisdicción son los de la plantilla: mutuo, 1 año de vigencia y 5 de confidencialidad.</div>');
   }
   function elegirEmp(id) {
     var e = N.emp.find(function (x) { return x.id === id; }) || {};
@@ -388,7 +388,7 @@
       if (_montado !== 'her' || S.sub !== 'nda') return;
     }
     el.innerHTML = uiHd('NDA', 'Convenio de confidencialidad con los datos del cliente, el socio y la fecha. Sale en Word para revisar y firmar.',
-        '<button class="btn bp sm" data-nda="descargar">' + ico('documento') + ' Descargar NDA</button>') + htmlNda();
+        uiBtn('Descargar NDA', 'documento', 'p', 'data-nda="descargar"')) + htmlNda();
   }
 
   // ── Valores de mercado ──

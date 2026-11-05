@@ -177,7 +177,7 @@
       var f = document.getElementById('dep-f').value, fs = document.getElementById('dep-s').value;
       if (!f) return toast('Falta la fecha del depósito', 'err');
       ok.disabled = true;                          // un clic = un registro
-      var r = await db().rpc('registrar_deposito', { ids: ids, fecha_deposito: f, fecha_socio: fs || null });
+      var r; await conDeshacer('Registrar pago', 'cobros', ids, async function () { r = await db().rpc('registrar_deposito', { ids: ids, fecha_deposito: f, fecha_socio: fs || null }); return !r.error; });
       if (r.error) { ok.disabled = false; return toast(r.error.message, 'err'); }
       closeM('m-dep'); toast(r.data.msg, 'ok'); alGuardar();
     };
