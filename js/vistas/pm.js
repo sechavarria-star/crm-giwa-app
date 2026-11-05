@@ -914,27 +914,31 @@
     var m = document.getElementById('m-aprob');
     if (!m) {
       m = document.createElement('div'); m.className = 'mo'; m.id = 'm-aprob';
-      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Aprobar propuesta</span>' +
+      m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Aprobar propuesta</span>' +
         '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-aprob">' + ico('cerrar') + '</button></div>' +
         '<div class="mb2"><div class="u-s11-mt u-mb10" id="ap-n"></div><div id="ap-list"></div></div>' +
         '<div class="mf"><button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button></div></div>';
       document.body.appendChild(m);
     }
-    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Lo que marques como «Entró» pasa a Aprobado. Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar; si no, queda Aprobado sin facturar.';
+    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar. Si no, queda Aprobado sin facturar.';
     document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
       return '<div class="rowb u-row8"><div class="u-f1m"><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
         '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
-        '<input class="fc u-wauto" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" aria-label="Monto aprobado" title="Monto aprobado (se puede corregir, p. ej. por IPC)">' +
-        '<select class="fc u-wauto" data-ap="' + esc(it.id) + '" aria-label="Decisión"><option value="entro">Entró</option><option value="rechazado">No entró</option><option value="espera">En espera</option></select>' +
+        (esMant(it)   // mantenimiento: se carga lo mensual y la duración; el total sale de ahí
+          ? '<label class="ap-c"><span class="u-s10-mt">Cuota mensual</span><input class="fc" type="number" data-monto data-apc="' + esc(it.id) + '" value="' + (Number(it.cuota_act) || Number(it.valor_cuota) || '') + '"></label>' +
+            '<label class="ap-c ap-c-n"><span class="u-s10-mt">Meses</span><input class="fc u-tr ui-num" type="number" min="1" data-apd="' + esc(it.id) + '" value="' + (Number(it.duracion) || 12) + '"></label>'
+          : '<label class="ap-c"><span class="u-s10-mt">Monto aprobado</span><input class="fc" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" title="Se puede corregir, p. ej. por IPC"></label>') +
+        '<label class="ap-c"><span class="u-s10-mt">Estado</span><select class="fc" data-ap="' + esc(it.id) + '"><option value="entro">Aprobado</option><option value="rechazado">No aceptado</option><option value="espera">Nuevo (sin cambios)</option></select></label>' +
         '<label class="u-row6" data-tip="¿Inicia el desarrollo? Con fecha arranca y se puede facturar"><input type="checkbox" data-api="' + esc(it.id) + '"> Inicia</label>' +
         '<input class="fc u-wauto" type="date" data-apf="' + esc(it.id) + '" value="' + isoMas(0) + '" aria-label="Fecha de inicio" disabled></div>';
     }).join('') + '<div class="ui-kv">Total aprobado<span class="ui-num"><span class="ui-p-contratado" id="ap-tot"></span></span></div>';
     var total = function () {
       var t = 0; document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
-        if (x.value === 'entro') t += Number(document.querySelector('#ap-list [data-apm="' + x.getAttribute('data-ap') + '"]').value) || 0; });
+        if (x.value !== 'entro') return; var id = x.getAttribute('data-ap'), mo = document.querySelector('#ap-list [data-apm="' + id + '"]');
+        t += mo ? Number(mo.value) || 0 : (Number(document.querySelector('#ap-list [data-apc="' + id + '"]').value) || 0) * (Number(document.querySelector('#ap-list [data-apd="' + id + '"]').value) || 0); });
       document.getElementById('ap-tot').textContent = fmt(t);
     };
-    var inicia = function () {   // la fecha sólo con «Entró» e «Inicia»
+    var inicia = function () {   // la fecha sólo con «Aprobado» e «Inicia»
       document.querySelectorAll('#ap-list [data-api]').forEach(function (c) {
         var id = c.getAttribute('data-api'), entro = document.querySelector('#ap-list [data-ap="' + id + '"]').value === 'entro';
         if (!entro) c.checked = false; c.disabled = !entro;
@@ -944,20 +948,21 @@
     document.getElementById('ap-list').oninput = total; document.getElementById('ap-list').onchange = function () { total(); inicia(); }; setTimeout(function () { total(); inicia(); }, 0);
     return new Promise(function (res) {
       document.getElementById('ap-ok').onclick = function () {
-        var dec = {}, montos = {}, inicios = {}, n = 0, malo = '', sinFecha = '';
+        var dec = {}, montos = {}, mants = {}, inicios = {}, n = 0, malo = '', sinFecha = '';
         document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
           var id = x.getAttribute('data-ap'); dec[id] = x.value;
           if (x.value !== 'entro') return; n++;
-          var m = Number(document.querySelector('#ap-list [data-apm="' + id + '"]').value) || 0;
-          if (m <= 0) malo = id; montos[id] = m;
+          var mo = document.querySelector('#ap-list [data-apm="' + id + '"]');
+          if (mo) { var m = Number(mo.value) || 0; if (m <= 0) malo = id; montos[id] = m; }
+          else { var cu = Number(document.querySelector('#ap-list [data-apc="' + id + '"]').value) || 0, du = Number(document.querySelector('#ap-list [data-apd="' + id + '"]').value) || 0; if (cu <= 0 || du <= 0) malo = id; mants[id] = { cuota: cu, duracion: du }; }
           if (document.querySelector('#ap-list [data-api="' + id + '"]').checked) {
             var f = document.querySelector('#ap-list [data-apf="' + id + '"]').value; if (!f) sinFecha = id; else inicios[id] = f;
           }
         });
-        if (!n) return say('Marcá al menos uno como «Entró».\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
-        if (malo) return say('El monto aprobado de ' + malo + ' tiene que ser mayor a 0.', 'Aprobar propuesta');
+        if (!n) return say('Marcá al menos uno como Aprobado.\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
+        if (malo) return say('Los valores de ' + malo + ' tienen que ser mayores a 0.', 'Aprobar propuesta');
         if (sinFecha) return say('Falta la fecha de inicio de ' + sinFecha + '.', 'Aprobar propuesta');
-        closeM('m-aprob'); res({ dec: dec, montos: montos, inicios: inicios });
+        closeM('m-aprob'); res({ dec: dec, montos: montos, mants: mants, inicios: inicios });
       };
       openM('m-aprob');
     });
@@ -1120,7 +1125,7 @@
         case 'aprobado':                         // aprobar no es un cambio de estado: es decidir qué entró
           var dec = await abrirAprobar(p); if (!dec) return;
           return conDeshacer('Aprobar «' + (p.nombre || p.id) + '»', 'desarrollos', (p.items || []).map(function (it) { return it.id; }), function () {
-            return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos, inicios: dec.inicios }, null, true);
+            return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos, inicios: dec.inicios, mants: dec.mants }, null, true);
           }, { tabla: 'proyectos', ids: [p.id] });
         case 'finalizado':
           var ab = (p.items || []).filter(function (it) { var c = _canonSol(it.estado || ''); return c === 'curso' || c === 'garantia' || c === 'aprobada'; });

@@ -417,3 +417,8 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .fin-ley i.fs-l-t { background: none; border-top: 2px dashed var(--p-pendiente); border-radius: 0; height: 0; width: 16px; vertical-align: 3px; }
 .fin-ipc { display: flex; align-items: flex-end; padding-bottom: var(--e2); }
 .fin-mj { white-space: pre-wrap; }
+
+/* Aprobar propuesta: cada campo con su rótulo (05/11/2026) */
+#ap-list .rowb { align-items: flex-end; gap: var(--e3); }
+.ap-c { display: flex; flex-direction: column; gap: 2px; width: 150px; flex: none; }
+.ap-c-n { width: 70px; }
