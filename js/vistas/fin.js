@@ -7,7 +7,7 @@
      Análisis por Cliente       v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado);
                                 margen y referencia, v_analisis_clientes (= getAnalisisCliente)
      ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion)
-     Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha
+     Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha; el gráfico, lo cobrado en v_cobrado_12m
      Negocios a seguir          v_fin_negocios (= getNegociosASeguir)
    Acá no se calcula plata: se muestra lo que da la base. Lo único que se suma
    es lo tildado en «¿Dónde podríamos estar?», que es un «¿y si…?» (igual que el Portal).
@@ -28,12 +28,15 @@
       db().from('v_proy_sin_fecha').select('*'),
       db().from('v_fin_negocios').select('*').order('esperado', { ascending: false }),
       db().from('v_proyectos_clasif').select('id,estado_proyecto'),
-      db().from('v_pm_proyectos').select('empresa,items')
+      db().from('v_pm_proyectos').select('empresa,items'),
+      db().from('v_cobrado_12m').select('*').order('orden'),
+      db().from('cot_config').select('clave,valor').in('clave', ['target_fee_mensual', 'target_proyectos_mes'])
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
             esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data,
-            proyItems: r[10].data,
+            proyItems: r[10].data, cob12: r[11].data,
+            targets: r[12].data.reduce(function (o, c) { o[c.clave] = Number(c.valor) || 0; return o; }, {}),
             estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
 
@@ -162,22 +165,38 @@
     var sf = F.d.sinFecha.map(function (x) { return x.texto; }).filter(Boolean);
     if (sf.length) h += '<div class="aviso aviso-wa u-mt8">' + ico('alerta') + ' ' + sf.length + ' desarrollo(s) sin fecha de cierre: ahí la proyección se estima por duración. ' +
       '<span class="u-c-mt">' + sf.map(esc).join(' · ') + '</span></div>';
-    return '<div class="fin-dos"><div>' + h + '</div><div><div class="sec">Mes a mes</div>' + grafMeses(P) + '</div></div>';
+    return '<div class="sec">Cobrado por mes · últimos 12 meses</div>' + grafCobrado(F.d.cob12, F.d.targets) + '<br>' + h;
   }
-  function grafMeses(P) {
-    var W = 420, H = 220, pad = 24, n = P.length, bw = (W - pad) / n;
-    var max = Math.max.apply(null, P.map(function (m) { return Math.max(N(m.total), N(m.neto)); })) || 1;
-    var y = function (v) { return H - pad - (Math.max(0, v) * (H - pad * 2) / max); };
-    var barras = P.map(function (m, i) {
-      var x = pad + i * bw + bw * 0.15, w = bw * 0.7, yd = y(N(m.desarrollo)), ym = y(N(m.desarrollo) + N(m.mantenimiento));
-      return '<rect class="fin-sd" x="' + x.toFixed(1) + '" y="' + yd.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + (H - pad - yd).toFixed(1) + '"><title>Desarrollo ' + fmt(m.desarrollo) + '</title></rect>' +
-        '<rect class="fin-sm" x="' + x.toFixed(1) + '" y="' + ym.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + (yd - ym).toFixed(1) + '"><title>Mantenimiento ' + fmt(m.mantenimiento) + '</title></rect>' +
-        '<text class="fin-st" x="' + (x + w / 2).toFixed(1) + '" y="' + (H - 8) + '">' + esc(m.etiqueta || '') + '</text>';
-    }).join('');
-    var linea = P.map(function (m, i) { return (pad + i * bw + bw / 2).toFixed(1) + ',' + y(N(m.neto)).toFixed(1); }).join(' ');
-    return '<svg class="fin-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Proyección mes a mes">' + barras +
-      '<polyline class="fin-sn" points="' + linea + '"><title>Neto</title></polyline></svg>' +
-      '<div class="fin-ley"><span><i class="fin-sd"></i> Desarrollo</span><span><i class="fin-sm"></i> Mantenimiento</span><span><i class="fin-sn"></i> Neto</span></div>';
+  // Una sola escala en ARS. Detrás los targets (punteados, secundarios); adelante lo cobrado.
+  // Sin etiquetas por punto: el detalle de cada mes está en el tooltip.
+  function grafCobrado(M, T) {
+    var W = 900, H = 290, izq = 66, abajo = 24, arriba = 10, n = M.length || 1, bw = (W - izq) / n, tf = N(T.target_fee_mensual), tp = N(T.target_proyectos_mes);
+    var tope = Math.max.apply(null, [tf, tp, 1].concat(M.map(function (m) { return Math.max(N(m.fee), N(m.one_shot)); })));
+    var base = Math.pow(10, Math.floor(Math.log10(tope))), paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * base / 2; }).find(function (x) { return tope / x <= 5; }) || base;
+    var max = Math.ceil(tope / paso) * paso, piso = H - abajo, y = function (v) { return piso - Math.max(0, v) * (piso - arriba) / max; };
+    var cx = function (i) { return izq + i * bw + bw / 2; }, f1 = function (v) { return v.toFixed(1); };
+    var columna = function (i, v, ancho, cls) {   // tope redondeado, anclada a la base
+      var a = cx(i) - ancho / 2, b = a + ancho, t = y(v), r = Math.min(4, ancho / 2, piso - t);
+      return '<path class="' + cls + '" d="M' + f1(a) + ' ' + piso + 'V' + f1(t + r) + 'Q' + f1(a) + ' ' + f1(t) + ' ' + f1(a + r) + ' ' + f1(t) + 'H' + f1(b - r) + 'Q' + f1(b) + ' ' + f1(t) + ' ' + f1(b) + ' ' + f1(t + r) + 'V' + piso + 'Z"/>';
+    };
+    var h = '';
+    for (var g = 0; g <= max + paso / 2; g += paso) {
+      h += '<line class="fin-c-grid" x1="' + izq + '" x2="' + W + '" y1="' + f1(y(g)) + '" y2="' + f1(y(g)) + '"/>' +
+        '<text class="fin-c-eje" x="' + (izq - 8) + '" y="' + f1(y(g) + 4) + '">$ ' + (g / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M</text>';
+    }
+    if (tp) M.forEach(function (m, i) { h += columna(i, tp, bw * 0.66, 'fin-c-tp'); });
+    M.forEach(function (m, i) { if (N(m.fee) > 0) h += columna(i, N(m.fee), bw * 0.4, 'fin-c-fee'); });
+    if (tf) h += '<line class="fin-c-tf" x1="' + izq + '" x2="' + W + '" y1="' + f1(y(tf)) + '" y2="' + f1(y(tf)) + '"/>';
+    h += '<polyline class="fin-c-os" points="' + M.map(function (m, i) { return f1(cx(i)) + ',' + f1(y(N(m.one_shot))); }).join(' ') + '"/>';
+    M.forEach(function (m, i) {
+      h += '<circle class="fin-c-pt" cx="' + f1(cx(i)) + '" cy="' + f1(y(N(m.one_shot))) + '" r="4"/>' +
+        '<text class="fin-st" x="' + f1(cx(i)) + '" y="' + (H - 6) + '">' + esc(m.etiqueta || '') + '</text>' +
+        '<rect class="fin-c-hit" x="' + f1(izq + i * bw) + '" y="0" width="' + f1(bw) + '" height="' + H + '"><title>' + esc(m.etiqueta || '') + '\nFee de mantenimiento ' + fmt(N(m.fee)) + '\nOne Shot ' + fmt(N(m.one_shot)) +
+          (tf ? '\nTarget de fee ' + fmt(tf) : '') + (tp ? '\nTarget de proyectos ' + fmt(tp) : '') + '</title></rect>';
+    });
+    return '<div class="u-ovx"><svg class="fin-svg fin-c" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cobrado por mes de los últimos 12 meses: fee de mantenimiento, proyectos One Shot y targets">' + h + '</svg></div>' +
+      '<div class="fin-ley"><span><i class="fin-l-fee"></i> Fee de mantenimiento</span><span><i class="fin-l-os"></i> One Shot</span>' +
+      (tf ? '<span><i class="fin-l-tf"></i> Target de fee mensual</span>' : '') + (tp ? '<span><i class="fin-l-tp"></i> Target de proyectos</span>' : '') + '</div>';
   }
 
   // ── Negocios a seguir: el pipeline por valor esperado (monto × probabilidad) ──
