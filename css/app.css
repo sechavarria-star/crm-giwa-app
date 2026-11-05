@@ -241,6 +241,16 @@ span.riel-paso { cursor: default; }
 .dep-imp b { font-size: 14px; }
 
 /* ── Herramientas · Simulador Costos Meta (27/10/2026) ───────────── */
+.sim-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: stretch; }
+.sim-tres-datos { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 0; }
+.sim-caja { min-width: 0; padding: 16px; background: var(--caja); border: 1px solid var(--marco); border-top: 2px solid var(--k, var(--texto2)); border-radius: var(--r); font-size: 12px; line-height: 1.55; }
+.sim-caja p { margin: 0 0 10px; } .sim-caja p:last-child { margin-bottom: 0; }
+.sim-caja-t { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; font-weight: 500; color: var(--k, var(--texto)); }
+.sim-caja .ui-tabs { flex-wrap: wrap; }
+.sim-kv-col { flex-direction: column; align-items: flex-start; gap: 4px; }
+.sim-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; }
+.sim-vivo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .sim-tres, .sim-tres-datos, .sim-vivo { grid-template-columns: minmax(0, 1fr); } }
 .sim-rango { width: 100%; accent-color: var(--principal); margin-top: 6px; }
 .sim-pills { flex-wrap: nowrap; overflow-x: auto; margin-top: 4px; }
 .sim-pills .ft-pill { white-space: nowrap; }
@@ -249,17 +259,13 @@ span.riel-paso { cursor: default; }
 .sim-mix th.u-tr { text-align: right; }
 .sim .ui-acc > span { white-space: nowrap; }
 .sim-mix .ui-campo { width: 72px; height: 30px; padding: 0 8px; margin-left: auto; display: block; }
-.sim-hero { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; font-size: 13px; line-height: 1.6; }
-.sim-hero p { margin: 0; }
 .sim-barra { display: flex; height: 12px; margin-top: 8px; background: var(--caja); border: 1px solid var(--marco); border-radius: var(--r); overflow: hidden; }
 .sim-b-ok { background: var(--p-cobrado); } .sim-b-exc { background: var(--p-pendiente); }
 .sim-tot .ui-num, .sim-tot .ui-num .m { color: var(--p-pendiente); font-size: 15px; }
 .sim-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; align-items: start; }
 .sim-paso { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--marco); }
 .sim-paso:last-of-type { border-bottom: 0; }
-.sim-tels { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 .sim-tel { border: 1px solid var(--marco); border-radius: var(--r); overflow: hidden; }
-.sim-tel[hidden] { display: none; }
 .sim-tel-h { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--abierto); border-bottom: 1px solid var(--marco); }
 .sim-tel-wa .ico { color: var(--whatsapp); } .sim-tel-tg .ico { color: var(--brillo); }
 .sim-chat { height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--fondo); }
@@ -283,12 +289,11 @@ span.riel-paso { cursor: default; }
 /* página pública simulador.html: sin barra ni menú del CRM */
 .sim-pagina { max-width: 1100px; margin: 0 auto; padding: 24px; }
 body.sim-publica .mo { top: 0; left: 0; }
-@media (max-width: 720px) { .sim-hero { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .sim-pagina { padding: 16px; } }
 @media (max-width: 900px) { .sim .ui-hd { flex-direction: column; align-items: stretch; gap: 10px; } .sim .ui-acc { flex-wrap: wrap; justify-content: flex-start; } .sim .ui-tabs { flex-wrap: wrap; } }
 @media print {
   .nav-g, .lat, .sim .ui-acc .ui-btn, .sim > .ui-tabs, .sim .sim-graf, .sim > .hint { display: none !important; }
-  html, body, .vista, .sim, .sim .ui-d, .sim .ui-cuerpo, .sim .ui-kpi, .sim .ui-campo, .sim .md, .sim .mh, .sim .mf { background: white !important; }
+  html, body, .vista, .sim, .sim .ui-d, .sim .ui-cuerpo, .sim .ui-kpi, .sim .sim-caja, .sim .ui-campo, .sim .md, .sim .mh, .sim .mf { background: white !important; }
   .sim, .sim * { color: black !important; }
   .sim { zoom: .72; }
   .sim:has(#m-sim.open) > :not(#m-sim) { display: none !important; }

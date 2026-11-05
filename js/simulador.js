@@ -126,7 +126,7 @@ var SIM = (function () {
     }
   };
 
-  var S = { tab: 'calc', tc: 0, sector: 'odontologia', mix: [], preset: 0, dia: 6, sem: 3, cons: 0, infra: 0, canal: 'dos',
+  var S = { tab: 'calc', tc: 0, sector: 'odontologia', mix: [], preset: 0, dia: 6, sem: 3, cons: 0, infra: 0, canal: 'wa',
             franq: true, impacto: 20000, graf: 'usd', mrr: 680000, modo: 'A', paso: 0, ult: null };
 
   function $(id) { return document.getElementById(id); }
@@ -157,52 +157,50 @@ var SIM = (function () {
   function secc(t, ic, cuerpo) { return uiDesp({ t: t, ic: ic, open: true }, cuerpo); }
 
   // ── pestaña 1 · Calculadora ──────────────────────────────────
+  function caja(t, ic, color, cuerpo, extra) { return '<div class="sim-caja ui-k-' + color + (extra ? ' ' + extra : '') + '"><div class="sim-caja-t">' + uiIco(ic) + '<span>' + esc(t) + '</span></div>' + cuerpo + '</div>'; }
   function htmlCalc() {
     var C = SECT[S.sector];
-    return aviso('<b>Esquema de cobro Meta · octubre 2026.</b> Meta factura la mensajería directo a la tarjeta corporativa del cliente: 1.000 mensajes de servicio gratis por mes y por número, y USD 0,026 por mensaje excedente. GIWA {IA} orquesta con Supabase y n8n la gestión de turnos y consultas 24/7.') +
-      secc('Transparencia de costos: ¿cuándo te pasás del límite?', 'info',
-        '<div class="sim-hero"><p>' + dig('Meta otorga <b>1.000 mensajes de servicio gratuitos</b> por mes. Pero un cliente no consume 1 mensaje: según el flujo, un contacto nuevo usa muchos más mensajes que uno recurrente. En <b>Telegram</b> la mensajería es gratuita e ilimitada y soporta la misma botonera inteligente.') + '</p>' +
-        '<div><div class="ui-lbl">Regla de oro de la franquicia</div><p>' + dig('<b>1.000 mensajes ≠ 1.000 turnos o reclamos.</b> Con 10 mensajes promedio por gestión, la franquicia cubre teóricamente 100 operaciones. A partir de la número 101, cada mensaje extra cuesta USD 0,026 en Meta.') + '</p></div></div>') +
-      secc('Así se ve el impacto', 'plata',
-        '<div class="hint">' + dig('Son 1.000 mensajes de servicio gratuitos por mes por número. Por eso el costo final de Meta depende del flujo de la conversación y de la cantidad de clientes.') + '</div>' +
-        '<div class="u-row8 u-mt10"><label class="ui-lbl u-f1" for="sm-imp">Mensajes por mes</label><span id="sm-imp-v" class="ui-num"></span></div>' +
+    return '<div class="sim-tres">' +
+      caja('Transparencia de costos', 'info', 'p-contratado',
+        '<p>' + dig('Meta factura la mensajería directo a la tarjeta del cliente: <b>1.000 mensajes de servicio gratis</b> por mes y por número, y <b>USD 0,026</b> por mensaje excedente (esquema de octubre 2026).') + '</p>' +
+        '<p>Un contacto nuevo usa muchos más mensajes que uno recurrente: el costo depende del flujo de la conversación y de la cantidad de clientes.</p>' +
+        '<p>' + dig('<b>1.000 mensajes ≠ 1.000 turnos.</b> Con 10 mensajes por gestión alcanzan para unas 100. Hay que confirmar qué mensajes cuentan según las reglas vigentes de Meta.') + '</p>' +
+        '<p>GIWA {IA} orquesta con Supabase y n8n la gestión de turnos y consultas 24/7.</p>') +
+      caja('Así se ve el impacto', 'plata', 'p-pendiente',
+        '<div class="u-row8"><label class="ui-lbl u-f1" for="sm-imp">Mensajes por mes</label><span id="sm-imp-v" class="ui-num"></span></div>' +
         '<input type="range" class="sim-rango" id="sm-imp" min="0" max="100000" step="500" value="' + S.impacto + '" aria-label="Mensajes por mes">' +
         '<div class="sim-marcas"><span class="m">0</span><span class="m">50.000</span><span class="m">100.000</span></div>' +
-        '<div class="ui-kpis u-mt10">' + kpi('Mensajes excedentes', 'sm-imp-exc', 'p-neutro', dig('Tras descontar los 1.000 bonificados')) + kpi('Costo del excedente (lo factura Meta)', 'sm-imp-usd', 'p-pendiente') + '</div>' +
-        '<div class="hint">' + dig('Supuesto: 1.000 mensajes gratuitos y USD 0,026 por cada mensaje excedente. Cobrado directo a la tarjeta del cliente en Meta Business Manager.') + '</div>' +
-        '<div class="u-mt10">' + aviso('<b>Ojo con un punto fundamental:</b> esos 1.000 mensajes no deben interpretarse automáticamente como 1.000 turnos gratuitos. Si un turno utiliza 10 mensajes que efectivamente califican para esa franquicia, equivaldría teóricamente a unos 100 turnos antes de alcanzar el límite. Hay que confirmar qué mensajes cuentan según las reglas vigentes de Meta.', 'adv') + '</div>') +
-      secc('Simulador de consumo', 'ajustes',
+        '<div class="u-mt10">' + kv('Mensajes excedentes', 'sm-imp-exc') + kv('Costo del excedente (USD)', 'sm-imp-usd') + kv('Costo del excedente (ARS)', 'sm-imp-usds', 'sim-tot') + '</div>') +
+      caja('Escalabilidad de costos según ' + C.lead.toLowerCase(), 'tablero', 'p-cobrado',
+        tabs([['usd', 'USD'], ['ars', 'ARS'], ['uni', 'Por ' + C.unidad + ' (ARS)']], S.graf, 'graf') +
+        '<div id="sm-graf"></div><div class="sim-ley"><span class="sim-ley-ok">Dentro de la franquicia</span><span class="sim-ley-exc">Excede la franquicia</span></div><div class="hint u-mt6" id="sm-umbral"></div>', 'sim-graf') +
+      '</div>' +
+      secc('Simulador', 'ajustes',
         tabs(Object.keys(SECT).map(function (k) { return [k, SECT[k].nombre]; }), S.sector, 'sector') +
         '<div class="hint u-mb10">' + esc(C.sub) + '</div>' + aviso(C.aviso) +
         '<div class="ui-lbl">Escenarios rápidos</div><div class="u-row6 sim-pills">' + C.presets.map(function (x, i) {
           return '<button class="ft-pill' + (i === S.preset ? ' on' : '') + '" data-sim="preset" data-i="' + i + '"><span>' + dig(esc(x[0])) + '</span></button>'; }).join('') + '</div>' +
-        '<div class="g3 u-mt10"><div><label class="ui-lbl" for="sm-dia">' + esc(C.lead) + '</label><input class="ui-campo sim-num" type="number" min="0" step="1" id="sm-dia" value="' + S.dia + '"></div>' +
-          '<div><label class="ui-lbl" for="sm-sem">Días de atención por semana</label><input class="ui-campo sim-num" type="number" min="1" max="7" step="1" id="sm-sem" value="' + S.sem + '"></div>' +
-          '<div><label class="ui-lbl" for="sm-cons">Consultas informativas sin cierre por mes</label><input class="ui-campo sim-num" type="number" min="0" step="10" id="sm-cons" value="' + S.cons + '">' +
-          '<div class="hint u-mt4">' + dig('Promedio de 3 mensajes por consulta (horarios, dirección, aranceles).') + '</div></div></div>' +
-        '<div class="u-ovx u-mt10"><table class="ui-tbl sim-mix"><thead><tr><th>Tipo de contacto</th><th class="u-tr">% del total</th><th class="u-tr">Plantillas</th><th class="u-tr">Servicio</th></tr></thead><tbody>' +
-          S.mix.map(function (r, i) {
-            return '<tr><td>' + esc(r.n) + '</td>' + ['share', 'tpl', 'srv'].map(function (f) {
-              return '<td class="u-tr"><input class="ui-campo sim-num" type="number" min="0" step="1" value="' + r[f] + '" data-mix="' + i + '" data-f="' + f + '" aria-label="' + esc(r.n) + '"></td>'; }).join('') + '</tr>';
-          }).join('') + '</tbody></table></div>' +
-        '<div class="u-s11 u-c-wa u-mt4" id="sm-mix-av"></div>' +
-        '<label class="u-row6 u-mt10 u-s12"><input type="checkbox" id="sm-franq"' + (S.franq ? ' checked' : '') + '> ' + dig('Franquicia de 1.000 mensajes de servicio mensuales bonificados por Meta') + '</label>') +
-      secc('Consumo mensual contra la franquicia', 'tablero',
-        '<div class="u-row8"><span class="u-f1">Mensajes de servicio: <span id="sm-b-srv" class="ui-num"></span></span><span id="sm-b-est" class="u-s12"></span></div>' +
-        '<div class="sim-barra"><span class="sim-b-ok" id="sm-b-ok"></span><span class="sim-b-exc" id="sm-b-exc"></span></div>' +
-        '<div class="sim-marcas"><span class="m">0</span><span class="u-c-ok" id="sm-b-lim"></span><span class="u-c-wa" id="sm-b-mas"></span></div>' +
-        '<div class="u-mt10" id="sm-b-txt"></div><div class="hint u-mt4">Las plantillas se cobran siempre y no consumen la franquicia.</div>') +
-      secc('Facturación de Meta', 'plata', '<div id="sm-res"></div>') +
-      secc('WhatsApp y Telegram, lado a lado', 'chat',
-        '<div class="g3 u-mb10"><div><label class="ui-lbl" for="sm-infra">Servidor y n8n (USD por mes)</label><input class="ui-campo sim-num" type="number" min="0" step="1" id="sm-infra" data-monto value="' + S.infra + '">' +
-          '<div class="hint u-mt4">Se paga igual en los dos canales. Telegram no es costo cero.</div></div></div>' +
-        '<div class="sim-dos"><div><div class="ui-lbl">WhatsApp Business API</div>' +
-          '<div class="ui-kv"><span>Mensajes bonificados</span><span class="ui-num" id="sm-w-bon"></span></div>' + kv('Mensajes que factura Meta', 'sm-w-exc') + kv('Costo de mensajería', 'sm-w-men') + kv('Servidor y n8n', 'sm-w-inf') + kv('Total mensual', 'sm-w-tot', 'sim-tot') + kv('Total mensual en ARS', 'sm-w-ars') + kv('Costo por ' + C.unidad, 'sm-w-uni') + '</div>' +
-        '<div><div class="ui-lbl">Telegram Bot API</div>' +
-          '<div class="ui-kv"><span>Mensajes incluidos</span><span>Ilimitados</span></div>' + kv('Mensajes facturados', 'sm-t-exc') + kv('Costo de mensajería', 'sm-t-men') + kv('Servidor y n8n', 'sm-t-inf') + kv('Total mensual', 'sm-t-tot', 'sim-tot') + kv('Total mensual en ARS', 'sm-t-ars') + kv('Ahorro en mensajería por mes', 'sm-t-aho') + '</div></div>') +
-      '<div class="sim-graf">' + secc('Escalabilidad de costos según ' + C.lead.toLowerCase(), 'tablero',
-        tabs([['usd', 'Costo en USD'], ['ars', 'Costo en ARS'], ['uni', 'Costo por ' + C.unidad + ' (ARS)']], S.graf, 'graf') +
-        '<div id="sm-graf"></div><div class="sim-ley"><span class="sim-ley-ok">Dentro de la franquicia</span><span class="sim-ley-exc">Excede la franquicia</span></div><div class="hint u-mt6" id="sm-umbral"></div>') + '</div>';
+        '<div class="sim-tres sim-tres-datos u-mt10">' +
+          caja('Datos estimados para calcular mensajes', 'lista', 'p-contratado',
+            '<div class="sim-campos"><div><label class="ui-lbl" for="sm-dia">' + esc(C.lead) + '</label><input class="ui-campo sim-num" type="number" min="0" step="1" id="sm-dia" value="' + S.dia + '"></div>' +
+              '<div><label class="ui-lbl" for="sm-sem">Días de atención por semana</label><input class="ui-campo sim-num" type="number" min="1" max="7" step="1" id="sm-sem" value="' + S.sem + '"></div></div>' +
+            '<div class="u-mt10"><label class="ui-lbl" for="sm-cons">Consultas informativas sin cierre por mes</label><input class="ui-campo sim-num" type="number" min="0" step="10" id="sm-cons" value="' + S.cons + '">' +
+              '<div class="hint u-mt4">' + dig('Promedio de 3 mensajes por consulta (horarios, dirección, aranceles).') + '</div></div>' +
+            '<div class="u-ovx u-mt10"><table class="ui-tbl sim-mix"><thead><tr><th>Tipo de contacto</th><th class="u-tr">% del total</th><th class="u-tr">Plantillas</th><th class="u-tr">Servicio</th></tr></thead><tbody>' +
+              S.mix.map(function (r, i) {
+                return '<tr><td>' + esc(r.n) + '</td>' + ['share', 'tpl', 'srv'].map(function (f) {
+                  return '<td class="u-tr"><input class="ui-campo sim-num" type="number" min="0" step="1" value="' + r[f] + '" data-mix="' + i + '" data-f="' + f + '" aria-label="' + esc(r.n) + '"></td>'; }).join('') + '</tr>';
+              }).join('') + '</tbody></table></div>' +
+            '<div class="u-s11 u-c-wa u-mt4" id="sm-mix-av"></div>' +
+            '<label class="u-row6 u-mt10 u-s12"><input type="checkbox" id="sm-franq"' + (S.franq ? ' checked' : '') + '> <span>' + dig('Franquicia de 1.000 mensajes de servicio mensuales bonificados por Meta') + '</span></label>') +
+          caja('Consumo mensual vs. franquicia', 'tablero', 'p-cobrado',
+            '<div class="u-row8"><span class="u-f1">Mensajes de servicio: <span id="sm-b-srv" class="ui-num"></span></span></div><div id="sm-b-est" class="u-s12 u-mt4"></div>' +
+            '<div class="sim-barra"><span class="sim-b-ok" id="sm-b-ok"></span><span class="sim-b-exc" id="sm-b-exc"></span></div>' +
+            '<div class="sim-marcas"><span class="m">0</span><span class="u-c-ok" id="sm-b-lim"></span><span class="u-c-wa" id="sm-b-mas"></span></div>' +
+            '<div class="u-mt10" id="sm-b-txt"></div><div class="hint u-mt4">Las plantillas se cobran siempre y no consumen la franquicia.</div>') +
+          caja('Facturación de Meta', 'plata', 'p-pendiente', '<div id="sm-res"></div>') +
+        '</div>' +
+        '<div class="hint u-mt10">Automatizar turnos no es sólo responder mensajes: es diseñar conversaciones eficientes y controlar el costo por atención.</div>');
   }
   function calcular() {
     var C = SECT[S.sector], r = meta(S.dia, S.sem), n = Math.max(1, Math.round(r.mes)), exc = Math.max(0, S.impacto - FRANQ);
@@ -214,9 +212,9 @@ var SIM = (function () {
       : 'Usás ' + ent(r.srv) + ' · quedan ' + ent(r.lim - r.srv) + ' libres';
     var fila = function (l, v, c) { return '<div class="ui-kv' + (c ? ' ' + c : '') + '"><span>' + l + '</span><span class="ui-num">' + v + '</span></div>'; };
     put('sm-res', fila('Mensajes del agente por mes (plantillas + servicio)', ent(r.total)) + fila('Mensajes que factura Meta', ent(r.fact)) +
-      fila(dig('Franquicia de 1.000 mensajes de servicio (se renueva el 1° de cada mes, por número)'), fq) +
+      '<div class="ui-kv sim-kv-col"><span>' + dig('Franquicia de 1.000 mensajes de servicio (se renueva el 1° de cada mes, por número)') + '</span><span>' + fq + '</span></div>' +
       fila('Costo estimado por ' + C.unidad, ars(r.ars / n) + ' (' + usd(r.usd / n) + ')') +
-      fila('Total facturación Meta (USD)', usd(r.usd), 'sim-tot') + fila('Total facturación Meta (ARS)', ars(r.ars), 'sim-tot'));
+      fila('Total facturación (USD)', usd(r.usd), 'sim-tot') + fila('Total facturación (ARS)', ars(r.ars), 'sim-tot'));
     // barra de consumo
     var tope = Math.max(r.srv, FRANQ) || 1, ok = Math.min(r.srv, r.lim), mas = Math.max(0, r.srv - r.lim);
     put('sm-b-srv', ent(r.srv)); put('sm-b-lim', r.lim ? ent(r.lim) + ' gratis en Meta' : 'Sin franquicia');
@@ -242,7 +240,7 @@ var SIM = (function () {
   function grafico() {
     var R = ESCALA.map(function (d) { return meta(d, S.sem); });
     var P = R.map(function (r) { return S.graf === 'ars' ? r.ars : S.graf === 'uni' ? (r.mes > 0 ? r.ars / r.mes : 0) : r.usd; });
-    var W = 560, H = 220, pl = 98, pb = 26, pt = 10, n = P.length, max = Math.max.apply(null, P) || 1;
+    var W = 340, H = 230, pl = 92, pb = 26, pt = 10, n = P.length, max = Math.max.apply(null, P) || 1;
     var x = function (i) { return pl + i * (W - pl - 10) / (n - 1); }, y = function (v) { return pt + (H - pt - pb) * (1 - v / max); };
     var f = function (v) { return (S.graf === 'usd' ? 'USD ' : '$ ') + dec2(v); };
     var ejes = [0, 0.5, 1].map(function (k) { var yy = y(max * k).toFixed(1);
@@ -259,7 +257,7 @@ var SIM = (function () {
 
   // ── pestaña 2 · Probalo en vivo ──────────────────────────────
   function tel(k, tit, sub, ic) {
-    return '<div class="sim-tel"' + (S.canal !== 'dos' && S.canal !== k ? ' hidden' : '') + '><div class="sim-tel-h sim-tel-' + k + '">' + ic + '<div><div class="u-fw6 u-s12">' + esc(tit) + '</div><div class="hint">' + sub + '</div></div></div>' +
+    return '<div class="sim-tel"><div class="sim-tel-h sim-tel-' + k + '">' + ic + '<div><div class="u-fw6 u-s12">' + esc(tit) + '</div><div class="hint">' + sub + '</div></div></div>' +
       '<div class="sim-chat" id="sm-chat-' + k + '"></div><div class="sim-ops" id="sm-ops-' + k + '"></div></div>';
   }
   function htmlVivo() {
@@ -268,17 +266,17 @@ var SIM = (function () {
         '<div class="hint u-mb10">Mostrale al cliente que en WhatsApp y en Telegram el agente funciona con la misma fluidez, botones, validaciones y conexión con sus sistemas.</div>' +
         tabs(Object.keys(SECT).map(function (k) { return [k, SECT[k].nombre]; }), S.sector, 'sector') +
         tabs(['A', 'B'].filter(function (m) { return D[m]; }).map(function (m) { return [m, D[m][0]]; }), S.modo, 'modo') +
-        tabs([['wa', 'WhatsApp'], ['tg', 'Telegram'], ['dos', 'Ver ambos']], S.canal, 'canal') +
-        '<div class="sim-tels">' + tel('wa', C.chat, 'Cuenta comercial oficial', ico('whatsapp')) + tel('tg', C.chat, 'Bot de Telegram', ico('chat')) + '</div>' +
-        '<div class="u-row8 u-mt10">' + uiBtn('Siguiente paso', 'derecha', 'p', 'data-sim="paso"') + uiBtn('Reiniciar', 'recargar', 's', 'data-sim="reini"') +
-        '<span class="u-s11 u-c-mt u-mla" id="sm-cuenta"></span></div>' +
-        '<div class="hint u-mt6">Tocá la opción resaltada: los dos teléfonos responden a la vez.</div>') +
-      secc('¿Cómo funciona el flujo inteligente?', 'info', [
-        ['Mensaje entrante (WhatsApp Cloud API)', 'El cliente manda audio o texto. El webhook de Meta dispara el workflow en n8n en menos de 500 ms.'],
-        ['Inteligencia y reglas del negocio', 'El agente interpreta la consulta, valida los datos necesarios y revisa la agenda o la disponibilidad en Supabase.'],
-        ['Confirmación y reserva', 'Registra el turno o la reserva, le manda la tarjeta resumen al cliente y actualiza la planilla de gestión.'],
-        ['Optimización de mensajes Meta', 'Diálogo conciso para aprovechar los 1.000 mensajes de servicio gratis de cada mes.']].map(function (x, i) {
-          return '<div class="sim-paso"><span class="m u-c-bl">' + (i + 1) + '</span><div><div class="u-fw6 u-s12">' + x[0] + '</div><div class="hint">' + dig(x[1]) + '</div></div></div>'; }).join(''));
+        tabs([['wa', 'WhatsApp'], ['tg', 'Telegram']], S.canal, 'canal') +
+        '<div class="sim-vivo"><div>' + (S.canal === 'tg' ? tel('tg', C.chat, 'Bot de Telegram', ico('chat')) : tel('wa', C.chat, 'Cuenta comercial oficial', ico('whatsapp'))) +
+          '<div class="u-row8 u-mt10">' + uiBtn('Siguiente paso', 'derecha', 'p', 'data-sim="paso"') + uiBtn('Reiniciar', 'recargar', 's', 'data-sim="reini"') +
+          '<span class="u-s11 u-c-mt u-mla" id="sm-cuenta"></span></div>' +
+          '<div class="hint u-mt6">Tocá la opción resaltada para avanzar.</div></div>' +
+        caja('¿Cómo funciona el flujo inteligente?', 'info', 'p-contratado', [
+          ['Mensaje entrante (WhatsApp Cloud API)', 'El cliente manda audio o texto. El webhook de Meta dispara el workflow en n8n en menos de 500 ms.'],
+          ['Inteligencia y reglas del negocio', 'El agente interpreta la consulta, valida los datos necesarios y revisa la agenda o la disponibilidad en Supabase.'],
+          ['Confirmación y reserva', 'Registra el turno o la reserva, le manda la tarjeta resumen al cliente y actualiza la planilla de gestión.'],
+          ['Optimización de mensajes Meta', 'Diálogo conciso para aprovechar los 1.000 mensajes de servicio gratis de cada mes.']].map(function (x, i) {
+            return '<div class="sim-paso"><span class="m u-c-bl">' + (i + 1) + '</span><div><div class="u-fw6 u-s12">' + x[0] + '</div><div class="hint">' + dig(x[1]) + '</div></div></div>'; }).join('')) + '</div>');
   }
   function arranque() { var G = DEMOS[S.sector][S.modo][1]; S.paso = 1; while (S.paso < G.length && G[S.paso].q !== 'u') S.paso++; }   // muestra hasta la primera respuesta del cliente
   function chat() {
@@ -294,7 +292,7 @@ var SIM = (function () {
     }
     ['wa', 'tg'].forEach(function (k) { var c = $('sm-chat-' + k); if (!c) return; c.innerHTML = html; c.scrollTop = c.scrollHeight; put('sm-ops-' + k, ops); });
     var c = function (q) { return L.filter(function (m) { return m.q === q; }).length; };
-    put('sm-cuenta', 'WhatsApp: ' + ent(c('s')) + ' servicio + ' + ent(c('p')) + (c('p') === 1 ? ' plantilla' : ' plantillas') + ' · Telegram: ' + ent(0) + ' facturados · Cliente: ' + ent(c('u')) + ' (gratis)');
+    put('sm-cuenta', (S.canal === 'tg' ? 'Telegram: ' + ent(0) + ' facturados' : 'WhatsApp: ' + ent(c('s')) + ' servicio + ' + ent(c('p')) + (c('p') === 1 ? ' plantilla' : ' plantillas')) + ' · Cliente: ' + ent(c('u')) + ' (gratis)');
   }
 
   // ── pestaña 3 · MRR y conveniencia ───────────────────────────
@@ -337,7 +335,15 @@ var SIM = (function () {
       ['Penetración en clientes', 'Extrema (&gt;98% de la población).', 'Alta en soporte técnico, logística, talleres y empresas.', 'Soporte multicanal unificado en un solo panel.'],
       ['Ventana de conversación', 'Sesiones de 24 hs por ventana de servicio de Meta.', 'Sin restricciones de tiempo.', 'Manejo de memoria contextual con Supabase / Postgres.'],
       ['Integración operativa', 'Requiere Meta Cloud API y verificación de negocio.', 'Inmediata (token instantáneo con @BotFather).', 'Webhooks en n8n + Google Apps Script nativo.']];
-    return secc('Comparativa directa: WhatsApp Business Platform vs. Telegram (Bots)', 'chat', '<div class="sim-dos">' +
+    var C = SECT[S.sector];
+    return secc('WhatsApp y Telegram, lado a lado', 'chat',
+        '<div class="g3 u-mb10"><div><label class="ui-lbl" for="sm-infra">Servidor y n8n (USD por mes)</label><input class="ui-campo sim-num" type="number" min="0" step="1" id="sm-infra" data-monto value="' + S.infra + '">' +
+          '<div class="hint u-mt4">Se paga igual en los dos canales. Telegram no es costo cero.</div></div></div>' +
+        '<div class="sim-dos"><div><div class="ui-lbl">WhatsApp Business API</div>' +
+          '<div class="ui-kv"><span>Mensajes bonificados</span><span class="ui-num" id="sm-w-bon"></span></div>' + kv('Mensajes que factura Meta', 'sm-w-exc') + kv('Costo de mensajería', 'sm-w-men') + kv('Servidor y n8n', 'sm-w-inf') + kv('Total mensual', 'sm-w-tot', 'sim-tot') + kv('Total mensual en ARS', 'sm-w-ars') + kv('Costo por ' + C.unidad, 'sm-w-uni') + '</div>' +
+        '<div><div class="ui-lbl">Telegram Bot API</div>' +
+          '<div class="ui-kv"><span>Mensajes incluidos</span><span>Ilimitados</span></div>' + kv('Mensajes facturados', 'sm-t-exc') + kv('Costo de mensajería', 'sm-t-men') + kv('Servidor y n8n', 'sm-t-inf') + kv('Total mensual', 'sm-t-tot', 'sim-tot') + kv('Total mensual en ARS', 'sm-t-ars') + kv('Ahorro en mensajería por mes', 'sm-t-aho') + '</div></div>') +
+      secc('Comparativa directa: WhatsApp Business Platform vs. Telegram (Bots)', 'chat', '<div class="sim-dos">' +
       c('WhatsApp Business Platform', [['Facturación de red', 'Facturada directo al cliente por Meta (1.000 msgs gratis + USD 0,026 excedente).'],
         ['Adopción de pacientes', 'Extrema (&gt;98% de la población). Cero fricción.'], ['Tasa de respuesta', 'Superior al 95% en los primeros 15 minutos.'],
         ['Veredicto', 'El canal estándar imprescindible para centros de salud y empresas.']]) +
@@ -393,7 +399,6 @@ var SIM = (function () {
         uiBtn('Modo presentación', 'tablero', 's', 'data-sim="pres"') + uiBtn('Exportar propuesta', 'lista', 's', 'data-sim="propuesta"') + uiBtn('Imprimir', 'documento', 's', 'data-sim="imprimir"')) +
       tabs(TABS.filter(function (t) { return !PUBLICO || t[0] !== 'mrr'; }), S.tab, 'tab') +
       ({ calc: htmlCalc, vivo: htmlVivo, mrr: htmlMrr, tg: htmlTg }[S.tab])() +
-      '<div class="hint u-mt10">Automatizar turnos no es sólo responder mensajes: es diseñar conversaciones eficientes y controlar el costo por atención.</div>' +
       '<div class="mo" id="m-sim"><div class="md"><div class="mh"><span class="mt2" id="m-sim-t"></span></div><div class="mb2" id="m-sim-b"></div><div class="mf" id="m-sim-f"></div></div></div></div>';
     calcular();
     if (S.tab === 'vivo') chat();
