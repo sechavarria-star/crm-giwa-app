@@ -406,16 +406,24 @@
     var duena = String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase() === 'v.gagey@giwa-ia.com';   // la base lo vuelve a verificar (es_duena)
     var usd = function (n) { return '<td class="m u-tr u-nw">' + (n == null ? '—' : fmt(Math.round(n), 'USD')) + '</td>'; };
     el.innerHTML = uiHd('Valores de mercado', 'Referencias en USD por hora.',
-        '<select class="fc u-wauto" id="mk-tipo" aria-label="Tipo"><option value="">Todos los tipos</option>' + Object.keys(tipos).sort().map(function (t) { return '<option value="' + esc(t) + '"' + (t === MK.tipo ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>') +
+        Object.keys(tipos).length > 1 ? '<select class="fc u-wauto" id="mk-tipo" aria-label="Tipo"><option value="">Todos los tipos</option>' + Object.keys(tipos).sort().map(function (t) { return '<option value="' + esc(t) + '"' + (t === MK.tipo ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select>' : '') +
       (!L.length ? '<div class="empty">Sin valores para este tipo.</div>' :
       '<div class="u-ovx"><table class="tbl"><thead><tr><th>Rol</th><th>Fuente</th><th class="u-tr">Mínimo</th><th class="u-tr">Referencia</th><th class="u-tr">Máximo</th><th class="u-tr">Fecha</th><th></th></tr></thead><tbody>' +
       L.map(function (x) {
-        return '<tr><td>' + esc(x.rol || '—') + '</td><td>' + esc(x.fuente || '—') + '</td>' + usd(x.usd_min) + usd(x.usd_ref) + usd(x.usd_max) +
+        return '<tr><td>' + esc(x.rol || '—') + '</td><td>' + mkLinks(x, x.fuente) + '</td>' + usd(x.usd_min) + usd(x.usd_ref) + usd(x.usd_max) +
           '<td class="m u-nw u-tr' + (x.estado === 'Vigente' ? '' : ' ui-p-pendiente') + '">' + esc(x.fecha ? ff(x.fecha) : '—') + '</td>' +
           '<td class="u-tr u-nw">' + (duena ? '<button class="btn bg xs" data-mk-act="' + esc(x.id) + '">Actualizar</button>' : '') + '</td></tr>'; }).join('') +
       '</tbody></table></div>');
   }
-  // Actualizar una referencia: valores en su unidad original y fecha; queda en el registro de cambios de Datos
+  // Las webs de una referencia (mercado_referencias.url, separadas por espacio): con texto, un solo vínculo; sin texto, uno por web
+  function mkUrls(x) { return String(x.url || '').split(/\s+/).filter(Boolean); }
+  function mkLink(u, t) { return '<a class="ui-lnk ui-azul" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>'; }
+  function mkLinks(x, texto) {
+    var L = mkUrls(x);
+    if (texto) return L.length ? mkLink(L[0], texto) : esc(texto);
+    return L.map(function (u) { return mkLink(u, new URL(u).hostname.replace(/^www\./, '')); }).join(' · ');
+  }
+  // Actualizar una referencia: se consulta su web y se cargan valores y fecha; queda en el registro de cambios de Datos
   function actualizarMk(el, id) {
     var x = MK.filas.find(function (f) { return f.id === id; }); if (!x) return;
     var m = document.getElementById('m-mk');
@@ -423,6 +431,7 @@
     var num = function (k, t) { return '<div class="fg"><label class="fl" for="mk-' + k + '">' + t + '</label><input class="fc u-tr" type="number" min="0" step="any" id="mk-' + k + '" value="' + (x['valor_' + k] == null ? '' : esc(x['valor_' + k])) + '"></div>'; };
     m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Actualizar valor</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-mk">' + ico('cerrar') + '</button></div><div class="mb2">' +
       '<div class="ft-info">' + esc(x.rol || '') + ' · ' + esc(x.fuente || '') + ' · valores en ' + esc(x.unidad || '') + '</div>' +
+      (mkUrls(x).length ? '<div class="u-mt6 u-mb12">Consultar en: ' + mkLinks(x) + '</div>' : '') +
       '<div class="g3">' + num('min', 'Mínimo') + num('ref', 'Referencia') + num('max', 'Máximo') + '</div>' +
       '<div class="fg"><label class="fl" for="mk-fecha">Fecha</label><input class="fc" type="date" id="mk-fecha" value="' + isoMas(0) + '"></div></div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-mk">Cancelar</button><button class="btn bp" id="mk-ok">Guardar</button></div></div>';

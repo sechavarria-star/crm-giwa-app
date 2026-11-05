@@ -4,8 +4,8 @@
    El «Resumen Financiero» del Portal (Index.html · tab-fin), como módulo propio.
    Cada número sale de una vista de la base:
      los 7 recuadros            v_resumen_financiero + v_fin_caja_mes (= getDashboardFinanciero)
-     Por cliente                v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado)
-     Análisis por cliente       v_analisis_clientes (= getAnalisisCliente)
+     Análisis por Cliente       v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado);
+                                margen y referencia, v_analisis_clientes (= getAnalisisCliente)
      ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion)
      Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha
      Negocios a seguir          v_fin_negocios (= getNegociosASeguir)
@@ -14,7 +14,7 @@
    Los gráficos son SVG propios: la app no tiene librería de gráficos.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var F = { d: null, abiertos: {}, ab: {}, esc: {} };
+  var F = { d: null, tab: 'cli', ab: {}, esc: {} };
 
   async function cargar() {
     var r = await Promise.all([
@@ -40,11 +40,6 @@
   // ── ayudas ───────────────────────────────────────────────────
   function N(x) { return Number(x) || 0; }
   function chev() { return '<span class="chev">' + ico('derecha') + '</span>'; }
-  function sec(k, tit, cnt, total, cuerpo) {
-    return '<details class="desp adm-desp" data-fsec="' + k + '"' + (F.abiertos[k] ? ' open' : '') + '><summary>' + chev() +
-      '<span class="adm-tit">' + tit + '</span>' + (cnt !== '' ? '<span class="cnt">' + cnt + '</span>' : '') +
-      (total ? '<span class="adm-total">' + total + '</span>' : '') + '</summary><div class="adm-cuerpo">' + cuerpo + '</div></details>';
-  }
   function td(v, cls, neg) { return '<td class="m u-tr' + (cls ? ' ' + cls : '') + '">' + (v ? (neg ? '−' : '') + fmt(Math.abs(v)) : '—') + '</td>'; }
 
   // ── los 7 recuadros (_kpisFin) · s = lo tildado en «¿Dónde podríamos estar?» ──
@@ -81,64 +76,55 @@
   }
 
   // ── Por cliente: el cliente y adentro sus proyectos ──
-  function porCliente() {
-    var E = F.d.emp; if (!E.length) return '<div class="empty">Sin datos.</div>';
-    var hayBon = E.some(function (x) { return N(x.bonificado) > 1; });
-    var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente / Proyecto</th><th class="u-tr">Contratado</th><th class="u-tr">Cobrado</th>' +
-      (hayBon ? '<th class="u-tr">Bonificación</th>' : '') + '<th class="u-tr">Saldo</th><th class="u-tr">Abono / mes</th><th class="u-tr">Cobrado abono</th></tr></thead><tbody>';
-    var t = { c: 0, k: 0, b: 0, s: 0, m: 0, cm: 0 };
-    E.forEach(function (x) {
-      var ab = !!F.ab[x.empresa];
-      t.c += N(x.contratado); t.k += N(x.cobrado); t.b += N(x.bonificado); t.s += N(x.saldo); t.m += N(x.mant_mes); t.cm += N(x.cobrado_mant);
-      h += '<tr class="fin-cli" data-fcli="' + esc(x.empresa) + '"><td class="u-nw"><span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span> ' + esc(x.empresa) + '</td>' +
-        td(N(x.contratado), 'm-contratado') + td(N(x.cobrado), 'm-cobrado') + (hayBon ? td(N(x.bonificado), 'm-neutro', true) : '') +
-        td(N(x.saldo), N(x.saldo) < 0 ? 'm-neutro' : 'm-pendiente') + td(N(x.mant_mes), 'm-abono') + td(N(x.cobrado_mant), 'm-abono') + '</tr>';
-      if (ab) F.d.proy.filter(function (p) { return p.empresa === x.empresa; }).forEach(function (p) {
-        h += '<tr class="fin-pro"><td>' + esc(p.nombre || '—') + ' <span class="u-s10-mt">' + esc(p.estado_proyecto || '') + '</span></td>' +
-          td(N(p.monto_final_ars)) + td(N(p.cobrado_dev)) + (hayBon ? td(N(p.bonificacion) + N(p.bonificacion_mant), '', true) : '') +
-          td(N(p.saldo)) + td(N(p.recurrente_mensual)) + td(N(p.cobrado_mant)) + '</tr>';
-      });
-    });
-    h += '<tr class="fin-tot"><td>Total</td>' + td(t.c, 'm-contratado') + td(t.k, 'm-cobrado') + (hayBon ? td(t.b, 'm-neutro', true) : '') +
-      td(t.s, 'm-pendiente') + td(t.m, 'm-abono') + td(t.cm, 'm-abono') + '</tr></tbody></table></div>';
-    return h;
-  }
-
-  // ── Análisis por cliente (lo que guardó el Cotizador; no se recalcula) ──
-  // Análisis por cliente (29/10/2026): sólo lo vigente. Cuentan los desarrollos de
-  // proyectos aprobados, activos o en negociación; lo histórico (finalizado,
-  // rechazado, prospecto) queda afuera. Los totales se rehacen con esos
-  // desarrollos, con la misma cuenta que la vista: margen = cobrado − referencia.
-  function analisis() {
-    var A = clientesVigentes();
-    if (!A.length) return '<div class="empty">Ningún cliente con proyectos aprobados, activos o en negociación.</div>';
-    return tablaAnalisis(A);
-  }
+  // Análisis por Cliente (05/11/2026): unifica «Por cliente» y «Análisis por cliente». Cada cliente se
+  // despliega en sus proyectos (v_resumen_por_empresa, v_proyectos_clasif). Margen, proyección, referencia y
+  // estatus salen de lo que guardó el Cotizador y sólo de lo vigente: aprobado, activo o en negociación.
   function clientesVigentes() {
     var V = { aprobado: 1, activo: 1, negociacion: 1 }, E = F.d.estProy;
-    var A = F.d.an.map(function (c) {
+    return F.d.an.map(function (c) {
       var ds = (c.devs || []).filter(function (d) { return V[E[d.proyecto_id]]; }); if (!ds.length) return null;
       var ref = 0, pre = 0, mmr = 0, neg = ds.some(function (d) { return E[d.proyecto_id] === 'negociacion'; });
       ds.forEach(function (d) { ref += N(d.referencia); pre += N(d.precio); mmr += N(d.mmr); });
       return { nombre: c.nombre || c.empresa, ref: ref, pre: pre, mmr: mmr, dif: pre - ref, neg: neg };
     }).filter(Boolean);
-    return A;
   }
-  // Orden de columnas (02/11/2026): Cobrado, Margen, Abono, Proyección 12m, Con 12 meses; al final Referencia y Estatus.
-  // Estatus: cuántos meses de abono hacen falta para cubrir lo que el cobrado quedó abajo de la referencia
-  // (meses = ⌈(referencia − cobrado) / abono⌉, la misma cuenta de siempre).
-  function tablaAnalisis(A) {
-    return '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th class="u-tr">Cobrado</th><th class="u-tr">Margen neto proyectado</th>' +
-      '<th class="u-tr">Abono / mes</th><th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>' + A.map(function (c) {
-        var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
-        var lect = c.dif < 0 ? (c.mmr ? 'Se compensa con ' + meses + (meses === 1 ? ' mes' : ' meses') + ' de abono' : 'Sin abono que lo compense') : 'Igual o arriba de la referencia';
-        var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
-        return '<tr><td>' + esc(c.nombre || '—') + '</td>' + td(c.pre, 'm-cobrado') +
-          td(c.dif, c.dif < 0 ? 'm-pendiente' : 'm-cobrado', c.dif < 0) + td(c.mmr, 'm-abono') +
-          (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
-          td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.ref) +
-          '<td class="u-s10-mt">' + esc(lect) + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+  // Estatus: cuántos meses de abono hacen falta para cubrir lo que quedó abajo de la referencia
+  function celdasAnalisis(c) {
+    if (!c) return td(0) + td(0) + td(0) + td(0) + '<td></td>';
+    var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
+    var lect = c.dif < 0 ? (c.mmr ? 'Se compensa con ' + meses + (meses === 1 ? ' mes' : ' meses') + ' de abono' : 'Sin abono que lo compense') : 'Igual o arriba de la referencia';
+    var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
+    return td(c.dif, c.dif < 0 ? 'm-pendiente' : 'm-cobrado', c.dif < 0) +
+      (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
+      td(c.dif + c.mmr * 12, '', c.dif + c.mmr * 12 < 0) + td(c.ref) + '<td class="u-s10-mt">' + esc(lect) + '</td>';
+  }
+  function porCliente() {
+    var E = F.d.emp, A = clientesVigentes(); if (!E.length && !A.length) return '<div class="empty">Sin datos.</div>';
+    var hayBon = E.some(function (x) { return N(x.bonificado) > 1; });
+    var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente / Proyecto</th><th class="u-tr">Contratado</th><th class="u-tr">Cobrado</th>' +
+      (hayBon ? '<th class="u-tr">Bonificación</th>' : '') + '<th class="u-tr">Saldo</th><th class="u-tr">Abono / mes</th><th class="u-tr">Cobrado abono</th>' +
+      '<th class="u-tr">Margen neto proyectado</th><th class="u-tr">Proyección anual de abono (12m)</th><th class="u-tr">Con 12 meses</th><th class="u-tr">Referencia mercado</th><th>Estatus de viabilidad</th></tr></thead><tbody>';
+    var t = { c: 0, k: 0, b: 0, s: 0, m: 0, cm: 0 }, usados = {};
+    var deCliente = function (nom) { var c = A.find(function (a) { return a.nombre === nom; }); if (c) usados[nom] = 1; return c; };
+    E.forEach(function (x) {
+      var ab = !!F.ab[x.empresa];
+      t.c += N(x.contratado); t.k += N(x.cobrado); t.b += N(x.bonificado); t.s += N(x.saldo); t.m += N(x.mant_mes); t.cm += N(x.cobrado_mant);
+      h += '<tr class="fin-cli" data-fcli="' + esc(x.empresa) + '"><td class="u-nw"><span class="chev' + (ab ? ' on' : '') + '">' + ico('derecha') + '</span> ' + esc(x.empresa) + '</td>' +
+        td(N(x.contratado), 'm-contratado') + td(N(x.cobrado), 'm-cobrado') + (hayBon ? td(N(x.bonificado), 'm-neutro', true) : '') +
+        td(N(x.saldo), N(x.saldo) < 0 ? 'm-neutro' : 'm-pendiente') + td(N(x.mant_mes), 'm-abono') + td(N(x.cobrado_mant), 'm-abono') + celdasAnalisis(deCliente(x.empresa)) + '</tr>';
+      if (ab) F.d.proy.filter(function (p) { return p.empresa === x.empresa; }).forEach(function (p) {
+        h += '<tr class="fin-pro"><td>' + esc(p.nombre || '—') + ' <span class="u-s10-mt">' + esc(p.estado_proyecto || '') + '</span></td>' +
+          td(N(p.monto_final_ars)) + td(N(p.cobrado_dev)) + (hayBon ? td(N(p.bonificacion) + N(p.bonificacion_mant), '', true) : '') +
+          td(N(p.saldo)) + td(N(p.recurrente_mensual)) + td(N(p.cobrado_mant)) + '<td colspan="5"></td></tr>';
+      });
+    });
+    // En negociación y todavía sin contratado: no están en el resumen, pero sí en el análisis
+    A.filter(function (c) { return !usados[c.nombre]; }).forEach(function (c) {
+      h += '<tr><td class="u-nw">' + esc(c.nombre || '—') + '</td>' + td(0) + td(0) + (hayBon ? td(0) : '') + td(0) + td(c.mmr, 'm-abono') + td(0) + celdasAnalisis(c) + '</tr>';
+    });
+    h += '<tr class="fin-tot"><td>Total</td>' + td(t.c, 'm-contratado') + td(t.k, 'm-cobrado') + (hayBon ? td(t.b, 'm-neutro', true) : '') +
+      td(t.s, 'm-pendiente') + td(t.m, 'm-abono') + td(t.cm, 'm-abono') + '<td colspan="5"></td></tr></tbody></table></div>';
+    return h;
   }
 
   // ── ¿Dónde podríamos estar? · tildá los negocios y a la derecha se suman ──
@@ -235,29 +221,22 @@
       'Mes a mes, en «Proyección próximos 12 meses».</div>';
   }
 
+  var TABS = [['cli', 'Análisis por Cliente', porCliente], ['graf', 'Cobrado vs Contratado', grafEmpresas], ['esc', '¿Dónde podríamos estar?', escenarios],
+              ['p12', 'Proyección 12 meses', proyeccion], ['abo', 'Abonos en curso', abonos], ['neg', 'Negocios a seguir', negocios]];
   function pintar(el) {
     if (_montado !== 'fin') return;
-    var D = F.d;
     el.innerHTML = uiHd('Estado financiero', 'Cómo está parado el negocio: lo cobrado, lo contratado y lo que viene.') +
       '<div class="kpi-grid u-mb12">' + kpis() + '</div>' +
-      sec('an', 'Análisis por cliente', clientesVigentes().length, '', analisis()) +
-      sec('graf', 'Cobrado vs Contratado por empresa', '', '', grafEmpresas()) +
-      sec('cli', 'Por cliente', D.emp.length, '<span class="m m-contratado">' + fmt(D.emp.reduce(function (a, x) { return a + N(x.contratado); }, 0)) + '</span>', porCliente()) +
-      sec('esc', '¿Dónde podríamos estar?', D.esc.length, '', escenarios()) +
-      sec('p12', 'Proyección próximos 12 meses', '', '', proyeccion()) +
-      sec('abo', 'Abonos en curso', '', '', abonos()) +
-      sec('neg', 'Negocios a seguir', D.neg.length, '', negocios());
+      uiTabs(TABS.map(function (t) { return [t[0], t[1], 'data-ftab="' + t[0] + '"']; }), F.tab) +
+      (TABS.find(function (t) { return t[0] === F.tab; }) || TABS[0])[2]();
   }
 
   VISTAS.fin = async function (el, op) {
     await abrirModulo(el, { id: 'fin', texto: 'Cargando el estado financiero…', forzar: op && op.forzar, cargar: cargar,
       cargado: function () { return !!F.d; }, firma: function () { return JSON.stringify(F.d); }, pintar: function () { pintar(el); } });
-    if (!el._finToggle) {                       // recordar qué desplegable quedó abierto
-      el._finToggle = true;
-      el.addEventListener('toggle', function (ev) { var d = ev.target; if (d.matches && d.matches('details[data-fsec]')) F.abiertos[d.getAttribute('data-fsec')] = d.open; }, true);
-    }
     el.onclick = function (ev) {
       if (_montado !== 'fin') return;
+      var tb = ev.target.closest('[data-ftab]'); if (tb) { F.tab = tb.getAttribute('data-ftab'); return pintar(el); }
       var c = ev.target.closest('[data-fcli]'); if (c) { var e = c.getAttribute('data-fcli'); F.ab[e] = !F.ab[e]; return pintar(el); }
     };
     el.onchange = function (ev) {
