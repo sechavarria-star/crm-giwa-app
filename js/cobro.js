@@ -7,8 +7,8 @@
        opts = { onSave: fn() }
    Los dos guardan con crm_giwa.registrar_cobro (= addCobro / addCobroSplit):
    una fila por desarrollo con el mismo comprobante. Como en el modal anterior
-   (Admin_Index · cfSplitRender, 05/11/2026): Cliente › Proyecto › Solución por
-   línea, con todas las soluciones facturables, y se suman las líneas que hagan
+   (Admin_Index · cfSplitRender, 05/11/2026): Cliente › Proyecto › Desarrollo por
+   línea, con todos los desarrollos facturables, y se suman las líneas que hagan
    falta. Cada línea propone cuota, concepto y monto (cfSugerirFila), todo editable,
    avisa el ajuste por IPC y deja renovar el mantenimiento que corresponde.
    Arriba, la razón social y el CUIT.
@@ -30,7 +30,7 @@
           '<div class="fg"><label class="fl ft-lbl" for="cb-nro">Número <span class="req">*</span></label><input class="fc" id="cb-nro" placeholder="0001-00000001"></div>' +
           '<div class="fg"><label class="fl ft-lbl" for="cb-fecha">Fecha de la factura</label><input class="fc" type="date" id="cb-fecha"></div></div>' +
         '<div class="fg" id="cb-rs"></div>' +
-        '<div class="cb-lin cb-lin-h"><span>Proyecto <span class="req">*</span></span><span>Solución <span class="req">*</span></span><span>Concepto</span><span class="u-tr">Cuota</span><span class="u-tr">Monto</span><span></span></div>' +
+        '<div class="cb-lin cb-lin-h"><span>Proyecto <span class="req">*</span></span><span>Desarrollo <span class="req">*</span></span><span>Concepto</span><span class="u-tr">Cuota</span><span class="u-tr">Monto</span><span></span></div>' +
         '<div id="cb-filas"></div><div><button type="button" class="ui-lnk ui-azul" id="cb-mas">+ Agregar línea</button></div>' +
         '<div class="g3"><div class="fg"><label class="fl ft-lbl" for="cb-mon">Moneda</label><select class="fc" id="cb-mon"><option>ARS</option><option>USD</option></select></div>' +
           '<div class="fg"><label class="fl ft-lbl" for="cb-dep" id="cb-dep-l">Fecha del pago</label><input class="fc" type="date" id="cb-dep"></div>' +
@@ -85,15 +85,15 @@
     });
     C.ipc = {}; r[6].data.forEach(function (i) { C.ipc[i.item_id] = i; });
   }
-  // ── Cliente › Proyecto › Solución ──
+  // ── Cliente › Proyecto › Desarrollo ──
   function nueva() { return { proy: '', item: '', concepto: '', cuota: 1, monto: 0, ren: false }; }
   // Renovar: abono en curso o finalizado al que le quedan 2 cuotas o menos (_puedeRenovar)
   function renovable(d) {
-    var dur = Number(d.duracion_cuotas) || 0, can = _canonSol(d.estado_id);
+    var dur = Number(d.cuotas) || 0, can = _canonSol(d.estado_id);
     return !!d.es_mantenimiento && dur > 0 && dur - (Number(d.cuotas_facturadas) || 0) <= 2 && (can === 'curso' || can === 'finalizada');
   }
-  // Las soluciones facturables del proyecto («en cuanto inicio el desarrollo puedo cobrar»: Aprobado no entra)
-  function soluciones(proy) { return Object.keys(C.devs).map(function (k) { return C.devs[k]; }).filter(function (d) { return d.proyecto_id === proy && !d.es_rechazado && (d.es_facturable || renovable(d)); }); }
+  // Los desarrollos facturables del proyecto («en cuanto inicio el desarrollo puedo cobrar»: Aprobado no entra)
+  function desarrollosDe(proy) { return Object.keys(C.devs).map(function (k) { return C.devs[k]; }).filter(function (d) { return d.proyecto_id === proy && !d.es_rechazado && (d.es_facturable || renovable(d)); }); }
   function sugerir(l) {
     var d = C.devs[l.item], m = C.mens[l.item], cob = C.cob[l.item] || { max: 0, ultimo: 0 }; if (!d) return;
     var cuota = Number(d.cuota) || 0, saldo = Math.max(0, Number(d.saldo) || 0), cuotas = Number(d.cuotas) || 0;
@@ -106,13 +106,13 @@
     var id = C.emp[v('cb-emp')], ps = C.proys.filter(function (p) { return p.empresa_id === id; });
     if (!id) { $('cb-filas').innerHTML = '<div class="ui-nota-t u-mb6">Elegí el cliente.</div>'; total(); return; }
     $('cb-filas').innerHTML = C.lin.map(function (l, i) {
-      var sols = l.proy ? soluciones(l.proy) : [], d = C.devs[l.item];
+      var sols = l.proy ? desarrollosDe(l.proy) : [], d = C.devs[l.item];
       var datos = !d ? '' : '<span>Contratado <span class="ui-num">' + fmt(Number(d.total_ars) || 0) + '</span></span><span>Facturado <span class="ui-num">' + fmt(Number(d.facturado) || 0) + '</span></span>' +
         '<span>Saldo <span class="ui-num">' + fmt(Math.max(0, Number(d.saldo) || 0)) + '</span></span>' + (renovable(d) ? '<button type="button" class="ui-lnk ui-azul" data-acc="ren" data-l="' + i + '">Renovar mantenimiento</button>' : '');
       var ipc = C.ipc[l.item];
       return '<div class="cb-lin" data-l="' + i + '">' +
           '<select class="fc" data-c="proy" aria-label="Proyecto"><option value="">— Proyecto —</option>' + ps.map(function (p) { return opcion(p.id, p.nombre || p.id, l.proy); }).join('') + '</select>' +
-          '<select class="fc" data-c="item" aria-label="Solución"' + (l.proy ? '' : ' disabled') + '><option value="">' + (l.proy && !sols.length ? '— Ninguna arrancó todavía —' : '— Solución —') + '</option>' + sols.map(function (x) { return opcion(x.id, x.titulo || x.id, l.item); }).join('') + '</select>' +
+          '<select class="fc" data-c="item" aria-label="Desarrollo"' + (l.proy ? '' : ' disabled') + '><option value="">' + (l.proy && !sols.length ? '— Ninguno arrancó todavía —' : '— Desarrollo —') + '</option>' + sols.map(function (x) { return opcion(x.id, x.titulo || x.id, l.item); }).join('') + '</select>' +
           '<input class="fc" data-c="concepto" value="' + esc(l.concepto) + '" aria-label="Concepto">' +
           '<input class="fc u-tr ui-num" type="number" min="1" data-c="cuota" value="' + esc(l.cuota) + '" aria-label="Número de cuota">' +
           '<input class="fc u-tr ui-num" type="number" min="0" data-monto data-c="monto" value="' + (l.monto || '') + '" aria-label="Monto">' +
@@ -120,7 +120,7 @@
         '</div>' +
         (datos ? '<div class="cb-sub">' + datos + '</div>' : '') +
         (ipc ? '<div class="cb-sub ui-p-pendiente">Corresponde ajuste por IPC: <span class="ui-num">' + String(ipc.pct).replace('.', ',') + ' %</span> · cuota sugerida <span class="ui-num">' + fmt(ipc.cuota_sugerida) + '</span></div>' : '') +
-        (l.ren && d ? '<div class="cb-sub cb-ren"><label class="fl" for="cb-ren-d">Meses</label><input class="fc u-tr ui-num" type="number" min="1" id="cb-ren-d" value="' + (Number(d.duracion_cuotas) || 12) + '">' +
+        (l.ren && d ? '<div class="cb-sub cb-ren"><label class="fl" for="cb-ren-d">Meses</label><input class="fc u-tr ui-num" type="number" min="1" id="cb-ren-d" value="' + (Number(d.cuotas) || 12) + '">' +
           '<label class="fl" for="cb-ren-c">Cuota</label><input class="fc u-tr ui-num" type="number" min="0" data-monto id="cb-ren-c" value="' + Math.round((ipc && ipc.cuota_sugerida) || d.cuota || 0) + '">' +
           '<button type="button" class="ui-btn ui-p" data-acc="ren-ok" data-l="' + i + '">Renovar</button></div>' : '');
     }).join('');
@@ -129,7 +129,7 @@
   function cambioLinea(ev) {
     var fila = ev.target.closest('.cb-lin'); if (!fila) return;
     var l = C.lin[+fila.getAttribute('data-l')], c = ev.target.getAttribute('data-c');
-    if (c === 'proy') { l.proy = ev.target.value; l.item = ''; l.concepto = ''; l.monto = 0; l.cuota = 1; l.ren = false; var s = soluciones(l.proy); if (s.length === 1) { l.item = s[0].id; sugerir(l); } return pintarFilas(); }
+    if (c === 'proy') { l.proy = ev.target.value; l.item = ''; l.concepto = ''; l.monto = 0; l.cuota = 1; l.ren = false; var s = desarrollosDe(l.proy); if (s.length === 1) { l.item = s[0].id; sugerir(l); } return pintarFilas(); }
     if (c === 'item') { l.item = ev.target.value; l.concepto = ''; l.monto = 0; l.cuota = 1; l.ren = false; sugerir(l); return pintarFilas(); }
   }
   function tipeoLinea(ev) {
@@ -209,7 +209,7 @@
   async function guardar(otra) {
     var pago = C.modo === 'pago', P = partes(), nc = !pago && /nota de cr/i.test(v('cb-tipo'));
     if (!v('cb-emp')) return toast('Elegí el cliente', 'err');
-    if (C.lin.some(function (l) { return l.monto > 0 && !l.item; })) return toast('Elegí el proyecto y la solución de cada línea', 'err');
+    if (C.lin.some(function (l) { return l.monto > 0 && !l.item; })) return toast('Elegí el proyecto y el desarrollo de cada línea', 'err');
     if (!P.length) return toast('Poné el monto en al menos una línea', 'err');
     if (pago && !v('cb-dep')) return toast('Falta la fecha del pago', 'err');
     if (!pago && !v('cb-nro')) return toast('Falta el número de la factura', 'err');

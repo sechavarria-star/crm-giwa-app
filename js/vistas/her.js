@@ -18,12 +18,14 @@
 
      Valores de mercado (04/11/2026) = v_mercado_referencias. Filtro por tipo;
                                Actualizar (sólo Victoria) guarda con admin_editar.
+     Solicitudes de mejoras (05/11/2026) = pedidos y feedback sobre el CRM
+                               (solicitudes_crm); avisa por Telegram a Administración.
      Análisis (04/11/2026)   = «Evaluar costos» del Cotizador suelto
                                (cot_herramientas): no guarda nada.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis']];
-  var MK = { filas: null, tipo: '' }, EV = { categoria: 'Hosting', backend: true, db: true, evitar_tarjeta: false, presupuesto: 'Bajo', complejidad: 'Baja', costo_max: '' };
+  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']];
+  var MJ = { filas: null }, MK = { filas: null, tipo: '' }, EV = { categoria: 'Hosting', backend: true, db: true, evitar_tarjeta: false, presupuesto: 'Bajo', complejidad: 'Baja', costo_max: '' };
   function subValida(s) { return SUBS.some(function (x) { return x[0] === s; }) ? s : 'meta'; }
   var TABS = [['calc', 'Calculadora'], ['vivo', 'Probalo en vivo'], ['mrr', 'MRR y conveniencia'], ['tg', 'Comparativa con Telegram']];
   var META_USD = 0.026, UTIL_USD = 0.026, FRANQ = 1000, SEM = 4.33, ESCALA = [2, 5, 10, 20, 40, 80, 120];
@@ -415,6 +417,39 @@
           '<td class="u-tr u-nw">' + (duena ? '<button class="btn bg xs" data-mk-act="' + esc(x.id) + '">Actualizar</button>' : '') + '</td></tr>'; }).join('') +
       '</tbody></table></div>');
   }
+  // ── Solicitudes de mejoras al CRM ──
+  async function pintarMejoras(el) {
+    marcarSub('mejoras');
+    if (!MJ.filas) {
+      el.innerHTML = '<div class="loading"><div class="spin"></div> Cargando…</div>';
+      var r = await db().from('solicitudes_crm').select('*').order('creado', { ascending: false });
+      if (r.error) { el.innerHTML = '<div class="card">No pude cargar los datos: ' + esc(r.error.message) + '</div>'; return; }
+      MJ.filas = r.data;
+      if (_montado !== 'her' || S.sub !== 'mejoras') return;
+    }
+    var yo = String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase(), duena = yo === 'v.gagey@giwa-ia.com';
+    el.innerHTML = uiHd('Solicitudes de mejoras', 'Pedidos y feedback sobre el CRM.', '') +
+      '<div class="fg"><label class="fl" for="mj-txt">¿Qué necesitás que cambie o mejore?</label><textarea class="fc" id="mj-txt" rows="3"></textarea></div>' +
+      '<div class="ui-barra ui-der">' + uiBtn('Enviar', 'check', 'p', 'data-mj="enviar"') + '</div>' +
+      (!MJ.filas.length ? '<div class="empty">Todavía no hay pedidos.</div>' :
+      '<div class="u-ovx"><table class="ui-tbl"><thead><tr><th>Pedido</th><th>Quién</th><th class="ui-r">Fecha</th><th>Estado</th><th></th></tr></thead><tbody>' + MJ.filas.map(function (x) {
+        var hecha = x.estado === 'Hecha';
+        return '<tr' + (hecha ? ' class="u-op6"' : '') + '><td class="fin-mj">' + esc(x.texto) + '</td><td>' + esc(String(x.quien || '').split('@')[0]) + '</td><td class="ui-num ui-r">' + esc(ff(x.creado)) + '</td><td>' + esc(x.estado) + '</td>' +
+          '<td class="ui-r">' + (duena ? '<button class="ui-lnk ui-azul" data-mj="estado" data-id="' + x.id + '" data-e="' + (hecha ? 'Nueva' : 'Hecha') + '">' + (hecha ? 'Reabrir' : 'Marcar hecha') + '</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>');
+  }
+  async function accionMejoras(el, b) {
+    var r;
+    if (b.getAttribute('data-mj') === 'enviar') {
+      var t = document.getElementById('mj-txt').value.trim(); if (!t) return toast('Escribí el pedido', 'err');
+      r = await db().rpc('enviar_solicitud', { txt: t });
+      if (r.error) return toast(r.error.message, 'err');
+      toast('Pedido enviado', 'ok');
+    } else {
+      r = await db().from('solicitudes_crm').update({ estado: b.getAttribute('data-e') }).eq('id', b.getAttribute('data-id'));
+      if (r.error) return toast(r.error.message, 'err');
+    }
+    MJ.filas = null; pintarMejoras(el);
+  }
   // Las webs de una referencia (mercado_referencias.url, separadas por espacio): con texto, un solo vínculo; sin texto, uno por web
   function mkUrls(x) { return String(x.url || '').split(/\s+/).filter(Boolean); }
   function mkLink(u, t) { return '<a class="ui-lnk ui-azul" href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>'; }
@@ -432,10 +467,21 @@
     m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Actualizar valor</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-mk">' + ico('cerrar') + '</button></div><div class="mb2">' +
       '<div class="ft-info">' + esc(x.rol || '') + ' · ' + esc(x.fuente || '') + ' · valores en ' + esc(x.unidad || '') + '</div>' +
       (mkUrls(x).length ? '<div class="u-mt6 u-mb12">Consultar en: ' + mkLinks(x) + '</div>' : '') +
+      '<div class="u-mb12"><button type="button" class="ui-lnk ui-azul" id="mk-gem">Buscar con Gemini</button> <span class="ui-nota-t" id="mk-gem-n"></span></div>' +
       '<div class="g3">' + num('min', 'Mínimo') + num('ref', 'Referencia') + num('max', 'Máximo') + '</div>' +
       '<div class="fg"><label class="fl" for="mk-fecha">Fecha</label><input class="fc" type="date" id="mk-fecha" value="' + isoMas(0) + '"></div></div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-mk">Cancelar</button><button class="btn bp" id="mk-ok">Guardar</button></div></div>';
     var g = function (k) { return document.getElementById('mk-' + k).value; }, val = function (k) { return g(k) === '' ? null : Number(g(k)); };
+    // Gemini propone; no se guarda hasta que lo revises y toques Guardar. La clave queda en el Script.
+    document.getElementById('mk-gem').onclick = async function () {
+      var nota = document.getElementById('mk-gem-n'); nota.textContent = 'Buscando…'; this.disabled = true;
+      try {
+        var r = await puente('mercadoGemini', { rol: x.rol, fuente: x.fuente, urls: mkUrls(x) });
+        ['min', 'ref', 'max'].forEach(function (k) { if (r[k] != null) document.getElementById('mk-' + k).value = r[k]; });
+        nota.textContent = 'Revisá los valores antes de guardar. ' + (r.nota || '');
+      } catch (e) { nota.textContent = e.message; }
+      this.disabled = false;
+    };
     document.getElementById('mk-ok').onclick = async function () {
       if (!g('fecha')) return toast('Falta la fecha', 'err');
       this.disabled = true;
@@ -471,6 +517,7 @@
     if (S.sub === 'nda') return pintarNda(el);
     if (S.sub === 'mercado') return pintarMercado(el);
     if (S.sub === 'analisis') return pintarAnalisis(el);
+    if (S.sub === 'mejoras') return pintarMejoras(el);
     marcarSub('meta');
     el.innerHTML = uiHd('Simulador Costos Meta', 'WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.',
         '<span class="u-s11 u-c-mt">Dólar oficial ' + ars(S.tc) + '</span>' +
@@ -510,6 +557,7 @@
       if (_montado !== 'her') return;
       var nb = ev.target.closest('[data-nda="descargar"]'); if (nb) return descargarNda(nb);
       if (ev.target.closest('[data-her-ev]')) return evaluarHer(el);
+      var mj = ev.target.closest('[data-mj]'); if (mj) return accionMejoras(el, mj);
       var mk = ev.target.closest('[data-mk-act]'); if (mk) return actualizarMk(el, mk.getAttribute('data-mk-act'));
       var b = ev.target.closest('[data-sim]'); if (!b) return;
       var a = b.getAttribute('data-sim'), k = b.getAttribute('data-k');

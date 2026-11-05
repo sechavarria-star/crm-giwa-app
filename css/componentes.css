@@ -372,23 +372,6 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 /* Línea abierta: el contorno en azul GIWA, para ver qué sección está desplegada (05/11/2026) */
 .ui-d.open, .ui-d.open + .ui-cuerpo, .ui-fp.open, .ui-fp.open + .ui-ficha, .ui-dev.open, .ui-dev.open + .ui-devc { border-color: var(--brillo); }
 
-/* Estado financiero: gráfico combinado (05/11/2026). Los targets, punteados y secundarios */
-.fin-c { min-width: 640px; }
-.fin-c-grid { stroke: var(--marco); stroke-width: 1; }
-.fin-c-eje { fill: var(--texto2); font-family: var(--f-num); font-size: 11px; text-anchor: end; }
-.fin-c-fee { fill: var(--p-abono); }
-.fin-c-tp { fill: none; stroke: var(--p-pendiente); stroke-width: 1; stroke-dasharray: 4 3; opacity: .75; }
-.fin-c-tf { stroke: var(--p-pendiente); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .85; }
-.fin-c-os { fill: none; stroke: var(--p-contratado); stroke-width: 2; }
-.fin-c-pt { fill: var(--p-contratado); stroke: var(--fondo); stroke-width: 2; }
-.fin-c-hit { fill: transparent; }
-.fin-c-hit:hover { fill: var(--suave-brillo); }
-.fin-c .fin-st { font-size: 11px; fill: var(--texto2); }
-.fin-ley i.fin-l-fee { background: var(--p-abono); }
-.fin-ley i.fin-l-os { background: var(--p-contratado); height: 3px; vertical-align: 3px; }
-.fin-ley i.fin-l-tf { background: none; border-top: 2px dashed var(--p-pendiente); border-radius: 0; height: 0; vertical-align: 3px; width: 16px; }
-.fin-ley i.fin-l-tp { background: none; border: 1px dashed var(--p-pendiente); }
-
 /* Análisis por Cliente: entra en pantalla sin desplazamiento lateral (05/11/2026) */
 .tbl.fin-an th { white-space: normal; padding: 6px 3px; vertical-align: bottom; line-height: 1.25; letter-spacing: 0; font-size: 9.5px; }
 .tbl.fin-an td { padding: 4px 3px; font-size: 10.5px; line-height: 1.25; }
@@ -416,4 +399,21 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .cb-ren .fc { width: 110px; }
 .cb-ren .fl { margin: 0; }
 @media (max-width: 800px) { .cb-lin { grid-template-columns: 1fr 1fr; } .cb-lin-h { display: none; } }
-.fin-tg { max-width: 560px; }
+
+/* ¿Dónde podríamos estar?: dos gráficos simples con target (05/11/2026) */
+.fs-resp { font-size: var(--t-m); margin-bottom: var(--e3); }
+.fs-grid { stroke: var(--marco); stroke-width: 1; }
+.fs-eje, .fs-mes { fill: var(--texto2); font-family: var(--f-num); font-size: 10px; }
+.fs-eje { text-anchor: end; }
+.fs-mes { text-anchor: middle; font-family: var(--f-texto); }
+.fs-fee { fill: var(--p-abono); }
+.fs-pro { fill: var(--p-contratado); }
+.fs-suma { opacity: .45; }
+.fs-tg { stroke: var(--p-pendiente); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.fs-hit { fill: transparent; }
+.fs-hit:hover { fill: var(--suave-brillo); }
+.fin-ley i.fs-l-b { background: var(--texto2); }
+.fin-ley i.fs-l-s { background: var(--texto2); opacity: .45; }
+.fin-ley i.fs-l-t { background: none; border-top: 2px dashed var(--p-pendiente); border-radius: 0; height: 0; width: 16px; vertical-align: 3px; }
+.fin-ipc { display: flex; align-items: flex-end; padding-bottom: var(--e2); }
+.fin-mj { white-space: pre-wrap; }

@@ -27,7 +27,7 @@ var MODULOS = [
     subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
   { id: 'fin',      nombre: 'Estado financiero', ico: 'porcentaje', listo: true },
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
-    subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis']] },
+    subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
     subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] },
   // Administración de datos (03/11/2026): el menú sólo se lo muestra a Victoria; el permiso real lo da la base (crm_giwa.es_duena)

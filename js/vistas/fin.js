@@ -6,15 +6,17 @@
      los 7 recuadros            v_resumen_financiero + v_fin_caja_mes (= getDashboardFinanciero)
      Análisis por Cliente       v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado);
                                 margen y referencia, v_analisis_clientes (= getAnalisisCliente)
-     ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion); al final, v_fin_no_aceptados
-     Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha; el gráfico, lo cobrado en v_cobrado_12m
+     ¿Dónde podríamos estar?    v_fin_escenarios (= getProyeccion); al final, v_fin_no_aceptados. Sobre v_proyeccion_12m
+                                suma lo tildado y las opciones, y lo compara con los targets. Es un «¿y si…?»: no guarda
+                                nada salvo los targets, y el ajuste por IPC es una estimación trimestral sobre los abonos.
+     Proyección 12 meses        v_proyeccion_12m + v_proy_sin_fecha
      Negocios a seguir          v_fin_negocios (= getNegociosASeguir)
    Acá no se calcula plata: se muestra lo que da la base. Lo único que se suma
    es lo tildado en «¿Dónde podríamos estar?», que es un «¿y si…?» (igual que el Portal).
    Los gráficos son SVG propios: la app no tiene librería de gráficos.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var F = { d: null, tab: 'cli', ab: {}, esc: {} };
+  var F = { d: null, tab: 'cli', ab: {}, esc: {}, sim: { mant: 0, abono: null, proy: 0, monto: 0, ipc: null, conIpc: true } };
 
   async function cargar() {
     var r = await Promise.all([
@@ -29,14 +31,16 @@
       db().from('v_fin_negocios').select('*').order('esperado', { ascending: false }),
       db().from('v_proyectos_clasif').select('id,estado_proyecto'),
       db().from('v_pm_proyectos').select('empresa,items'),
-      db().from('v_cobrado_12m').select('*').order('orden'),
+      db().from('v_desarrollos_plata').select('cuota').eq('es_mantenimiento', true).eq('es_facturable', true).gt('cuota', 0),
       db().from('v_fin_no_aceptados').select('*').order('una_vez', { ascending: false }),
-      db().from('cot_config').select('clave,valor').in('clave', ['target_fee_mensual', 'target_proyectos_mes'])
+      db().from('cot_config').select('clave,valor').in('clave', ['target_fee_mensual', 'target_proyectos_mes']),
+      db().from('indices_ipc').select('ipc').not('ipc', 'is', null).order('mes', { ascending: false }).limit(3)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
             esc: r[5].data, p12: r[6].data, sinFecha: r[7].data, neg: r[8].data,
-            proyItems: r[10].data, cob12: r[11].data, noAc: r[12].data,
+            proyItems: r[10].data, abonoProm: r[11].data.length ? Math.round(r[11].data.reduce(function (a, x) { return a + N(x.cuota); }, 0) / r[11].data.length) : 0, noAc: r[12].data,
+            ipcProm: r[14].data.length ? Math.round(r[14].data.reduce(function (a, x) { return a + N(x.ipc); }, 0) / r[14].data.length * 10) / 10 : 0,
             targets: r[13].data.reduce(function (o, c) { o[c.clave] = Number(c.valor) || 0; return o; }, {}),
             estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
@@ -133,13 +137,20 @@
   }
 
   // ── ¿Dónde podríamos estar? · tildá los negocios y a la derecha se suman ──
-  function escenarios() {
-    var E = F.d.esc, NA = F.d.noAc || [], s = { u: 0, m: 0, det: 0, neg: 0 }, n = 0;
-    E.concat(NA).forEach(function (x) {
+  function simSuma() {
+    var E = F.d.esc.concat(F.d.noAc || []), s = { u: 0, m: 0, det: 0, neg: 0 }, n = 0, S = F.sim;
+    E.forEach(function (x) {
       if (!F.esc[x.proy_id]) return; n++;
       s.u += N(x.una_vez); s.m += N(x.por_mes);
       if (x.origen === 'detenido') s.det += N(x.una_vez); else if (/negoci/i.test(x.estado || '')) s.neg += N(x.una_vez);
     });
+    s.m += N(S.mant) * N(S.abono); s.u += N(S.proy) * N(S.monto);
+    return { s: s, n: n };
+  }
+  function escenarios() {
+    var E = F.d.esc, NA = F.d.noAc || [], S = F.sim, T = F.d.targets, n = simSuma().n;
+    if (S.abono === null) S.abono = F.d.abonoProm;
+    if (S.ipc === null) S.ipc = F.d.ipcProm;
     var fila = function (x) {
       return '<label class="fin-esc"><input type="checkbox" data-fesc="' + esc(x.proy_id) + '"' + (F.esc[x.proy_id] ? ' checked' : '') + '>' +
         '<span class="fin-esc-e">' + esc(x.empresa) + '</span><span class="u-f1m u-corta">' + esc(x.proyecto) +
@@ -147,11 +158,45 @@
         (N(x.una_vez) ? '<span class="m m-contratado">+' + fmt(x.una_vez) + '</span>' : '') +
         (N(x.por_mes) ? '<span class="m m-abono">+' + fmt(x.por_mes) + '/mes</span>' : '') + '</label>';
     };
-    // Los no aceptados, al final: quizás los quieren retomar
-    var izq = E.length + NA.length ? E.map(fila).join('') + (NA.length ? '<div class="ui-lat-h u-mt10">No aceptados</div>' + NA.map(fila).join('') : '') + '<div class="ft-info u-mt6">' + (n ? 'Sumando a la derecha · destildá para sacarlo.' : 'Tildá los negocios que quieras combinar.') + '</div>'
-      : '<div class="u-s11-mt">Nada en pipeline ni detenido para simular.</div>';
-    return '<div class="fin-dos"><div>' + izq + '</div><div><div class="sec">' + (n ? 'Situación actual + ' + n + (n === 1 ? ' negocio' : ' negocios') : 'Situación actual') + '</div>' +
-      '<div class="kpi-grid fin-sim">' + kpis(s) + '</div></div></div>';
+    var num = function (k, l, val, monto) { return '<div class="fg"><label class="fl" for="fs-' + k + '">' + l + '</label><input class="fc u-tr ui-num" type="number" min="0" step="any"' + (monto ? ' data-monto' : '') + ' data-fsim="' + k + '" id="fs-' + k + '" value="' + (N(val) || '') + '"></div>'; };
+    var tg = function (k, l) { return '<div class="fg"><label class="fl" for="ftg-' + k + '">' + l + '</label><input class="fc u-tr ui-num" type="number" min="0" data-monto data-ftg="' + k + '" id="ftg-' + k + '" value="' + (N(T[k]) || '') + '"></div>'; };
+    var izq = '<div class="ui-lat-h">Targets</div><div class="g2">' + tg('target_fee_mensual', 'Fee mensual') + tg('target_proyectos_mes', 'Proyectos por mes') + '</div>' +
+      '<div class="ui-lat-h">Sumar opciones</div><div class="g2">' + num('mant', 'Mantenimientos a vender', S.mant) + num('abono', 'Abono de cada uno', S.abono, true) + num('proy', 'Proyectos nuevos', S.proy) + num('monto', 'Monto de cada uno', S.monto, true) + '</div>' +
+      '<div class="g2">' + num('ipc', 'IPC mensual estimado (%)', S.ipc) + '<div class="fg fin-ipc"><label class="u-row6 u-s12"><input type="checkbox" id="fs-conipc"' + (S.conIpc ? ' checked' : '') + '> Ajustar los abonos cada 3 meses</label></div></div>' +
+      '<div class="ui-lat-h">Negocios en curso</div>' + (E.length ? E.map(fila).join('') : '<div class="ui-nota-t">Nada en pipeline ni detenido.</div>') +
+      (NA.length ? '<div class="ui-lat-h u-mt10">No aceptados</div>' + NA.map(fila).join('') : '');
+    return '<div class="fin-dos"><div>' + izq + '</div><div id="fin-der">' + simDerecha() + '</div></div>';
+  }
+  // Lo de la derecha: 12 meses de v_proyeccion_12m + lo sumado. Lo de una sola vez cae en el mes que viene.
+  function simDerecha() {
+    var R = simSuma(), s = R.s, S = F.sim, T = F.d.targets, P = F.d.p12, tf = N(T.target_fee_mensual), tp = N(T.target_proyectos_mes);
+    var ipc = S.conIpc ? N(S.ipc) / 100 : 0, fac = function (i) { return Math.pow(1 + ipc, 3 * Math.floor(i / 3)); };
+    var fee = P.map(function (m, i) { return { et: m.etiqueta, base: N(m.mantenimiento) * fac(i), suma: i ? s.m * fac(i) : 0 }; });
+    var pro = P.map(function (m, i) { return { et: m.etiqueta, base: N(m.desarrollo), suma: i === 1 ? s.u : 0 }; });
+    var f1 = fee[1] ? fee[1].base + fee[1].suma : 0, faltaFee = tf - f1, ab = N(S.abono), cuantos = ab > 0 && faltaFee > 0 ? Math.ceil(faltaFee / ab) : 0;
+    var totPro = pro.reduce(function (a, x) { return a + x.base + x.suma; }, 0), faltaPro = tp * pro.length - totPro;
+    var resp = (tf ? (faltaFee > 0 ? 'Para el target de fee faltan <b class="ui-num">' + cuantos + '</b> mantenimiento' + (cuantos === 1 ? '' : 's') + ' de <span class="ui-num">' + fmt(ab) + '</span>.' : 'Target de fee cubierto.') : 'Cargá los targets para ver cuánto falta.') +
+      (tp ? (faltaPro > 0 ? ' En proyectos faltan <span class="ui-num">' + fmt(faltaPro) + '</span> en 12 meses.' : ' Target de proyectos cubierto.') : '');
+    return '<div class="fs-resp">' + resp + '</div>' + grafSim('Fee de mantenimiento', fee, tf, 'fs-fee') + grafSim('Facturación de proyectos', pro, tp, 'fs-pro') +
+      '<div class="fin-ley"><span><i class="fs-l-b"></i> Proyectado</span><span><i class="fs-l-s"></i> Sumado</span><span><i class="fs-l-t"></i> Target</span></div>' +
+      '<div class="ui-lat-h u-mt10">' + (R.n ? 'Situación actual + ' + R.n + (R.n === 1 ? ' negocio' : ' negocios') : 'Situación actual') + '</div><div class="kpi-grid fin-sim">' + kpis(s) + '</div>';
+  }
+  function grafSim(tit, F2, target, cls) {
+    var W = 560, H = 170, izq = 54, abajo = 20, arriba = 8, n = F2.length || 1, bw = (W - izq) / n;
+    var tope = Math.max.apply(null, [target, 1].concat(F2.map(function (x) { return x.base + x.suma; })));
+    var base = Math.pow(10, Math.floor(Math.log10(tope))), paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * base / 2; }).find(function (x) { return tope / x <= 4; }) || base;
+    var max = Math.ceil(tope / paso) * paso, piso = H - abajo, y = function (v) { return piso - v * (piso - arriba) / max; }, f = function (v) { return v.toFixed(1); };
+    var h = '';
+    for (var g = 0; g <= max + paso / 2; g += paso) h += '<line class="fs-grid" x1="' + izq + '" x2="' + W + '" y1="' + f(y(g)) + '" y2="' + f(y(g)) + '"/><text class="fs-eje" x="' + (izq - 6) + '" y="' + f(y(g) + 3) + '">$ ' + (g / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M</text>';
+    F2.forEach(function (x, i) {
+      var a = izq + i * bw + bw * 0.2, w = bw * 0.6, yb = y(x.base), ys = y(x.base + x.suma);
+      if (x.base > 0) h += '<rect class="' + cls + '" x="' + f(a) + '" y="' + f(yb) + '" width="' + f(w) + '" height="' + f(piso - yb) + '" rx="2"/>';
+      if (x.suma > 0) h += '<rect class="' + cls + ' fs-suma" x="' + f(a) + '" y="' + f(ys) + '" width="' + f(w) + '" height="' + f(Math.max(0, yb - ys - 1)) + '" rx="2"/>';
+      h += '<text class="fs-mes" x="' + f(a + w / 2) + '" y="' + (H - 6) + '">' + esc(String(x.et || '').slice(0, 3)) + '</text>' +
+        '<rect class="fs-hit" x="' + f(izq + i * bw) + '" y="0" width="' + f(bw) + '" height="' + H + '"><title>' + esc(x.et || '') + '\nProyectado ' + fmt(Math.round(x.base)) + (x.suma ? '\nSumado ' + fmt(Math.round(x.suma)) : '') + (target ? '\nTarget ' + fmt(target) : '') + '</title></rect>';
+    });
+    if (target) h += '<line class="fs-tg" x1="' + izq + '" x2="' + W + '" y1="' + f(y(target)) + '" y2="' + f(y(target)) + '"/>';
+    return '<div class="sec">' + tit + '</div><svg class="fin-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(tit) + ' de los próximos 12 meses">' + h + '</svg>';
   }
 
   // ── Proyección próximos 12 meses: tabla y gráfico con los mismos números ──
@@ -169,40 +214,7 @@
     var sf = F.d.sinFecha.map(function (x) { return x.texto; }).filter(Boolean);
     if (sf.length) h += '<div class="aviso aviso-wa u-mt8">' + ico('alerta') + ' ' + sf.length + ' desarrollo(s) sin fecha de cierre: ahí la proyección se estima por duración. ' +
       '<span class="u-c-mt">' + sf.map(esc).join(' · ') + '</span></div>';
-    var T = F.d.targets, campo = function (k, l) { return '<div class="fg"><label class="fl" for="ftg-' + k + '">' + l + '</label><input class="fc u-tr ui-num" type="number" min="0" data-monto data-ftg="' + k + '" id="ftg-' + k + '" value="' + (N(T[k]) || '') + '"></div>'; };
-    return '<div class="sec">Cobrado por mes · últimos 12 meses</div><div class="g2 fin-tg">' + campo('target_fee_mensual', 'Target de fee mensual') + campo('target_proyectos_mes', 'Target de facturación de proyectos') + '</div>' +
-      '<div id="fin-graf">' + grafCobrado(F.d.cob12, T) + '</div><br>' + h;
-  }
-  // Una sola escala en ARS. Detrás los targets (punteados, secundarios); adelante lo cobrado.
-  // Sin etiquetas por punto: el detalle de cada mes está en el tooltip.
-  function grafCobrado(M, T) {
-    var W = 900, H = 290, izq = 66, abajo = 24, arriba = 10, n = M.length || 1, bw = (W - izq) / n, tf = N(T.target_fee_mensual), tp = N(T.target_proyectos_mes);
-    var tope = Math.max.apply(null, [tf, tp, 1].concat(M.map(function (m) { return Math.max(N(m.fee), N(m.one_shot)); })));
-    var base = Math.pow(10, Math.floor(Math.log10(tope))), paso = [1, 2, 2.5, 5, 10].map(function (k) { return k * base / 2; }).find(function (x) { return tope / x <= 5; }) || base;
-    var max = Math.ceil(tope / paso) * paso, piso = H - abajo, y = function (v) { return piso - Math.max(0, v) * (piso - arriba) / max; };
-    var cx = function (i) { return izq + i * bw + bw / 2; }, f1 = function (v) { return v.toFixed(1); };
-    var columna = function (i, v, ancho, cls) {   // tope redondeado, anclada a la base
-      var a = cx(i) - ancho / 2, b = a + ancho, t = y(v), r = Math.min(4, ancho / 2, piso - t);
-      return '<path class="' + cls + '" d="M' + f1(a) + ' ' + piso + 'V' + f1(t + r) + 'Q' + f1(a) + ' ' + f1(t) + ' ' + f1(a + r) + ' ' + f1(t) + 'H' + f1(b - r) + 'Q' + f1(b) + ' ' + f1(t) + ' ' + f1(b) + ' ' + f1(t + r) + 'V' + piso + 'Z"/>';
-    };
-    var h = '';
-    for (var g = 0; g <= max + paso / 2; g += paso) {
-      h += '<line class="fin-c-grid" x1="' + izq + '" x2="' + W + '" y1="' + f1(y(g)) + '" y2="' + f1(y(g)) + '"/>' +
-        '<text class="fin-c-eje" x="' + (izq - 8) + '" y="' + f1(y(g) + 4) + '">$ ' + (g / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' M</text>';
-    }
-    if (tp) M.forEach(function (m, i) { h += columna(i, tp, bw * 0.66, 'fin-c-tp'); });
-    M.forEach(function (m, i) { if (N(m.fee) > 0) h += columna(i, N(m.fee), bw * 0.4, 'fin-c-fee'); });
-    if (tf) h += '<line class="fin-c-tf" x1="' + izq + '" x2="' + W + '" y1="' + f1(y(tf)) + '" y2="' + f1(y(tf)) + '"/>';
-    h += '<polyline class="fin-c-os" points="' + M.map(function (m, i) { return f1(cx(i)) + ',' + f1(y(N(m.one_shot))); }).join(' ') + '"/>';
-    M.forEach(function (m, i) {
-      h += '<circle class="fin-c-pt" cx="' + f1(cx(i)) + '" cy="' + f1(y(N(m.one_shot))) + '" r="4"/>' +
-        '<text class="fin-st" x="' + f1(cx(i)) + '" y="' + (H - 6) + '">' + esc(m.etiqueta || '') + '</text>' +
-        '<rect class="fin-c-hit" x="' + f1(izq + i * bw) + '" y="0" width="' + f1(bw) + '" height="' + H + '"><title>' + esc(m.etiqueta || '') + '\nFee de mantenimiento ' + fmt(N(m.fee)) + '\nOne Shot ' + fmt(N(m.one_shot)) +
-          (tf ? '\nTarget de fee ' + fmt(tf) : '') + (tp ? '\nTarget de proyectos ' + fmt(tp) : '') + '</title></rect>';
-    });
-    return '<div class="u-ovx"><svg class="fin-svg fin-c" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cobrado por mes de los últimos 12 meses: fee de mantenimiento, proyectos One Shot y targets">' + h + '</svg></div>' +
-      '<div class="fin-ley"><span><i class="fin-l-fee"></i> Fee de mantenimiento</span><span><i class="fin-l-os"></i> One Shot</span>' +
-      (tf ? '<span><i class="fin-l-tf"></i> Target de fee mensual</span>' : '') + (tp ? '<span><i class="fin-l-tp"></i> Target de proyectos</span>' : '') + '</div>';
+    return h;
   }
 
   // ── Negocios a seguir: el pipeline por valor esperado (monto × probabilidad) ──
@@ -264,11 +276,18 @@
       var tb = ev.target.closest('[data-ftab]'); if (tb) { F.tab = tb.getAttribute('data-ftab'); return pintar(el); }
       var c = ev.target.closest('[data-fcli]'); if (c) { var e = c.getAttribute('data-fcli'); F.ab[e] = !F.ab[e]; return pintar(el); }
     };
+    var derecha = function () { var d = document.getElementById('fin-der'); if (d) d.innerHTML = simDerecha(); };
+    el.oninput = function (ev) {   // se ve al instante en los gráficos, sin perder el foco
+      if (_montado !== 'fin') return;
+      var t = ev.target, k = t.getAttribute && t.getAttribute('data-fsim'), tg = t.getAttribute && t.getAttribute('data-ftg');
+      if (k) { F.sim[k] = Number(t.value) || 0; derecha(); }
+      if (tg) { F.d.targets[tg] = Number(t.value) || 0; derecha(); }
+    };
     el.onchange = function (ev) {
       if (_montado !== 'fin') return;
       var t = ev.target, tg = t.getAttribute && t.getAttribute('data-ftg');
-      if (tg) {   // el target se ve en el gráfico al instante y queda guardado para todos
-        F.d.targets[tg] = Number(t.value) || 0; document.getElementById('fin-graf').innerHTML = grafCobrado(F.d.cob12, F.d.targets);
+      if (t.id === 'fs-conipc') { F.sim.conIpc = t.checked; return derecha(); }
+      if (tg) {   // el target queda guardado para todos
         var cambios = {}; cambios[tg] = t.value;
         db().rpc('guardar_config', { cambios: cambios }).then(function (r) { if (r.error) toast(r.error.message, 'err'); else toast('Target guardado', 'ok'); });
         return;

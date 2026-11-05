@@ -1119,7 +1119,9 @@
           return hacer('enviar_propuesta', { pid: p.id, fecha: null });
         case 'aprobado':                         // aprobar no es un cambio de estado: es decidir qué entró
           var dec = await abrirAprobar(p); if (!dec) return;
-          return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos, inicios: dec.inicios }, null, true);
+          return conDeshacer('Aprobar «' + (p.nombre || p.id) + '»', 'desarrollos', (p.items || []).map(function (it) { return it.id; }), function () {
+            return hacer('aprobar_proyecto', { pid: p.id, decisiones: dec.dec, montos: dec.montos, inicios: dec.inicios }, null, true);
+          }, { tabla: 'proyectos', ids: [p.id] });
         case 'finalizado':
           var ab = (p.items || []).filter(function (it) { var c = _canonSol(it.estado || ''); return c === 'curso' || c === 'garantia' || c === 'aprobada'; });
           var msg = ab.length ? '¿Finalizar el proyecto?\n\nQuedan ' + ab.length + ' desarrollo(s) sin cerrar:\n' +
