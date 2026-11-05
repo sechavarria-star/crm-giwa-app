@@ -922,12 +922,12 @@
     }
     document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar. Si no, queda Aprobado sin facturar.';
     document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
-      return '<div class="rowb u-row8"><div class="u-f1m"><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
+      return '<div class="rowb ap-fila"><div><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
         '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
         (esMant(it)   // mantenimiento: se carga lo mensual y la duración; el total sale de ahí
           ? '<label class="ap-c"><span class="u-s10-mt">Cuota mensual</span><input class="fc" type="number" data-monto data-apc="' + esc(it.id) + '" value="' + (Number(it.cuota_act) || Number(it.valor_cuota) || '') + '"></label>' +
             '<label class="ap-c ap-c-n"><span class="u-s10-mt">Meses</span><input class="fc u-tr ui-num" type="number" min="1" data-apd="' + esc(it.id) + '" value="' + (Number(it.duracion) || 12) + '"></label>'
-          : '<label class="ap-c"><span class="u-s10-mt">Monto aprobado</span><input class="fc" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" title="Se puede corregir, p. ej. por IPC"></label>') +
+          : '<label class="ap-c"><span class="u-s10-mt">Monto aprobado</span><input class="fc" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" title="Se puede corregir, p. ej. por IPC"></label><span></span>') +
         '<label class="ap-c"><span class="u-s10-mt">Estado</span><select class="fc" data-ap="' + esc(it.id) + '"><option value="entro">Aprobado</option><option value="rechazado">No aceptado</option><option value="espera">Nuevo (sin cambios)</option></select></label>' +
         '<label class="u-row6" data-tip="¿Inicia el desarrollo? Con fecha arranca y se puede facturar"><input type="checkbox" data-api="' + esc(it.id) + '"> Inicia</label>' +
         '<input class="fc u-wauto" type="date" data-apf="' + esc(it.id) + '" value="' + isoMas(0) + '" aria-label="Fecha de inicio" disabled></div>';

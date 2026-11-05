@@ -419,6 +419,6 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .fin-mj { white-space: pre-wrap; }
 
 /* Aprobar propuesta: cada campo con su rótulo (05/11/2026) */
-#ap-list .rowb { align-items: flex-end; gap: var(--e3); }
-.ap-c { display: flex; flex-direction: column; gap: 2px; width: 150px; flex: none; }
-.ap-c-n { width: 70px; }
+.ap-fila { display: grid; grid-template-columns: minmax(140px, 1fr) 124px 60px 150px auto 150px; gap: var(--e2); align-items: end; padding: var(--e2) 0; }
+.ap-c { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+@media (max-width: 800px) { .ap-fila { grid-template-columns: 1fr 1fr; } }
