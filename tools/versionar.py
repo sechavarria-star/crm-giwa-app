@@ -7,8 +7,9 @@ mostrando la versión vieja. Correrlo antes de cada commit que se publica:
 """
 import re, time, pathlib
 
-p = pathlib.Path(__file__).resolve().parent.parent / 'index.html'
+raiz = pathlib.Path(__file__).resolve().parent.parent
 v = time.strftime('%Y%m%d%H%M')
-s = re.sub(r'((?:href|src)="(?:css|js)/[^"?]+\.(?:css|js))(?:\?v=\w+)?"', r'\1?v=' + v + '"', p.read_text())
-p.write_text(s)
+for p in (raiz / 'index.html', raiz / 'simulador.html'):
+    s = re.sub(r'((?:href|src)="(?:css|js)/[^"?]+\.(?:css|js))(?:\?v=\w+)?"', r'\1?v=' + v + '"', p.read_text())
+    p.write_text(s)
 print('index.html → v=' + v)

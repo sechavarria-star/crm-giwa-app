@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulador de costos WhatsApp · GIWA {IA}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilos.css?v=202611051339">
+  <link rel="stylesheet" href="css/app.css?v=202611051339">
+  <link rel="stylesheet" href="css/tokens.css?v=202611051339">
+  <link rel="stylesheet" href="css/componentes.css?v=202611051339">
+</head>
+<body class="sim-publica">
+  <main class="sim-pagina" id="sim"></main>
+  <script src="js/util.js?v=202611051339"></script>
+  <script src="js/base.js?v=202611051339"></script>
+  <script src="js/iconos.js?v=202611051339"></script>
+  <script src="js/ui.js?v=202611051339"></script>
+  <script src="js/calculos.js?v=202611051339"></script>
+  <script src="js/simulador.js?v=202611051339"></script>
+  <script>
+    // TC: el mismo dato del BCRA que usa el CRM, leído directo. Sin base ni login.
+    (function () {
+      var el = document.getElementById('sim');
+      el.oninput = function (ev) { SIM.entrada(ev); };
+      el.onchange = function (ev) { SIM.cambio(ev); };
+      el.onclick = function (ev) { SIM.clic(ev, el); };
+      SIM.publico();
+      fetch('https://api.bcra.gob.ar/estadisticas/v4.0/monetarias/4?limit=1')
+        .then(function (r) { return r.json(); })
+        .then(function (j) { var d = j.results[0].detalle[0]; SIM.tc(Number(d.valor), d.fecha); })
+        .catch(function () { SIM.tc(_tcDefault(), ''); })
+        .then(function () { SIM.pintar(el); });
+    })();
+  </script>
+</body>
+</html>

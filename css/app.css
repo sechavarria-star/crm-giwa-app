@@ -280,7 +280,12 @@ span.riel-paso { cursor: default; }
 .sim-ley { display: flex; gap: 16px; margin-top: 6px; font-size: 11px; color: var(--texto2); }
 .sim-ley span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 .sim-ley-ok::before { background: var(--p-cobrado); } .sim-ley-exc::before { background: var(--p-pendiente); }
+/* página pública simulador.html: sin barra ni menú del CRM */
+.sim-pagina { max-width: 1100px; margin: 0 auto; padding: 24px; }
+body.sim-publica .mo { top: 0; left: 0; }
 @media (max-width: 720px) { .sim-hero { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .sim-pagina { padding: 16px; } }
+@media (max-width: 900px) { .sim .ui-hd { flex-direction: column; align-items: stretch; gap: 10px; } .sim .ui-acc { flex-wrap: wrap; justify-content: flex-start; } .sim .ui-tabs { flex-wrap: wrap; } }
 @media print {
   .nav-g, .lat, .sim .ui-acc .ui-btn, .sim > .ui-tabs, .sim .sim-graf, .sim > .hint { display: none !important; }
   html, body, .vista, .sim, .sim .ui-d, .sim .ui-cuerpo, .sim .ui-kpi, .sim .ui-campo, .sim .md, .sim .mh, .sim .mf { background: white !important; }
