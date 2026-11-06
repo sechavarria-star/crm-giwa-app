@@ -21,6 +21,17 @@ base: entra por la Edge Function `soporte-cartero` con una clave compartida.
 
 En el CRM, Mails tiene que decir **Cartero activo** y la cuenta.
 
+## Que salgan desde soporte@giwa-ia.com
+
+- **Si soporte@ es una cuenta real del Workspace (con su propia casilla):** instalá el cartero
+  logueado como soporte@ (los pasos de arriba). Después, en la cuenta donde estaba antes,
+  corré `desinstalarActivador`: si quedan dos carteros, los mails salen de cualquiera de los dos.
+- **Si soporte@ es un alias o un grupo:** dejá el cartero en la cuenta que lo tiene y
+  1. en Gmail de esa cuenta: Configuración › Cuentas › «Enviar como» › agregar soporte@giwa-ia.com
+     (si es un alias del Workspace aparece directo; si es un grupo, Google manda un código de confirmación al grupo);
+  2. en el Apps Script: Propiedades › agregar `REMITENTE` = `soporte@giwa-ia.com`;
+  3. pegar el `Cartero.gs` nuevo y correr `instalarActivador` (pide permiso de Gmail y revisa que el alias exista).
+
 ## Operación
 
 - **Apagarlo**: correr `desinstalarActivador`. Los mails que se encolen esperan hasta que vuelva.

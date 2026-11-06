@@ -12,8 +12,12 @@
  * Corre solo, con un activador de cada 1 minuto (instalarActivador). No hace falta
  * publicarlo como app web: el cartero llama a Supabase, nunca al revés.
  *
- * Script Property: CLAVE_CARTERO (la genera Administración en el CRM:
- * Soporte › Accesos al portal › Mails › «Generar clave»; se ve una sola vez).
+ * Script Properties:
+ *   CLAVE_CARTERO  la genera alguien del equipo en el CRM (Soporte › Accesos al portal ›
+ *                  Mails › «Generar clave»; se ve una sola vez).
+ *   REMITENTE      opcional. Si los mails tienen que salir de otra dirección que la de la
+ *                  cuenta (p. ej. soporte@giwa-ia.com como alias de esta cuenta), ponela acá.
+ *                  Tiene que estar agregada en Gmail › Configuración › Cuentas › «Enviar como».
  */
 
 var FUNCION_URL = 'https://ofhiogczijhzkuqdjwvz.supabase.co/functions/v1/soporte-cartero';
@@ -35,9 +39,17 @@ function revisarCola() {
     // Uno por uno: si falla uno, los demás salen igual y cada resultado se informa por separado.
     var resultados = mails.map(function (m) {
       try {
-        var mensaje = { to: m.para, subject: m.asunto, htmlBody: m.html, body: m.texto || 'Abrí este mail en un lector que muestre HTML.', name: m.nombre || 'Soporte GIWA' };
-        if (m.responder_a) mensaje.replyTo = m.responder_a;
-        MailApp.sendEmail(mensaje);
+        var op = { htmlBody: m.html, name: m.nombre || 'Soporte GIWA' };
+        if (m.responder_a) op.replyTo = m.responder_a;
+        var remitente = PropertiesService.getScriptProperties().getProperty('REMITENTE');
+        if (remitente) {
+          // Desde un alias («Enviar como»): sólo GmailApp deja elegir el remitente
+          op.from = remitente;
+          GmailApp.sendEmail(m.para, m.asunto, m.texto || 'Abrí este mail en un lector que muestre HTML.', op);
+        } else {
+          op.to = m.para; op.subject = m.asunto; op.body = m.texto || 'Abrí este mail en un lector que muestre HTML.';
+          MailApp.sendEmail(op);
+        }
         return { id: m.id, ok: true };
       } catch (err) {
         return { id: m.id, ok: false, error: err.message || String(err) };
@@ -67,10 +79,13 @@ function llamar_(params) {
  * hace una primera pasada. Si se corre de nuevo no duplica el activador.
  */
 function instalarActivador() {
+  var rem = PropertiesService.getScriptProperties().getProperty('REMITENTE');
+  if (rem && GmailApp.getAliases().indexOf(rem) < 0 && rem !== Session.getEffectiveUser().getEmail())
+    throw new Error('Esta cuenta no puede mandar como ' + rem + ': agregalo en Gmail › Configuración › Cuentas › «Enviar como» (o borrá la propiedad REMITENTE).');
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'revisarCola') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('revisarCola').timeBased().everyMinutes(1).create();
   revisarCola();
-  console.log('Listo: el cartero revisa la cola cada 1 minuto, mandando desde ' + Session.getEffectiveUser().getEmail() +
+  console.log('Listo: el cartero revisa la cola cada 1 minuto, mandando desde ' + (rem || Session.getEffectiveUser().getEmail()) +
     ' (cuota de hoy: ' + MailApp.getRemainingDailyQuota() + ').');
 }
 
