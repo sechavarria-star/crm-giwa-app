@@ -301,7 +301,7 @@
     var resto = S.d.emps.filter(function (e) { return !hab[e.id]; });
     var h = '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="sopa-emp" aria-label="Empresa a habilitar">' + opts(resto.map(function (e) { return [e.id, e.nombre]; }), '', 'Habilitar otra empresa…') + '</select>' +
       uiBtn('Habilitar en el portal', 'mas', 's', 'data-sahab="1"') +
-      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Entra quien tildes acá y tenga usuario («Crear usuario»). Después mandale el link del portal; entra con Google o con un link a su mail.</span></div>';
+      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Tildá «Puede entrar» y tocá «Invitar»: se le crea el usuario y le llega un mail con el link al portal. Entra con Google o pidiendo un link a su mail.</span></div>';
     h += '<div id="sop-mails" class="u-mb12"></div>';
     setTimeout(pintarMails, 0);
     if (!S.d.se.length) return h + '<div class="empty">Ninguna empresa habilitada todavía.</div>';
@@ -314,8 +314,8 @@
         return '<tr><td>' + esc(c.nombre || '—') + (c.nombre ? '' : ' <span class="u-s11-mt">(no es contacto)</span>') + '</td><td>' + esc(c.mail) + '</td>' +
           '<td class="u-tc">' + (otra ? '<span class="u-s11-mt">en ' + esc(empNom(a.empresa_id)) + '</span>' : '<input type="checkbox" data-saacc="' + esc(JSON.stringify({ m: c.mail, e: e })) + '"' + (a.habilitado ? ' checked' : '') + ' aria-label="Puede entrar">') + '</td>' +
           '<td>' + (otra || !a.habilitado ? '' : a.auth_user_id
-            ? '<span class="u-s11-mt">Creado ' + esc(a.invitado ? ff(a.invitado) : '') + '</span> ' + uiIb('link', 'Copiar el link del portal', '', 'data-sacopia="1"')
-            : uiBtn('Crear usuario', 'mail', 's', 'data-sainv="' + esc(c.mail) + '"')) + '</td>' +
+            ? '<span class="u-s11-mt">Invitado ' + esc(a.invitado ? ff(a.invitado) : '') + '</span> ' + uiIb('mail', 'Reenviar la invitación por mail', '', 'data-sareenv="' + esc(c.mail) + '"') + uiIb('link', 'Copiar el link del portal', '', 'data-sacopia="1"')
+            : uiBtn('Invitar', 'mail', 's', 'data-sainv="' + esc(c.mail) + '" data-tip="Le crea el usuario y le manda el mail de invitación"')) + '</td>' +
           '<td class="m u-tr">' + esc(a.ultimo_ingreso ? ff(a.ultimo_ingreso) : '') + '</td></tr>';
       }).join('');
       return '<div class="ui-tarjeta"><span class="ui-tarjeta-barra ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '"></span>' +
@@ -327,7 +327,8 @@
           uiIb('guardar', 'Guardar', 'edi', 'data-saav="' + eid + '"') + '</div></div>' +
         '<table class="tbl u-mt6"><thead><tr><th>Contacto</th><th>Mail</th><th class="u-tc">Puede entrar</th><th>Usuario</th><th class="u-tr">Último ingreso</th></tr></thead><tbody>' +
           (filas || '<tr><td colspan="5" class="u-c-mt">La empresa no tiene contactos con mail.</td></tr>') + '</tbody></table>' +
-        '<div class="u-row6 u-mt6"><input class="fc" id="sopa-nm-' + eid + '" placeholder="Otro mail (no es contacto del CRM)">' + uiBtn('Agregar', 'mas', 's', 'data-saotro="' + eid + '"') + '</div></div>';
+        '<div class="u-row6 u-mt6"><input class="fc" id="sopa-nm-' + eid + '" placeholder="Otro mail (no es contacto del CRM)">' +
+          '<label class="u-row6 u-s12 u-nowrap"><input type="checkbox" id="sopa-ni-' + eid + '" checked> y mandarle la invitación</label>' + uiBtn('Agregar', 'mas', 's', 'data-saotro="' + eid + '"') + '</div></div>';
     }).join('') + '</div>';
   }
   // El cartero: si está activo, desde qué cuenta, cuántos mails esperan y los que fallaron
@@ -344,6 +345,14 @@
       '<div class="u-row8 u-mt6">' + uiBtn(e.configurado ? 'Generar otra clave' : 'Generar clave', 'candado', 's', 'data-saclave="1"') +
         '<span class="u-s11-mt">El cartero es un Apps Script en la cuenta que manda (tools/cartero en el repo). Mientras no esté, los mails esperan en la cola.</span></div></div>';
   }
+  // Invitar: crea el usuario de Auth (Edge Function soporte-invitar) y encola el mail de invitación
+  async function invitar(m) {
+    var r = await sb().functions.invoke('soporte-invitar', { body: { mail: m } });
+    var err = r.error ? ((r.error.context && (await r.error.context.json().catch(function () { return {}; })).error) || r.error.message) : '';
+    if (err) { toast(err, 'err'); return false; }
+    toast((r.data.ya_existia ? 'Ya tenía usuario: quedó vinculado. ' : 'Usuario creado. ') + (r.data.mail_encolado ? 'La invitación sale por mail en el próximo minuto.' : 'No se pudo encolar el mail: copiá el link del portal y mandáselo.'), r.data.mail_encolado ? 'ok' : 'err');
+    return true;
+  }
   async function accionAccesos(b, el) {
     try {
       if (b.hasAttribute('data-sahab')) {
@@ -353,12 +362,14 @@
         var e2 = b.getAttribute('data-saav');
         await rpc('soporte_guardar_empresa', { p: { empresa_id: e2, avisar_a: v('sopa-av-' + e2) } }); toast('Guardado', 'ok');
       } else if (b.hasAttribute('data-sainv')) {
-        var m = b.getAttribute('data-sainv'); b.disabled = true;
-        var r = await sb().functions.invoke('soporte-invitar', { body: { mail: m } });
-        var err = r.error ? ((r.error.context && (await r.error.context.json().catch(function () { return {}; })).error) || r.error.message) : '';
-        if (err) { b.disabled = false; return toast(err, 'err'); }
-        try { await navigator.clipboard.writeText(PORTAL_URL); } catch (x) {}
-        toast((r.data.ya_existia ? 'Ya tenía usuario en Supabase: quedó vinculado. ' : 'Usuario creado. ') + (r.data.mail_encolado ? 'Le mandamos la invitación por mail (y copié el link del portal).' : 'Copié el link del portal para mandárselo.'), 'ok');
+        b.disabled = true;
+        if (!(await invitar(b.getAttribute('data-sainv')))) { b.disabled = false; return; }
+      } else if (b.hasAttribute('data-sareenv')) {
+        var mr = b.getAttribute('data-sareenv');
+        if (!(await ask('Le llega de nuevo el mail con el link al portal y cómo entrar.', '¿Reenviar la invitación a ' + mr + '?', { ok: 'Reenviar' }))) return;
+        await rpc('soporte_mail_invitacion', { mail: mr });
+        await db().from('soporte_accesos').update({ invitado: new Date().toISOString() }).eq('mail', mr);
+        toast('Invitación en camino (sale en el próximo minuto)', 'ok');
       } else if (b.hasAttribute('data-sacopia')) {
         try { await navigator.clipboard.writeText(PORTAL_URL); toast('Link del portal copiado: ' + PORTAL_URL, 'ok'); } catch (x) { toast(PORTAL_URL, 'inf'); }
         return;
@@ -371,7 +382,9 @@
         await rpc('cartero_reintentar', { mid: Number(b.getAttribute('data-sareint')) }); toast('Vuelve a la cola', 'ok'); return pintarMails();
       } else if (b.hasAttribute('data-saotro')) {
         var e3 = b.getAttribute('data-saotro');
-        await rpc('soporte_acceso', { p: { mail: v('sopa-nm-' + e3), empresa_id: e3, habilitado: true } }); toast('Acceso agregado', 'ok');
+        var nm = v('sopa-nm-' + e3).toLowerCase();
+        await rpc('soporte_acceso', { p: { mail: nm, empresa_id: e3, habilitado: true } });
+        if ($('sopa-ni-' + e3).checked) await invitar(nm); else toast('Acceso agregado', 'ok');
       } else return;
       await cargar(); pintar(el);
     } catch (x) { toast(x.message || String(x), 'err'); }
@@ -603,8 +616,8 @@
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
-      if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia],[data-saclave],[data-sareint]')) return accionAccesos(b, el);
+      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
+      if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint]')) return accionAccesos(b, el);
       if (b.id === 'sop-nuevo') return S.sub === 'reportes' ? abrirReporte('') : abrirNuevo();
       if (b.hasAttribute('data-srep')) return abrirReporte(b.getAttribute('data-srep'));
       if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));

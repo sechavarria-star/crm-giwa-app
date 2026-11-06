@@ -625,3 +625,4 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .por-tk-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .por-tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
 .por-tipo { display: flex; gap: 8px; align-items: flex-start; background: var(--bg3); border-radius: var(--r); padding: 10px; cursor: pointer; font-size: 12px; }
+.u-nowrap { white-space: nowrap; }
