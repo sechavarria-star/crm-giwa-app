@@ -16,11 +16,12 @@
    facturables y sin cargo por desarrollo, y «Marcar facturado» (soporte_marcar_facturado).
    Etapa 3c: Reportes al cliente (soporte_guardar_reporte, soporte_publicar_reporte,
    soporte_borrar_reporte, soporte_horas_reporte). Un borrador nunca llega al cliente.
-   Sigue: accesos.
+   Etapa 3d: Accesos al portal: empresas habilitadas (soporte_guardar_empresa) y qué mails
+   entran (soporte_acceso). Entra sólo quien se habilita a mano. Invitar: etapa 5.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var S = { d: null, sub: 'tickets', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
-  var SUBS = ['tickets', 'tablero', 'reportes'];
+  var SUBS = ['tickets', 'tablero', 'reportes', 'accesos'];
   var FILTROS = [['abiertos', 'Abiertos'], ['Nuevo', 'Nuevos'], ['En proceso', 'En proceso'], ['Esperando cliente', 'Esperando cliente'], ['Cerrado', 'Cerrados'], ['todos', 'Todos']];
   // Estado del ticket → color (Nuevo pide acción; Esperando cliente es seguimiento; Cerrado, resultado)
   var COL_EST = { 'Nuevo': 'ui-p-pendiente', 'En proceso': 'ui-e-curso', 'Esperando cliente': 'ui-e-detenido', 'Cerrado': 'ui-e-finalizado' };
@@ -54,11 +55,13 @@
       db().from('contactos').select('email,nombre,apellido,empresa_id'),
       db().from('cot_config').select('clave,valor').like('clave', 'Soporte_%'),
       db().from('v_soporte_cuentas_mes').select('*'),
-      db().from('soporte_reportes').select('id,empresa_id,desarrollo_id,periodo,tipo,titulo,estado,publicado,enviado_a,actualizado').order('periodo', { ascending: false, nullsFirst: false }).order('creado', { ascending: false })
+      db().from('soporte_reportes').select('id,empresa_id,desarrollo_id,periodo,tipo,titulo,estado,publicado,enviado_a,actualizado').order('periodo', { ascending: false, nullsFirst: false }).order('creado', { ascending: false }),
+      db().from('soporte_empresas').select('*'),
+      db().from('soporte_accesos').select('*').order('mail')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     S.d = { tk: r[0].data, emps: r[1].data, usu: r[2].data.filter(function (u) { return u.activo !== false; }), cons: r[3].data,
-            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data, rep: r[6].data };
+            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data, rep: r[6].data, se: r[7].data, acc: r[8].data };
   }
 
   // ── la lista ─────────────────────────────────────────────────
@@ -102,8 +105,9 @@
     if (_montado !== 'soporte' || !el.querySelector('#sop-cuerpo')) return;
     marcarSub(S.sub);
     el.querySelector('#sop-q').hidden = S.sub !== 'tickets';
-    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'tablero' ? htmlTablero() : S.sub === 'reportes' ? htmlReportes() : htmlLista();
+    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'tablero' ? htmlTablero() : S.sub === 'reportes' ? htmlReportes() : S.sub === 'accesos' ? htmlAccesos() : htmlLista();
     el.querySelector('#sop-nuevo').innerHTML = uiIco('mas') + (S.sub === 'reportes' ? 'Nuevo reporte' : 'Nuevo ticket');
+    el.querySelector('#sop-nuevo').hidden = S.sub === 'accesos';
   }
 
   // ── Tablero por período (_tableroApi_) ───────────────────────
@@ -282,6 +286,60 @@
       $('soptx-ok').onclick = function () { var x = v('soptx-v'); closeM('m-soptx'); ok(x); };
       openM('m-soptx');
     });
+  }
+
+  // ── Accesos al portal: empresas habilitadas y qué mails entran ──
+  // Por empresa: sus contactos con mail (y los mails sueltos que ya tenían acceso). Entra sólo quien está tildado.
+  function htmlAccesos() {
+    var hab = {}; S.d.se.forEach(function (x) { hab[x.empresa_id] = x; });
+    var resto = S.d.emps.filter(function (e) { return !hab[e.id]; });
+    var h = '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="sopa-emp" aria-label="Empresa a habilitar">' + opts(resto.map(function (e) { return [e.id, e.nombre]; }), '', 'Habilitar otra empresa…') + '</select>' +
+      uiBtn('Habilitar en el portal', 'mas', 's', 'data-sahab="1"') +
+      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Entra únicamente quien tildes acá; la invitación por mail llega en la próxima etapa.</span></div>';
+    if (!S.d.se.length) return h + '<div class="empty">Ninguna empresa habilitada todavía.</div>';
+    return h + '<div class="ui-tarjetas">' + S.d.se.slice().sort(function (a, b) { return empNom(a.empresa_id).localeCompare(empNom(b.empresa_id)); }).map(function (x) {
+      var e = x.empresa_id, eid = esc(e);
+      var cons = S.d.cons.filter(function (c) { return c.empresa_id === e && c.email; }).map(function (c) { return { mail: String(c.email).trim().toLowerCase(), nombre: ((c.nombre || '') + ' ' + (c.apellido || '')).trim() }; });
+      S.d.acc.filter(function (a) { return a.empresa_id === e && !cons.some(function (c) { return c.mail === a.mail; }); }).forEach(function (a) { cons.push({ mail: a.mail, nombre: '' }); });
+      var filas = cons.map(function (c) {
+        var a = S.d.acc.find(function (y) { return y.mail === c.mail; }) || {}, otra = a.empresa_id && a.empresa_id !== e;
+        return '<tr><td>' + esc(c.nombre || '—') + (c.nombre ? '' : ' <span class="u-s11-mt">(no es contacto)</span>') + '</td><td>' + esc(c.mail) + '</td>' +
+          '<td class="u-tc">' + (otra ? '<span class="u-s11-mt">en ' + esc(empNom(a.empresa_id)) + '</span>' : '<input type="checkbox" data-saacc="' + esc(JSON.stringify({ m: c.mail, e: e })) + '"' + (a.habilitado ? ' checked' : '') + ' aria-label="Puede entrar">') + '</td>' +
+          '<td class="m u-tr">' + esc(a.ultimo_ingreso ? ff(a.ultimo_ingreso) : '') + '</td></tr>';
+      }).join('');
+      return '<div class="ui-tarjeta"><span class="ui-tarjeta-barra ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '"></span>' +
+        '<div class="ui-tarjeta-hd"><div class="ui-pro">' + esc(empNom(e)) + '</div><span class="ui-st ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '">' + (x.activo ? 'Activa' : 'Pausada') + '</span></div>' +
+        '<div class="u-row8 u-mt6"><label class="u-row6 u-s12"><input type="checkbox" data-saemp="activo" data-e="' + eid + '"' + (x.activo ? ' checked' : '') + '> Activa en el portal</label>' +
+          '<label class="u-row6 u-s12"><input type="checkbox" data-saemp="mostrar_horas" data-e="' + eid + '"' + (x.mostrar_horas ? ' checked' : '') + '> Ve horas y consumo del mantenimiento</label></div>' +
+        '<div class="fg u-mt6"><label class="fl" for="sopa-av-' + eid + '">Avisar también a</label><div class="u-row6"><input class="fc" id="sopa-av-' + eid + '" value="' + esc(x.avisar_a || '') + '" placeholder="mails separados por coma">' +
+          uiIb('guardar', 'Guardar', 'edi', 'data-saav="' + eid + '"') + '</div></div>' +
+        '<table class="tbl u-mt6"><thead><tr><th>Contacto</th><th>Mail</th><th class="u-tc">Puede entrar</th><th class="u-tr">Último ingreso</th></tr></thead><tbody>' +
+          (filas || '<tr><td colspan="4" class="u-c-mt">La empresa no tiene contactos con mail.</td></tr>') + '</tbody></table>' +
+        '<div class="u-row6 u-mt6"><input class="fc" id="sopa-nm-' + eid + '" placeholder="Otro mail (no es contacto del CRM)">' + uiBtn('Agregar', 'mas', 's', 'data-saotro="' + eid + '"') + '</div></div>';
+    }).join('') + '</div>';
+  }
+  async function accionAccesos(b, el) {
+    try {
+      if (b.hasAttribute('data-sahab')) {
+        var e = v('sopa-emp'); if (!e) return toast('Elegí la empresa', 'err');
+        await rpc('soporte_guardar_empresa', { p: { empresa_id: e, activo: true } }); toast(empNom(e) + ' habilitada en el portal', 'ok');
+      } else if (b.hasAttribute('data-saav')) {
+        var e2 = b.getAttribute('data-saav');
+        await rpc('soporte_guardar_empresa', { p: { empresa_id: e2, avisar_a: v('sopa-av-' + e2) } }); toast('Guardado', 'ok');
+      } else if (b.hasAttribute('data-saotro')) {
+        var e3 = b.getAttribute('data-saotro');
+        await rpc('soporte_acceso', { p: { mail: v('sopa-nm-' + e3), empresa_id: e3, habilitado: true } }); toast('Acceso agregado', 'ok');
+      } else return;
+      await cargar(); pintar(el);
+    } catch (x) { toast(x.message || String(x), 'err'); }
+  }
+  async function cambioAccesos(t, el) {
+    try {
+      if (t.hasAttribute('data-saemp')) { var p = { empresa_id: t.getAttribute('data-e') }; p[t.getAttribute('data-saemp')] = t.checked; await rpc('soporte_guardar_empresa', { p: p }); }
+      else if (t.hasAttribute('data-saacc')) { var k = JSON.parse(t.getAttribute('data-saacc')); await rpc('soporte_acceso', { p: { mail: k.m, empresa_id: k.e, habilitado: t.checked } }); }
+      else return;
+      toast('Guardado', 'ok'); await cargar(); pintar(el);
+    } catch (x) { toast(x.message || String(x), 'err'); t.checked = !t.checked; }
   }
 
   // «Marcar facturado»: atado a la línea de horas de soporte (SOP) del CRM
@@ -500,7 +558,8 @@
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],#sop-nuevo'); if (!b) return;
+      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],#sop-nuevo'); if (!b) return;
+      if (b.matches('[data-sahab],[data-saav],[data-saotro]')) return accionAccesos(b, el);
       if (b.id === 'sop-nuevo') return S.sub === 'reportes' ? abrirReporte('') : abrirNuevo();
       if (b.hasAttribute('data-srep')) return abrirReporte(b.getAttribute('data-srep'));
       if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));
@@ -516,6 +575,7 @@
       S.filtro = b.getAttribute('data-sfil'); pintar(el);
     };
     el.onchange = function (ev) {
+      if (ev.target.matches('[data-saemp],[data-saacc]')) return cambioAccesos(ev.target, el);
       if (ev.target.id === 'sop-emp') { S.emp = ev.target.value; pintar(el); }
       if (ev.target.id === 'sop-resp') { S.resp = ev.target.value; pintar(el); }
       if (ev.target.id === 'sop-per' && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.per = ev.target.value; pintar(el); }
