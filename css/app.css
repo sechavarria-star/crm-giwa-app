@@ -600,3 +600,7 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .sop-adj .ui-ico { width: 13px; height: 13px; }
 .sop-link { background: none; border: 0; padding: 0; color: var(--blue); cursor: pointer; font-size: 11px; text-decoration: underline; }
 .sop-tbl td { vertical-align: top; }
+.sop-b-mant, .fin-ley i.sop-l-mant { fill: var(--p-abono); background: var(--p-abono); }
+.sop-b-fact, .fin-ley i.sop-l-fact { fill: var(--p-pendiente); background: var(--p-pendiente); }
+.sop-b-gar, .fin-ley i.sop-l-gar { fill: var(--p-neutro); background: var(--p-neutro); }
+.sop-graf { max-width: 760px; }

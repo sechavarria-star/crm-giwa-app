@@ -12,10 +12,13 @@
    Los archivos van al bucket privado «soporte»: <empresa>/<ticket>/<archivo>.
 
    Etapa 3a (06/11/2026): lista, ficha, responder, resolver y nuevo ticket.
-   Siguen: tablero por período con «Marcar facturado», reportes y accesos.
+   Etapa 3b: Tablero por período (v_soporte_cuentas_mes): horas del mantenimiento,
+   facturables y sin cargo por desarrollo, y «Marcar facturado» (soporte_marcar_facturado).
+   Siguen: reportes y accesos.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var S = { d: null, filtro: 'abiertos', emp: '', resp: '', busca: '', t: null };
+  var S = { d: null, sub: 'tickets', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
+  var SUBS = ['tickets', 'tablero'];
   var FILTROS = [['abiertos', 'Abiertos'], ['Nuevo', 'Nuevos'], ['En proceso', 'En proceso'], ['Esperando cliente', 'Esperando cliente'], ['Cerrado', 'Cerrados'], ['todos', 'Todos']];
   // Estado del ticket → color (Nuevo pide acción; Esperando cliente es seguimiento; Cerrado, resultado)
   var COL_EST = { 'Nuevo': 'ui-p-pendiente', 'En proceso': 'ui-e-curso', 'Esperando cliente': 'ui-e-detenido', 'Cerrado': 'ui-e-finalizado' };
@@ -47,11 +50,12 @@
       db().from('empresas').select('id,nombre').order('nombre'),
       db().from('usuarios').select('mail,nombre,es_giwa,activo').eq('es_giwa', true),
       db().from('contactos').select('email,nombre,apellido,empresa_id'),
-      db().from('cot_config').select('clave,valor').like('clave', 'Soporte_%')
+      db().from('cot_config').select('clave,valor').like('clave', 'Soporte_%'),
+      db().from('v_soporte_cuentas_mes').select('*')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     S.d = { tk: r[0].data, emps: r[1].data, usu: r[2].data.filter(function (u) { return u.activo !== false; }), cons: r[3].data,
-            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}) };
+            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data };
   }
 
   // ── la lista ─────────────────────────────────────────────────
@@ -93,7 +97,84 @@
   }
   function pintar(el) {
     if (_montado !== 'soporte' || !el.querySelector('#sop-cuerpo')) return;
-    el.querySelector('#sop-cuerpo').innerHTML = htmlLista();
+    marcarSub(S.sub);
+    el.querySelector('#sop-q').hidden = S.sub !== 'tickets';
+    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'tablero' ? htmlTablero() : htmlLista();
+  }
+
+  // ── Tablero por período (_tableroApi_) ───────────────────────
+  // Las horas y el monto de cada desarrollo vienen hechos de v_soporte_cuentas_mes; acá sólo se suman las filas
+  // que se ven (la empresa elegida) para los recuadros de arriba.
+  function mesMas(m, n) { var p = m.split('-'), d = new Date(+p[0], +p[1] - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function nomMes(m) { var p = m.split('-'); return ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][+p[1] - 1] + ' ' + p[0].slice(2); }
+  function htmlTablero() {
+    var F = S.d.cm.filter(function (x) { return !S.emp || x.empresa_id === S.emp; });
+    var delMes = function (m) { return F.filter(function (x) { return x.mes === m; }); };
+    var suma = function (L, k) { return L.reduce(function (a, x) { return a + N(x[k]); }, 0); };
+    var M = delMes(S.per), ant = delMes(mesMas(S.per, -1));
+    var hMes = suma(M, 'mant') + suma(M, 'fact') + suma(M, 'gar'), hAnt = suma(ant, 'mant') + suma(ant, 'fact') + suma(ant, 'gar');
+    var mants = M.filter(function (x) { return x.es_mantenimiento; }), cupo = suma(mants, 'cupo');
+    var pend = M.filter(function (x) { return !x.facturado_id; });
+    var empSel = '<select class="fc u-wauto" id="sop-emp" aria-label="Empresa">' + opts(S.d.emps.filter(function (e) { return S.d.tk.some(function (t) { return t.empresa_id === e.id; }); }).map(function (e) { return [e.id, e.nombre]; }), S.emp, 'Todas las empresas') + '</select>';
+    var h = '<div class="u-row8 u-mb8"><label class="fl u-m0" for="sop-per">Período</label><input class="fc u-wauto" type="month" id="sop-per" value="' + esc(S.per) + '">' + empSel + '</div>' +
+      '<div class="ui-kpis">' +
+        uiKpi('Horas del mes', hs(hMes), 'principal', 'mes anterior ' + hs(hAnt), '', 'Todas las horas cargadas con fecha de trabajo en el período') +
+        uiKpi('Mantenimiento usado', cupo ? Math.round(suma(mants, 'mant') * 100 / cupo) + '%' : '—', 'p-abono', cupo ? hs(suma(mants, 'mant')) + ' de ' + hs(cupo) : 'sin mantenimientos con horas', '', 'Horas del mes contra las contratadas de cada mantenimiento') +
+        uiKpi('A facturar', fmt(suma(M, 'a_facturar')), 'p-pendiente', hs(suma(M, 'fact')) + ' facturables', '', 'Horas facturables del mes (exceden el mantenimiento o no tienen) × la tarifa de cada ticket') +
+        uiKpi('Sin marcar facturado', fmt(suma(pend, 'a_facturar')), 'p-neutro', pend.filter(function (x) { return N(x.fact); }).length + ' desarrollo(s)', '', 'Lo facturable del mes que todavía no se marcó como facturado') +
+      '</div>' + grafHoras(F);
+    if (!M.length) return h + '<div class="empty">No hay horas cargadas en ' + esc(nomMes(S.per)) + '.</div>';
+    return h + '<div class="sec u-mt10">Por desarrollo · ' + esc(nomMes(S.per)) + '</div><div class="card card-tabla u-p0 u-ovx"><table class="tbl"><thead><tr><th>Empresa</th><th>Desarrollo</th>' +
+      '<th class="u-tr">Contratadas</th><th class="u-tr">Usadas</th><th class="u-tr">Disponibles</th><th class="u-tr">Facturables</th><th class="u-tr">Sin cargo</th><th class="u-tr">A facturar</th><th>Facturado</th></tr></thead><tbody>' +
+      M.sort(function (a, b) { return (a.empresa_nombre + a.desarrollo).localeCompare(b.empresa_nombre + b.desarrollo); }).map(function (x) {
+        var k = esc(JSON.stringify({ e: x.empresa_id, d: x.cuenta_id || '', h: x.fact, n: x.desarrollo }));
+        return '<tr><td>' + esc(x.empresa_nombre) + '</td><td>' + esc(x.desarrollo) + '</td>' +
+          '<td class="m u-tr">' + (x.es_mantenimiento ? hs(x.cupo) : '—') + '</td><td class="m u-tr">' + hs(x.mant) + '</td><td class="m u-tr">' + (x.es_mantenimiento ? hs(x.disponibles) : '—') + '</td>' +
+          '<td class="m u-tr' + (N(x.fact) ? ' ui-p-pendiente' : '') + '">' + hs(x.fact) + '</td><td class="m u-tr">' + hs(x.gar) + '</td>' +
+          '<td class="m u-tr">' + (N(x.a_facturar) ? fmt(x.a_facturar) : '—') + '</td><td>' +
+          (x.facturado_id ? '<span class="ui-st ui-e-finalizado" data-tip="' + esc('Marcado por ' + nombre(x.facturado_por) + ' · línea ' + x.facturado_sop) + '">' + uiIco('check') + esc(ff(x.facturado_fecha)) + '</span> ' + uiIb('cerrar', 'Desmarcar', '', 'data-sdesfac="' + k + '"')
+            : (N(x.fact) ? uiBtn('Marcar facturado', 'factura', 's', 'data-sfac="' + k + '"') : '<span class="u-c-mt">—</span>')) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  // Horas de los últimos 6 meses: mantenimiento, facturables y sin cargo, apiladas
+  function grafHoras(F) {
+    var meses = [], i; for (i = 5; i >= 0; i--) meses.push(mesMas(S.per, -i));
+    var V = meses.map(function (m) { var L = F.filter(function (x) { return x.mes === m; }), s = function (k) { return L.reduce(function (a, x) { return a + N(x[k]); }, 0); }; return { m: m, a: s('mant'), f: s('fact'), g: s('gar') }; });
+    var tope = Math.max.apply(null, [1].concat(V.map(function (x) { return x.a + x.f + x.g; }))), paso = Math.max(1, Math.ceil(tope / 4));
+    var W = 640, H = 200, izq = 40, abajo = 22, arriba = 8, bw = (W - izq) / V.length, max = paso * 4, piso = H - abajo;
+    var y = function (v) { return piso - v * (piso - arriba) / max; }, f = function (v) { return v.toFixed(1); }, h = '';
+    for (var g = 0; g <= max; g += paso) h += '<line class="fs-grid" x1="' + izq + '" x2="' + W + '" y1="' + f(y(g)) + '" y2="' + f(y(g)) + '"/><text class="fs-eje" x="' + (izq - 6) + '" y="' + f(y(g) + 3) + '">' + g + ' h</text>';
+    V.forEach(function (x, i) {
+      var a = izq + i * bw + bw * 0.28, w = bw * 0.44, base = 0;
+      [['a', 'sop-b-mant'], ['f', 'sop-b-fact'], ['g', 'sop-b-gar']].forEach(function (p) {
+        if (x[p[0]] > 0) h += '<rect class="' + p[1] + '" x="' + f(a) + '" y="' + f(y(base + x[p[0]])) + '" width="' + f(w) + '" height="' + f(Math.max(0, y(base) - y(base + x[p[0]]) - 1)) + '" rx="2"/>';
+        base += x[p[0]];
+      });
+      h += '<text class="fs-mes" x="' + f(a + w / 2) + '" y="' + (H - 6) + '">' + esc(nomMes(x.m)) + '</text>' +
+        '<rect class="fs-hit" x="' + f(izq + i * bw) + '" y="0" width="' + f(bw) + '" height="' + piso + '"><title>' + esc(nomMes(x.m)) + '\nMantenimiento ' + hs(x.a) + '\nFacturables ' + hs(x.f) + '\nSin cargo ' + hs(x.g) + '</title></rect>';
+    });
+    return '<div class="sec">Horas por mes</div><svg class="fin-svg sop-graf" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Horas de soporte de los últimos 6 meses">' + h + '</svg>' +
+      '<div class="fin-ley"><span><i class="sop-l-mant"></i> Del mantenimiento</span><span><i class="sop-l-fact"></i> Facturables</span><span><i class="sop-l-gar"></i> Sin cargo (garantía, ajustes, sin clasificar)</span></div>';
+  }
+  // «Marcar facturado»: atado a la línea de horas de soporte (SOP) del CRM
+  async function marcarFacturado(k) {
+    var r = await db().from('v_soporte_desarrollos').select('id,titulo').eq('empresa_id', k.e).eq('tipo_id', 'SOP').order('id', { ascending: false });
+    if (r.error) return toast(r.error.message, 'err');
+    if (!r.data.length) return toast('La empresa no tiene una línea de horas de soporte (SOP) en el CRM. Creala en Proyectos.', 'err');
+    var m = $('m-sopf');
+    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-sopf'; document.body.appendChild(m); }
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Marcar facturado · ' + esc(nomMes(S.per)) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-sopf">' + ico('cerrar') + '</button></div>' +
+      '<div class="mb2"><p class="u-s11-mt">' + esc(k.n) + '</p>' +
+      '<div class="fg"><label class="fl" for="sopf-sop">Línea de horas de soporte del CRM</label><select class="fc" id="sopf-sop">' + opts(r.data.map(function (d) { return [d.id, d.id + ' · ' + d.titulo]; }), r.data[0].id) + '</select></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="sopf-h">Horas</label><input class="fc u-tr" id="sopf-h" type="number" min="0" step="0.25" value="' + N(k.h) + '"></div>' +
+      '<div class="fg"><label class="fl" for="sopf-n">Nota</label><input class="fc" id="sopf-n" placeholder="Opcional (n.º de factura…)"></div></div></div>' +
+      '<div class="mf"><button class="btn bg" data-cerrar="m-sopf">Cancelar</button><button class="btn bp" id="sopf-ok">' + ico('check') + ' Marcar facturado</button></div></div>';
+    $('sopf-ok').onclick = async function () {
+      try { await rpc('soporte_marcar_facturado', { p: { empresa_id: k.e, desarrollo_id: k.d, periodo: S.per, sop_id: v('sopf-sop'), horas: v('sopf-h'), nota: v('sopf-n') } });
+        closeM('m-sopf'); toast('Marcado como facturado', 'ok'); await cargar(); pintar($('vista')); }
+      catch (e) { toast(e.message, 'err'); }
+    };
+    openM('m-sopf');
   }
 
   // ── la ficha del ticket ──────────────────────────────────────
@@ -287,19 +368,31 @@
         '<input class="fc" id="sop-q" placeholder="Buscar ticket, empresa o pedido…" aria-label="Buscar">' + uiBtn('Nuevo ticket', 'mas', 'p', 'id="sop-nuevo"')) +
       '<div id="sop-cuerpo"><div class="loading"><div class="spin"></div> Cargando los tickets…</div></div>';
     el.querySelector('#sop-q').value = S.busca;
+    var sp = subPedida(); if (SUBS.indexOf(sp) >= 0) S.sub = sp;
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-sfil],[data-sver],#sop-nuevo'); if (!b) return;
+      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],#sop-nuevo'); if (!b) return;
       if (b.id === 'sop-nuevo') return abrirNuevo();
+      if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));
+      if (b.hasAttribute('data-sdesfac')) {
+        var k = JSON.parse(b.getAttribute('data-sdesfac'));
+        return ask('Se borra la marca de facturado de ' + k.n + ' en ' + nomMes(S.per) + '.', '¿Desmarcar?', { ok: 'Desmarcar' }).then(async function (ok) {
+          if (!ok) return;
+          try { await rpc('soporte_marcar_facturado', { p: { empresa_id: k.e, desarrollo_id: k.d, periodo: S.per, desmarcar: true } }); await cargar(); pintar(el); }
+          catch (e) { toast(e.message, 'err'); }
+        });
+      }
       if (b.hasAttribute('data-sver')) return verTicket(b.getAttribute('data-sver'));
       S.filtro = b.getAttribute('data-sfil'); pintar(el);
     };
     el.onchange = function (ev) {
       if (ev.target.id === 'sop-emp') { S.emp = ev.target.value; pintar(el); }
       if (ev.target.id === 'sop-resp') { S.resp = ev.target.value; pintar(el); }
+      if (ev.target.id === 'sop-per' && /^\d{4}-\d{2}$/.test(ev.target.value)) { S.per = ev.target.value; pintar(el); }
     };
     el.querySelector('#sop-q').oninput = function () { S.busca = this.value.toLowerCase().trim(); pintar(el); };
   };
+  VISTAS.soporte.irA = function (s) { if (SUBS.indexOf(s || 'tickets') < 0) return; S.sub = s || 'tickets'; pintar($('vista')); window.scrollTo(0, 0); };
   VISTAS.soporte.precargar = cargar;
 })();
