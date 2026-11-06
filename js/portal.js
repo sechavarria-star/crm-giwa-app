@@ -38,11 +38,12 @@ async function portalLink() {
   var m = pv('acceso-mail').toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(m)) return toast('Escribí tu mail', 'err');
   $('acceso-link').disabled = true;
-  // shouldCreateUser:false: sólo entra quien ya tiene usuario (lo da de alta GIWA)
-  var r = await sb().auth.signInWithOtp({ email: m, options: { shouldCreateUser: false, emailRedirectTo: location.origin + location.pathname } });
+  // El link lo arma la Edge Function soporte-ingreso y lo manda el cartero desde la cuenta de GIWA
+  // (no el mail en inglés de Supabase). Contesta lo mismo haya o no acceso.
+  var r = await sb().functions.invoke('soporte-ingreso', { body: { mail: m } });
   $('acceso-link').disabled = false;
-  if (r.error) return toast(/signup|not allowed|not found/i.test(r.error.message) ? 'Ese mail no tiene acceso. Pedíselo a GIWA.' : r.error.message, 'err');
-  pantalla('Revisá tu mail', 'Te mandamos un link a ' + m + '. Abrilo desde este mismo navegador para entrar.', false);
+  if (r.error) return toast('No pudimos mandar el link. Probá de nuevo en un rato.', 'err');
+  pantalla('Revisá tu mail', 'Si ' + m + ' tiene acceso al portal, en un minuto te llega un mail de Soporte GIWA con el botón para entrar. Abrilo desde este mismo navegador; el link sirve una sola vez.', false);
 }
 function pantalla(tit, msg, form) {
   $('app').hidden = true; $('acceso').hidden = false;
