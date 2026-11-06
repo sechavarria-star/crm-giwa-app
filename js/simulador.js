@@ -160,11 +160,11 @@ var SIM = (function () {
   function caja(t, ic, color, cuerpo, extra) { return '<div class="sim-caja ui-k-' + color + (extra ? ' ' + extra : '') + '"><div class="sim-caja-t">' + uiIco(ic) + '<span>' + esc(t) + '</span></div>' + cuerpo + '</div>'; }
   function htmlCalc() {
     var C = SECT[S.sector];
-    return '<div class="sim-tres">' +
+    return uiDesp({ t: 'Transparencia, impacto y escalabilidad', ic: 'info', open: S.costos, attrs: 'id="sm-costos"' }, '<div class="sim-tres">' +
       caja('Transparencia de costos', 'info', 'p-contratado',
         '<p>' + dig('Meta factura la mensajería directo a la tarjeta del cliente: <b>1.000 mensajes de servicio gratis</b> por mes y por número, y <b>USD 0,026</b> por mensaje excedente (esquema de octubre 2026).') + '</p>' +
         '<p>Un contacto nuevo usa muchos más mensajes que uno recurrente: el costo depende del flujo de la conversación y de la cantidad de clientes.</p>' +
-        '<p>' + dig('<b>1.000 mensajes ≠ 1.000 turnos.</b> Con 10 mensajes por gestión alcanzan para unas 100. Hay que confirmar qué mensajes cuentan según las reglas vigentes de Meta.') + '</p>' +
+        '<p>' + dig('<b class="sim-cel">1.000 mensajes ≠ 1.000 turnos.</b> Con 10 mensajes por gestión alcanzan para unas 100. Hay que confirmar qué mensajes cuentan según las reglas vigentes de Meta.') + '</p>' +
         '<p>GIWA {IA} orquesta con Supabase y n8n la gestión de turnos y consultas 24/7.</p>') +
       caja('Así se ve el impacto', 'plata', 'p-pendiente',
         '<div class="u-row8"><label class="ui-lbl u-f1" for="sm-imp">Mensajes por mes</label><span id="sm-imp-v" class="ui-num"></span></div>' +
@@ -174,7 +174,7 @@ var SIM = (function () {
       caja('Escalabilidad de costos según ' + C.lead.toLowerCase(), 'tablero', 'p-cobrado',
         tabs([['usd', 'USD'], ['ars', 'ARS'], ['uni', 'Por ' + C.unidad + ' (ARS)']], S.graf, 'graf') +
         '<div id="sm-graf"></div><div class="sim-ley"><span class="sim-ley-ok">Dentro de la franquicia</span><span class="sim-ley-exc">Excede la franquicia</span></div><div class="hint u-mt6" id="sm-umbral"></div>', 'sim-graf') +
-      '</div>' +
+      '</div>') +
       secc('Simulador', 'ajustes',
         tabs(Object.keys(SECT).map(function (k) { return [k, SECT[k].nombre]; }), S.sector, 'sector') +
         '<div class="hint u-mb10">' + esc(C.sub) + '</div>' + aviso(C.aviso) +
@@ -394,6 +394,7 @@ var SIM = (function () {
 
   function pintar(el) {
     if (!S.mix.length) sector('odontologia');
+    var dCostos = el.querySelector('#sm-costos'); if (dCostos) S.costos = dCostos.classList.contains('open');   // se repinta entero: conserva si estaba abierto
     el.innerHTML = '<div class="sim">' + uiHd('Simulador Costos Meta', 'WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.',
         '<span class="u-s11 u-c-mt">Dólar oficial BCRA ' + ars(S.tc) + (S.tcFecha ? ' al <span class="m">' + ff(S.tcFecha) + '</span>' : ' · valor de referencia') + '</span>' +
         uiBtn('Modo presentación', 'tablero', 's', 'data-sim="pres"') + uiBtn('Exportar propuesta', 'lista', 's', 'data-sim="propuesta"') + uiBtn('Imprimir', 'documento', 's', 'data-sim="imprimir"')) +

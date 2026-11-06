@@ -241,9 +241,10 @@ span.riel-paso { cursor: default; }
 .dep-imp b { font-size: 14px; }
 
 /* ── Herramientas · Simulador Costos Meta (27/10/2026) ───────────── */
-.sim-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: stretch; }
-.sim-tres-datos { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 0; }
-.sim-caja { min-width: 0; padding: 16px; background: var(--caja); border: 1px solid var(--marco); border-top: 2px solid var(--k, var(--texto2)); border-radius: var(--r); font-size: 12px; line-height: 1.55; }
+.sim-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.sim-tres-datos { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+.sim-cel { color: var(--brillo); }
+.sim-caja { min-width: 0; padding: 16px; border: 1px solid var(--marco); border-top: 2px solid var(--k, var(--texto2)); border-radius: var(--r); font-size: 12px; line-height: 1.55; }
 .sim-caja p { margin: 0 0 10px; } .sim-caja p:last-child { margin-bottom: 0; }
 .sim-caja-t { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; font-weight: 500; color: var(--k, var(--texto)); }
 .sim-caja .ui-tabs { flex-wrap: wrap; }
