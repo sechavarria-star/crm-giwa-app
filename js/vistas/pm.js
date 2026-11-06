@@ -643,8 +643,13 @@
   }
   // Análisis del cliente (getAnalisisCliente): lo que guardó el Cotizador, no se recalcula
   function tabAnalisis() {
-    var c = P.f.analisis;
-    if (!c) return '<div class="ui-nota-t">Todavía no hay análisis guardado para este cliente.</div>';
+    var a0 = P.f.analisis;
+    if (!a0) return '<div class="ui-nota-t">Todavía no hay análisis guardado para este cliente.</div>';
+    // Sólo lo aprobado: lo que sigue en Nuevo o no se aceptó no entra, ni en la tabla ni en los totales (06/11/2026)
+    var devsA = (a0.devs || []).filter(function (d) { return esGanado(d.estado); });
+    if (!devsA.length) return '<div class="ui-nota-t">Este cliente todavía no tiene desarrollos aprobados.</div>';
+    var suma = function (k) { return devsA.reduce(function (a, d) { return a + (Number(d[k]) || 0); }, 0); }, dif0 = suma('precio') - suma('referencia'), mmr0 = suma('mmr');
+    var c = { devs: devsA, dif: dif0, mmr: mmr0, a12: dif0 + 12 * mmr0, a24: dif0 + 24 * mmr0, meses: dif0 < 0 && mmr0 > 0 ? Math.ceil(-dif0 / mmr0) : 0 };
     var pct = function (v) { return v === null || v === undefined || v === '' ? '' : (v >= 0 ? '+' : '') + Math.round(v) + ' %'; };
     return uiMotivo('Referencia = horas estimadas × valor hora de venta GIWA de la fecha de venta × Tier. El abono compensa lo que faltó.') +
       '<table class="ui-tbl"><thead><tr><th>Desarrollo</th><th class="ui-r">Fecha de venta</th><th class="ui-r">Horas</th><th class="ui-r">VH ref.</th><th class="ui-r">Referencia</th>' +
