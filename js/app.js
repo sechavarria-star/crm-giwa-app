@@ -160,8 +160,12 @@ async function arrancar() {
       return pantallaAcceso('No pudiste entrar', CRM_ERROR_LOGIN, true);
     if (r.motivo === 'sin-sesion')
       return pantallaAcceso('CRM interno', 'Exclusivo para el equipo de GIWA. Entrá con tu cuenta @' + CRM_CONFIG.dominio + '.', true);
-    if (r.motivo === 'fuera-del-equipo')
+    if (r.motivo === 'fuera-del-equipo') {
+      // Un cliente del portal de soporte que cayó acá (p. ej. el link del mail volvió a la raíz): va a su portal (06/11/2026)
+      var pe = {}; try { pe = await db().rpc('mi_empresa_portal'); } catch (e) {}
+      if (pe && pe.data) return location.replace('soporte/' + location.hash);
       return pantallaAcceso('Acceso restringido', 'La cuenta ' + r.detalle + ' no está habilitada en el CRM.', false);
+    }
     return pantallaAcceso('No pude conectarme', r.detalle || 'Probá de nuevo en un rato.', false);
   }
   document.getElementById('acceso').hidden = true;
