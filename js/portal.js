@@ -61,6 +61,7 @@ async function arrancarPortal() {
     return pantalla('Sin acceso', (e.message || String(e)) + ' (' + s.user.email + ')', false);
   }
   $('acceso').hidden = true; $('app').hidden = false;
+  if (!P.como) db().rpc('portal_ingreso').then(function () {});   // anota el último ingreso
   var emp = P.ini.empresa || {};
   $('por-emp').innerHTML = (emp.logo ? uiLogo(emp.nombre, emp.logo) : '') + '<span>' + esc(emp.nombre || '') + '</span>';
   set('por-yo', P.ini.yo.nombre || P.ini.yo.mail);

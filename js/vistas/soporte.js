@@ -17,11 +17,14 @@
    Etapa 3c: Reportes al cliente (soporte_guardar_reporte, soporte_publicar_reporte,
    soporte_borrar_reporte, soporte_horas_reporte). Un borrador nunca llega al cliente.
    Etapa 3d: Accesos al portal: empresas habilitadas (soporte_guardar_empresa) y qué mails
-   entran (soporte_acceso). Entra sólo quien se habilita a mano. Invitar: etapa 5.
+   entran (soporte_acceso). Entra sólo quien se habilita a mano.
+   Etapa 5: «Crear usuario» llama a la Edge Function soporte-invitar (crea el usuario de
+   Supabase Auth con la service_role, que vive sólo allá) y copia el link del portal.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var S = { d: null, sub: 'tickets', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
   var SUBS = ['tickets', 'tablero', 'reportes', 'accesos'];
+  var PORTAL_URL = 'https://crm.giwa-ia.com/soporte/';
   var FILTROS = [['abiertos', 'Abiertos'], ['Nuevo', 'Nuevos'], ['En proceso', 'En proceso'], ['Esperando cliente', 'Esperando cliente'], ['Cerrado', 'Cerrados'], ['todos', 'Todos']];
   // Estado del ticket → color (Nuevo pide acción; Esperando cliente es seguimiento; Cerrado, resultado)
   var COL_EST = { 'Nuevo': 'ui-p-pendiente', 'En proceso': 'ui-e-curso', 'Esperando cliente': 'ui-e-detenido', 'Cerrado': 'ui-e-finalizado' };
@@ -295,7 +298,7 @@
     var resto = S.d.emps.filter(function (e) { return !hab[e.id]; });
     var h = '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="sopa-emp" aria-label="Empresa a habilitar">' + opts(resto.map(function (e) { return [e.id, e.nombre]; }), '', 'Habilitar otra empresa…') + '</select>' +
       uiBtn('Habilitar en el portal', 'mas', 's', 'data-sahab="1"') +
-      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Entra únicamente quien tildes acá; la invitación por mail llega en la próxima etapa.</span></div>';
+      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Entra quien tildes acá y tenga usuario («Crear usuario»). Después mandale el link del portal; entra con Google o con un link a su mail.</span></div>';
     if (!S.d.se.length) return h + '<div class="empty">Ninguna empresa habilitada todavía.</div>';
     return h + '<div class="ui-tarjetas">' + S.d.se.slice().sort(function (a, b) { return empNom(a.empresa_id).localeCompare(empNom(b.empresa_id)); }).map(function (x) {
       var e = x.empresa_id, eid = esc(e);
@@ -305,6 +308,9 @@
         var a = S.d.acc.find(function (y) { return y.mail === c.mail; }) || {}, otra = a.empresa_id && a.empresa_id !== e;
         return '<tr><td>' + esc(c.nombre || '—') + (c.nombre ? '' : ' <span class="u-s11-mt">(no es contacto)</span>') + '</td><td>' + esc(c.mail) + '</td>' +
           '<td class="u-tc">' + (otra ? '<span class="u-s11-mt">en ' + esc(empNom(a.empresa_id)) + '</span>' : '<input type="checkbox" data-saacc="' + esc(JSON.stringify({ m: c.mail, e: e })) + '"' + (a.habilitado ? ' checked' : '') + ' aria-label="Puede entrar">') + '</td>' +
+          '<td>' + (otra || !a.habilitado ? '' : a.auth_user_id
+            ? '<span class="u-s11-mt">Creado ' + esc(a.invitado ? ff(a.invitado) : '') + '</span> ' + uiIb('link', 'Copiar el link del portal', '', 'data-sacopia="1"')
+            : uiBtn('Crear usuario', 'mail', 's', 'data-sainv="' + esc(c.mail) + '"')) + '</td>' +
           '<td class="m u-tr">' + esc(a.ultimo_ingreso ? ff(a.ultimo_ingreso) : '') + '</td></tr>';
       }).join('');
       return '<div class="ui-tarjeta"><span class="ui-tarjeta-barra ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '"></span>' +
@@ -314,8 +320,8 @@
           '<label class="u-row6 u-s12"><input type="checkbox" data-saemp="mostrar_horas" data-e="' + eid + '"' + (x.mostrar_horas ? ' checked' : '') + '> Ve horas y consumo del mantenimiento</label></div>' +
         '<div class="fg u-mt6"><label class="fl" for="sopa-av-' + eid + '">Avisar también a</label><div class="u-row6"><input class="fc" id="sopa-av-' + eid + '" value="' + esc(x.avisar_a || '') + '" placeholder="mails separados por coma">' +
           uiIb('guardar', 'Guardar', 'edi', 'data-saav="' + eid + '"') + '</div></div>' +
-        '<table class="tbl u-mt6"><thead><tr><th>Contacto</th><th>Mail</th><th class="u-tc">Puede entrar</th><th class="u-tr">Último ingreso</th></tr></thead><tbody>' +
-          (filas || '<tr><td colspan="4" class="u-c-mt">La empresa no tiene contactos con mail.</td></tr>') + '</tbody></table>' +
+        '<table class="tbl u-mt6"><thead><tr><th>Contacto</th><th>Mail</th><th class="u-tc">Puede entrar</th><th>Usuario</th><th class="u-tr">Último ingreso</th></tr></thead><tbody>' +
+          (filas || '<tr><td colspan="5" class="u-c-mt">La empresa no tiene contactos con mail.</td></tr>') + '</tbody></table>' +
         '<div class="u-row6 u-mt6"><input class="fc" id="sopa-nm-' + eid + '" placeholder="Otro mail (no es contacto del CRM)">' + uiBtn('Agregar', 'mas', 's', 'data-saotro="' + eid + '"') + '</div></div>';
     }).join('') + '</div>';
   }
@@ -327,6 +333,16 @@
       } else if (b.hasAttribute('data-saav')) {
         var e2 = b.getAttribute('data-saav');
         await rpc('soporte_guardar_empresa', { p: { empresa_id: e2, avisar_a: v('sopa-av-' + e2) } }); toast('Guardado', 'ok');
+      } else if (b.hasAttribute('data-sainv')) {
+        var m = b.getAttribute('data-sainv'); b.disabled = true;
+        var r = await sb().functions.invoke('soporte-invitar', { body: { mail: m } });
+        var err = r.error ? ((r.error.context && (await r.error.context.json().catch(function () { return {}; })).error) || r.error.message) : '';
+        if (err) { b.disabled = false; return toast(err, 'err'); }
+        try { await navigator.clipboard.writeText(PORTAL_URL); } catch (x) {}
+        toast((r.data.ya_existia ? 'Ya tenía usuario en Supabase: quedó vinculado. ' : 'Usuario creado. ') + 'Copié el link del portal para mandárselo.', 'ok');
+      } else if (b.hasAttribute('data-sacopia')) {
+        try { await navigator.clipboard.writeText(PORTAL_URL); toast('Link del portal copiado: ' + PORTAL_URL, 'ok'); } catch (x) { toast(PORTAL_URL, 'inf'); }
+        return;
       } else if (b.hasAttribute('data-saotro')) {
         var e3 = b.getAttribute('data-saotro');
         await rpc('soporte_acceso', { p: { mail: v('sopa-nm-' + e3), empresa_id: e3, habilitado: true } }); toast('Acceso agregado', 'ok');
@@ -559,8 +575,8 @@
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],#sop-nuevo'); if (!b) return;
-      if (b.matches('[data-sahab],[data-saav],[data-saotro]')) return accionAccesos(b, el);
+      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia],#sop-nuevo'); if (!b) return;
+      if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia]')) return accionAccesos(b, el);
       if (b.id === 'sop-nuevo') return S.sub === 'reportes' ? abrirReporte('') : abrirNuevo();
       if (b.hasAttribute('data-srep')) return abrirReporte(b.getAttribute('data-srep'));
       if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));
