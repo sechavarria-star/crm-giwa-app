@@ -436,3 +436,13 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ap-fila { display: grid; grid-template-columns: minmax(140px, 1fr) 124px 60px 150px auto 150px; gap: var(--e2); align-items: end; padding: var(--e2) 0; }
 .ap-c { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 @media (max-width: 800px) { .ap-fila { grid-template-columns: 1fr 1fr; } }
+
+/* Ficha de proyecto: a la derecha, tareas, comentarios y novedades (06/11/2026) */
+.ui-cols-ficha { grid-template-columns: minmax(0, 1fr) 400px; }
+@media (max-width: 1000px) { .ui-cols-ficha { grid-template-columns: minmax(0, 1fr); } }
+/* Cronograma del desarrollo como riel horizontal */
+.dev-riel .ui-tl { display: flex; overflow-x: auto; padding: var(--e2) 0; }
+.dev-riel .ui-tl-i { flex: 1; min-width: 120px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--e1); padding: 0 var(--e2) 0 0; }
+.dev-riel .ui-tl-i::before { left: 0; right: 0; top: 6px; bottom: auto; width: auto; height: 1px; }
+.dev-riel .ui-tl-i:first-child::before { top: 6px; left: 6px; }
+.dev-riel .ui-tl-i:last-child::before { bottom: auto; right: calc(100% - 7px); }

@@ -29,9 +29,9 @@ var MODULOS = [
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
     subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
-    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']] },
+    subs: [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más'], ['datos', 'Datos', 'v.gagey@giwa-ia.com', '#/datos']] },
   // Administración de datos (03/11/2026): el menú sólo se lo muestra a Victoria; el permiso real lo da la base (crm_giwa.es_duena)
-  { id: 'datos',    nombre: 'Datos',          ico: 'lista',    listo: true, solo: 'v.gagey@giwa-ia.com' }
+  { id: 'datos',    nombre: 'Datos',          ico: 'lista',    listo: true, solo: 'v.gagey@giwa-ia.com', oculto: true }   // se entra desde Configuración
 ];
 var VISTAS = {};          // id → async function(el): la llenan js/vistas/*.js
 var _recargarVista = null;
@@ -58,8 +58,8 @@ function marcarSub(sub) {
 function pintarBarra() {
   var act = _moduloActual(), sub = _ruta().sub;
   var yo = String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase();
-  document.getElementById('nav-mods').innerHTML = MODULOS.filter(function(m) { return !m.solo || m.solo === yo; }).map(function(m) {
-    var on = m.id === act.id, subs = m.subs || [];
+  document.getElementById('nav-mods').innerHTML = MODULOS.filter(function(m) { return !m.oculto && (!m.solo || m.solo === yo); }).map(function(m) {
+    var on = m.id === act.id, subs = (m.subs || []).filter(function(s) { return !s[2] || s[2] === yo; });
     var h = '<div class="lat-grupo"><a class="lat-mod ui-mi' + (on ? ' on' : '') + '" href="#/' + m.id + '"' + (on ? ' aria-current="page"' : '') + '>' +
       ico(m.ico, 'ui-ico') + '<span class="lat-txt">' + m.nombre + '</span>' +
       (subs.length ? '<span class="lat-chev">' + ico(on ? 'arriba' : 'abajo') + '</span>' : '') + '</a>';
@@ -67,7 +67,7 @@ function pintarBarra() {
     h += '<div class="lat-subs ui-sub' + (on ? ' abierto' : '') + '"><div class="lat-tit">' + m.nombre + '</div>' +
       subs.map(function(s, i) {
         var son = on && (sub ? s[0] === sub : i === 0);
-        return '<a class="lat-sub ui-mi' + (son ? ' on' : '') + '" href="#/' + m.id + '/' + s[0] + '"' + (son ? ' aria-current="page"' : '') + '>' + s[1] + '</a>';
+        return '<a class="lat-sub ui-mi' + (son ? ' on' : '') + '" href="' + (s[3] || '#/' + m.id + '/' + s[0]) + '"' + (son ? ' aria-current="page"' : '') + '>' + s[1] + '</a>';
       }).join('') + '</div></div>';
     return h;
   }).join('');
