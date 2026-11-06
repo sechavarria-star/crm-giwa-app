@@ -5,9 +5,9 @@
 //
 // El registro libre del Auth compartido (Giwa_Database) está apagado y crear un usuario
 // requiere la service_role, que sólo vive acá (la inyecta Supabase en la función).
-// No manda ningún mail: el aviso con el link al portal es la etapa 6 (los templates de
-// Auth son de todo el proyecto y no se tocan). Sin contraseña: el cliente entra con
-// Google (Supabase vincula la cuenta porque el mail coincide y ya está confirmado) o con
+// No usa los mails de Auth (sus templates son de todo el proyecto y no se tocan): deja la
+// invitación con el link al portal en la cola de soporte, que manda el cartero (etapa 6).
+// Sin contraseña: el cliente entra con Google (Supabase vincula la cuenta porque el mail coincide y ya está confirmado) o con
 // el link por mail del portal (signInWithOtp, shouldCreateUser:false).
 //
 // Acceso: Authorization: Bearer <access_token> de alguien del equipo (crm_giwa.usuarios,
@@ -75,7 +75,8 @@ async function invitar(p: Record<string, unknown>) {
 
   const { error: e2 } = await admin.from("soporte_accesos").update({ auth_user_id: id, invitado: new Date().toISOString() }).eq("id", acc.id);
   if (e2) throw e2;
-  return { ok: true, ya_existia: yaExistia, portal: PORTAL };
+  const { error: e3 } = await admin.rpc("soporte_mail_invitacion", { mail });
+  return { ok: true, ya_existia: yaExistia, portal: PORTAL, mail_encolado: !e3 };
 }
 
 Deno.serve(async (req) => {

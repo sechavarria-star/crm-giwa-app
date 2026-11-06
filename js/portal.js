@@ -65,6 +65,8 @@ async function arrancarPortal() {
   var emp = P.ini.empresa || {};
   $('por-emp').innerHTML = (emp.logo ? uiLogo(emp.nombre, emp.logo) : '') + '<span>' + esc(emp.nombre || '') + '</span>';
   set('por-yo', P.ini.yo.nombre || P.ini.yo.mail);
+  var abrir = new URLSearchParams(location.search).get('t');   // el botón «Ver en el portal» de los mails
+  if (abrir && P.tk.some(function (t) { return t.id === abrir; })) setTimeout(function () { verPedido(abrir); }, 0);
   if (P.como) { $('por-como').hidden = false; $('por-como').innerHTML = uiIco('info') + ' Estás viendo el portal como lo ve <b>' + esc(emp.nombre || P.como) + '</b>. Es sólo para mirar.'; }
   pintar();
 }

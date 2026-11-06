@@ -20,6 +20,9 @@
    entran (soporte_acceso). Entra sólo quien se habilita a mano.
    Etapa 5: «Crear usuario» llama a la Edge Function soporte-invitar (crea el usuario de
    Supabase Auth con la service_role, que vive sólo allá) y copia el link del portal.
+   Etapa 6: los mails salen por el cartero (tools/cartero): la base los deja en
+   soporte_mail_cola. Responder y Resolver avisan al cliente (se puede destildar);
+   un ticket cargado por GIWA, sólo si se tilda. Mails: estado del cartero y su clave.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var S = { d: null, sub: 'tickets', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
@@ -278,13 +281,13 @@
     finally { b.disabled = false; }
   }
   // Un cuadro con un campo de texto (para los mails al publicar)
-  function pedirTexto(msg, tit, def) {
+  function pedirTexto(msg, tit, def, boton) {
     return new Promise(function (ok) {
       var m = $('m-soptx');
       if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-soptx'; document.body.appendChild(m); }
       m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + esc(tit) + '</span></div><div class="mb2"><p class="u-s11-mt">' + esc(msg) + '</p>' +
         '<textarea class="fc" id="soptx-v" rows="3">' + esc(def || '') + '</textarea></div>' +
-        '<div class="mf"><button class="btn bg" id="soptx-no">Cancelar</button><button class="btn bp" id="soptx-ok">' + ico('subir') + ' Publicar</button></div></div>';
+        '<div class="mf"><button class="btn bg" id="soptx-no">Cancelar</button><button class="btn bp" id="soptx-ok">' + (boton || ico('subir') + ' Publicar') + '</button></div></div>';
       $('soptx-no').onclick = function () { closeM('m-soptx'); ok(null); };
       $('soptx-ok').onclick = function () { var x = v('soptx-v'); closeM('m-soptx'); ok(x); };
       openM('m-soptx');
@@ -299,6 +302,8 @@
     var h = '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="sopa-emp" aria-label="Empresa a habilitar">' + opts(resto.map(function (e) { return [e.id, e.nombre]; }), '', 'Habilitar otra empresa…') + '</select>' +
       uiBtn('Habilitar en el portal', 'mas', 's', 'data-sahab="1"') +
       '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Entra quien tildes acá y tenga usuario («Crear usuario»). Después mandale el link del portal; entra con Google o con un link a su mail.</span></div>';
+    h += '<div id="sop-mails" class="u-mb12"></div>';
+    setTimeout(pintarMails, 0);
     if (!S.d.se.length) return h + '<div class="empty">Ninguna empresa habilitada todavía.</div>';
     return h + '<div class="ui-tarjetas">' + S.d.se.slice().sort(function (a, b) { return empNom(a.empresa_id).localeCompare(empNom(b.empresa_id)); }).map(function (x) {
       var e = x.empresa_id, eid = esc(e);
@@ -325,6 +330,20 @@
         '<div class="u-row6 u-mt6"><input class="fc" id="sopa-nm-' + eid + '" placeholder="Otro mail (no es contacto del CRM)">' + uiBtn('Agregar', 'mas', 's', 'data-saotro="' + eid + '"') + '</div></div>';
     }).join('') + '</div>';
   }
+  // El cartero: si está activo, desde qué cuenta, cuántos mails esperan y los que fallaron
+  async function pintarMails() {
+    var c = $('sop-mails'); if (!c) return;
+    var r = await db().rpc('cartero_estado');
+    if (r.error) { c.innerHTML = '<div class="u-c-rd u-s11">' + esc(r.error.message) + '</div>'; return; }
+    var e = r.data || {}, st = !e.configurado ? ['ui-p-neutro', 'Sin configurar'] : e.activo ? ['ui-e-curso', 'Cartero activo'] : ['ui-p-pendiente', e.visto_en ? 'Sin conexión' : 'Sin instalar'];
+    c.innerHTML = '<div class="ui-tarjeta"><div class="ui-tarjeta-hd"><div class="ui-pro">Mails</div><span class="ui-st ' + st[0] + '">' + st[1] + '</span></div>' +
+      '<div class="u-s11-mt u-mt6">' + (e.cuenta ? 'Salen desde <b>' + esc(e.cuenta) + '</b>' : 'Todavía no se conectó ninguna cuenta') + (e.visto_en ? ' · último contacto ' + esc(fh(e.visto_en)) : '') +
+        (e.cuota != null ? ' · le quedan ' + e.cuota + ' mails hoy' : '') + ' · ' + N(e.pendientes) + ' en la cola · ' + N(e.enviados_hoy) + ' enviados hoy.</div>' +
+      ((e.errores || []).length ? '<div class="sec u-mt10">No se pudieron mandar</div>' + e.errores.map(function (x) {
+        return '<div class="u-row6 u-s11"><span class="u-c-rd">' + esc(x.para) + '</span> · ' + esc(x.asunto) + ' <span class="u-c-mt">(' + esc(x.error || '') + ')</span>' + uiIb('recargar', 'Reintentar', '', 'data-sareint="' + x.id + '"') + '</div>'; }).join('') : '') +
+      '<div class="u-row8 u-mt6">' + uiBtn(e.configurado ? 'Generar otra clave' : 'Generar clave', 'candado', 's', 'data-saclave="1"') +
+        '<span class="u-s11-mt">El cartero es un Apps Script en la cuenta que manda (tools/cartero en el repo). Mientras no esté, los mails esperan en la cola.</span></div></div>';
+  }
   async function accionAccesos(b, el) {
     try {
       if (b.hasAttribute('data-sahab')) {
@@ -339,10 +358,17 @@
         var err = r.error ? ((r.error.context && (await r.error.context.json().catch(function () { return {}; })).error) || r.error.message) : '';
         if (err) { b.disabled = false; return toast(err, 'err'); }
         try { await navigator.clipboard.writeText(PORTAL_URL); } catch (x) {}
-        toast((r.data.ya_existia ? 'Ya tenía usuario en Supabase: quedó vinculado. ' : 'Usuario creado. ') + 'Copié el link del portal para mandárselo.', 'ok');
+        toast((r.data.ya_existia ? 'Ya tenía usuario en Supabase: quedó vinculado. ' : 'Usuario creado. ') + (r.data.mail_encolado ? 'Le mandamos la invitación por mail (y copié el link del portal).' : 'Copié el link del portal para mandárselo.'), 'ok');
       } else if (b.hasAttribute('data-sacopia')) {
         try { await navigator.clipboard.writeText(PORTAL_URL); toast('Link del portal copiado: ' + PORTAL_URL, 'ok'); } catch (x) { toast(PORTAL_URL, 'inf'); }
         return;
+      } else if (b.hasAttribute('data-saclave')) {
+        if (!(await ask('La clave anterior deja de servir y el cartero se corta hasta que pegues la nueva en su CLAVE_CARTERO.', '¿Generar la clave del cartero?', { ok: 'Generar' }))) return;
+        var cl = await rpc('cartero_nueva_clave', {});
+        await pedirTexto('Copiala ahora y pegala en el Apps Script del cartero (Propiedades › CLAVE_CARTERO). No se vuelve a mostrar.', 'Clave del cartero', cl, 'Listo, la copié');
+        return pintarMails();
+      } else if (b.hasAttribute('data-sareint')) {
+        await rpc('cartero_reintentar', { mid: Number(b.getAttribute('data-sareint')) }); toast('Vuelve a la cola', 'ok'); return pintarMails();
       } else if (b.hasAttribute('data-saotro')) {
         var e3 = b.getAttribute('data-saotro');
         await rpc('soporte_acceso', { p: { mail: v('sopa-nm-' + e3), empresa_id: e3, habilitado: true } }); toast('Acceso agregado', 'ok');
@@ -441,6 +467,7 @@
         '<div class="fg"><label class="fl" for="sop-f">Fecha de trabajo</label><input class="fc" id="sop-f" type="date" value="' + _hoyLocal() + '"></div>' +
         '<div class="fg"><label class="fl" for="sop-arch">Archivos</label><input class="fc" id="sop-arch" type="file" multiple></div></div>' +
       '<div class="u-row8"><label class="u-row6"><input type="checkbox" id="sop-int"> Nota interna (el cliente no la ve)</label>' +
+        '<label class="u-row6"><input type="checkbox" id="sop-av" checked> Avisar al cliente por mail</label>' +
         '<button class="btn bp sm u-mla" data-sacc="nota">' + ico('chat') + ' Responder</button></div>';
     var cuerpoIzq = meta + clasif + '<div class="sec u-mt10">Pedido</div><div class="ft-note-t">' + esc(t.descripcion || '—') + '</div>' + adjDe(null) +
       (cerr ? '<div class="sec u-mt10">Cómo se resolvió · ' + esc(fh(t.resuelto)) + '</div><div class="ft-note sop-final"><div class="ft-note-t">' + esc(t.respuesta_final || '—') + '</div></div>' : '') +
@@ -468,7 +495,7 @@
         '<div class="sec u-mt10">Resolver</div><textarea class="fc" id="sop-rtx" rows="3" placeholder="Cómo se resolvió (lo ve el cliente)"></textarea>' +
         '<div class="g2 u-mt6"><div class="fg"><label class="fl" for="sop-rh">Horas finales</label><input class="fc u-tr" id="sop-rh" type="number" min="0" step="0.25" placeholder="Opcional"></div>' +
           '<div class="fg"><label class="fl" for="sop-rf">Fecha de trabajo</label><input class="fc" id="sop-rf" type="date" value="' + _hoyLocal() + '"></div></div>' +
-        '<div class="u-row8">' + uiBtn('Resolver', 'check', 'p', 'data-sacc="resolver"') + '</div>';
+        '<div class="u-row8"><label class="u-row6 u-s12"><input type="checkbox" id="sop-rav" checked> Avisar al cliente por mail</label>' + uiBtn('Resolver', 'check', 'p', 'data-sacc="resolver"') + '</div>';
     $('sop-cuerpo-t').innerHTML = '<div class="sop-ficha"><div>' + cuerpoIzq + '</div><div class="sop-lado">' + lado + '</div></div>';
   }
 
@@ -501,7 +528,7 @@
     try {
       if (a === 'nota') {
         var arch = $('sop-arch'), hay = arch && arch.files.length > 0;
-        var r = await rpc('soporte_nota', { p: { ticket_id: t.id, texto: v('sop-txt'), horas: v('sop-h'), fecha: v('sop-f'), interna: $('sop-int').checked, con_adjuntos: hay } });
+        var r = await rpc('soporte_nota', { p: { ticket_id: t.id, texto: v('sop-txt'), horas: v('sop-h'), fecha: v('sop-f'), interna: $('sop-int').checked, avisar: $('sop-av').checked && !$('sop-int').checked, con_adjuntos: hay } });
         if (hay) await subir(arch, t, r.id);
         toast('Respuesta guardada', 'ok'); return trasCambio(t.id);
       }
@@ -515,7 +542,7 @@
       }
       if (a === 'resolver') {
         if (!(await ask('El ticket queda cerrado y de solo lectura.', '¿Resolver ' + t.id + '?', { ok: 'Resolver' }))) return;
-        await rpc('soporte_resolver', { p: { ticket_id: t.id, respuesta: v('sop-rtx'), horas: v('sop-rh'), fecha: v('sop-rf') } });
+        await rpc('soporte_resolver', { p: { ticket_id: t.id, respuesta: v('sop-rtx'), horas: v('sop-rh'), fecha: v('sop-rf'), avisar: $('sop-rav').checked } });
         toast('Ticket resuelto', 'ok'); return trasCambio(t.id);
       }
       if (a === 'rel') {
@@ -539,6 +566,7 @@
       '<div class="fg"><label class="fl" for="sopn-tit">Título <span class="req">*</span></label><input class="fc" id="sopn-tit" maxlength="200"></div>' +
       '<div class="fg"><label class="fl" for="sopn-desc">Qué pasa</label><textarea class="fc" id="sopn-desc" rows="4"></textarea></div>' +
       '<label class="u-row6"><input type="checkbox" id="sopn-res"> Ya está resuelto (cargar la respuesta y las horas)</label>' +
+      '<label class="u-row6 u-mt6"><input type="checkbox" id="sopn-av"> Avisarle al cliente por mail</label>' +
       '<div class="ft-box" id="sopn-resb"><div class="fg"><label class="fl" for="sopn-rta">Cómo se resolvió</label><textarea class="fc" id="sopn-rta" rows="3"></textarea></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="sopn-h">Horas</label><input class="fc u-tr" id="sopn-h" type="number" min="0" step="0.25"></div>' +
         '<div class="fg"><label class="fl" for="sopn-f">Fecha de trabajo</label><input class="fc" id="sopn-f" type="date" value="' + _hoyLocal() + '"></div></div></div>';
@@ -559,7 +587,7 @@
     try {
       var res = $('sopn-res').checked;
       var r = await rpc('soporte_crear', { p: { empresa_id: v('sopn-emp'), desarrollo_id: v('sopn-des'), tipo: v('sopn-tip'), canal: v('sopn-can'), prioridad: v('sopn-pri'),
-        solicitante: v('sopn-sol'), titulo: v('sopn-tit'), descripcion: v('sopn-desc'), resuelto: res,
+        solicitante: v('sopn-sol'), titulo: v('sopn-tit'), descripcion: v('sopn-desc'), resuelto: res, avisar: $('sopn-av').checked,
         respuesta: res ? v('sopn-rta') : '', horas: res ? v('sopn-h') : '', fecha: v('sopn-f') } });
       closeM('m-sopn'); toast('Se creó ' + r.id, 'ok'); await trasCambio(r.id);
     } catch (e) { toast(e.message || String(e), 'err'); }
@@ -575,8 +603,8 @@
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia],#sop-nuevo'); if (!b) return;
-      if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia]')) return accionAccesos(b, el);
+      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
+      if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sacopia],[data-saclave],[data-sareint]')) return accionAccesos(b, el);
       if (b.id === 'sop-nuevo') return S.sub === 'reportes' ? abrirReporte('') : abrirNuevo();
       if (b.hasAttribute('data-srep')) return abrirReporte(b.getAttribute('data-srep'));
       if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));
