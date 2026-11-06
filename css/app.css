@@ -609,3 +609,19 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .sop-tk-h { width: 80px; }
 .sop-det { margin: 6px 0 0; padding-left: 16px; font-size: 11px; color: var(--mt); }
 .sop-tk .u-row6 { flex-wrap: wrap; }
+
+/* Portal de soporte de los clientes (soporte/index.html · js/portal.js, 06/11/2026): sin menú lateral, una columna */
+.por-nav { justify-content: space-between; }
+.por-emp { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.por-vista { max-width: 960px; margin: 0 auto; padding: 52px 16px 48px; }
+.por-como { margin-top: 36px; background: var(--suave-principal); color: var(--tx); font-size: 12px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; }
+.por-como[hidden] { display: none; }
+.por-como:not([hidden]) + .por-vista { padding-top: 20px; }
+.por-ancho { width: 100%; }
+.por-o { color: var(--mt); font-size: 11px; margin: 10px 0; }
+.por-lista { display: flex; flex-direction: column; gap: 8px; }
+.por-tk { text-align: left; background: var(--card); border: 0; border-radius: var(--r); padding: 12px 14px; color: var(--tx); cursor: pointer; font: inherit; display: flex; flex-direction: column; gap: 3px; }
+.por-tk:hover { background: var(--bg3); }
+.por-tk-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.por-tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.por-tipo { display: flex; gap: 8px; align-items: flex-start; background: var(--bg3); border-radius: var(--r); padding: 10px; cursor: pointer; font-size: 12px; }

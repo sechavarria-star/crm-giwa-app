@@ -9,7 +9,7 @@ import re, time, pathlib
 
 raiz = pathlib.Path(__file__).resolve().parent.parent
 v = time.strftime('%Y%m%d%H%M')
-for p in (raiz / 'index.html', raiz / 'simulador.html'):
-    s = re.sub(r'((?:href|src)="(?:css|js)/[^"?]+\.(?:css|js))(?:\?v=\w+)?"', r'\1?v=' + v + '"', p.read_text())
+for p in (raiz / 'index.html', raiz / 'simulador.html', raiz / 'soporte' / 'index.html'):   # el portal de soporte, con ../ (06/11/2026)
+    s = re.sub(r'((?:href|src)="(?:\.\./)?(?:css|js)/[^"?]+\.(?:css|js))(?:\?v=\w+)?"', r'\1?v=' + v + '"', p.read_text())
     p.write_text(s)
 print('index.html → v=' + v)

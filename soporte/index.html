@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soporte · GIWA {IA}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611061950">
+  <link rel="stylesheet" href="../css/app.css?v=202611061950">
+  <link rel="stylesheet" href="../css/tokens.css?v=202611061950">
+  <link rel="stylesheet" href="../css/componentes.css?v=202611061950">
+</head>
+<body>
+  <!-- Portal de soporte para los clientes de GIWA. Cada dato pasa por las funciones portal_* de la base:
+       la empresa sale del mail con el que entró, nunca de lo que mande el navegador. -->
+
+  <!-- Entrar -->
+  <main id="acceso" class="acceso" hidden>
+    <div class="nav-marca acceso-marca">GIWA <span class="u-c-vi">{IA}</span></div>
+    <div class="card acceso-card">
+      <span class="acceso-ico" data-ico="chat"></span>
+      <h1 id="acceso-tit" class="acceso-tit">Soporte</h1>
+      <p id="acceso-msg" class="acceso-msg">Cargá y seguí tus pedidos de soporte. Entrá con el mail que te dimos de alta.</p>
+      <div id="acceso-form">
+        <button class="btn bp por-ancho" onclick="portalGoogle()">Entrar con Google</button>
+        <div class="por-o">o</div>
+        <input class="fc" id="acceso-mail" type="email" placeholder="tu@empresa.com" aria-label="Tu mail" autocomplete="email">
+        <button class="btn bg por-ancho u-mt6" id="acceso-link" onclick="portalLink()">Mandarme un link para entrar</button>
+      </div>
+      <button id="acceso-salir" class="btn bg sm" onclick="salir()" hidden>Entrar con otra cuenta</button>
+    </div>
+  </main>
+
+  <!-- El portal -->
+  <div id="app" hidden>
+    <header class="nav-g por-nav">
+      <div class="u-row8"><div class="nav-marca">GIWA <span class="u-c-vi">{IA}</span></div><span class="por-emp" id="por-emp"></span></div>
+      <div class="nav-der">
+        <span class="u-s11-mt-fw6" id="por-yo"></span>
+        <button class="nav-b btn-ico" onclick="salir()" data-tip="Salir" aria-label="Salir"><span data-ico="candado"></span></button>
+      </div>
+    </header>
+    <div id="por-como" class="por-como" hidden></div>
+    <main id="vista" class="vista por-vista"></main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=202611061950"></script>
+  <script src="../js/util.js?v=202611061950"></script>
+  <script src="../js/base.js?v=202611061950"></script>
+  <script src="../js/iconos.js?v=202611061950"></script>
+  <script src="../js/ui.js?v=202611061950"></script>
+  <script src="../js/dialogo.js?v=202611061950"></script>
+  <script src="../js/calculos.js?v=202611061950"></script>
+  <script src="../js/sb.js?v=202611061950"></script>
+  <script src="../js/portal.js?v=202611061950"></script>
+</body>
+</html>

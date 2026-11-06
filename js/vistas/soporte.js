@@ -308,7 +308,8 @@
           '<td class="m u-tr">' + esc(a.ultimo_ingreso ? ff(a.ultimo_ingreso) : '') + '</td></tr>';
       }).join('');
       return '<div class="ui-tarjeta"><span class="ui-tarjeta-barra ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '"></span>' +
-        '<div class="ui-tarjeta-hd"><div class="ui-pro">' + esc(empNom(e)) + '</div><span class="ui-st ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '">' + (x.activo ? 'Activa' : 'Pausada') + '</span></div>' +
+        '<div class="ui-tarjeta-hd"><div class="ui-pro">' + esc(empNom(e)) + '</div><div class="u-row6"><span class="ui-st ' + (x.activo ? 'ui-e-curso' : 'ui-p-neutro') + '">' + (x.activo ? 'Activa' : 'Pausada') + '</span>' +
+          '<a class="ui-ib" href="soporte/?como=' + encodeURIComponent(e) + '" target="_blank" rel="noopener" data-tip="Ver el portal como lo ve esta empresa" aria-label="Ver como">' + uiIco('abrir') + '</a></div></div>' +
         '<div class="u-row8 u-mt6"><label class="u-row6 u-s12"><input type="checkbox" data-saemp="activo" data-e="' + eid + '"' + (x.activo ? ' checked' : '') + '> Activa en el portal</label>' +
           '<label class="u-row6 u-s12"><input type="checkbox" data-saemp="mostrar_horas" data-e="' + eid + '"' + (x.mostrar_horas ? ' checked' : '') + '> Ve horas y consumo del mantenimiento</label></div>' +
         '<div class="fg u-mt6"><label class="fl" for="sopa-av-' + eid + '">Avisar también a</label><div class="u-row6"><input class="fc" id="sopa-av-' + eid + '" value="' + esc(x.avisar_a || '') + '" placeholder="mails separados por coma">' +
