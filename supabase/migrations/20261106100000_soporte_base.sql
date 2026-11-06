@@ -489,7 +489,8 @@ declare t crm_giwa.soporte_tickets; nid text; resp text; frec text;
 begin
   select * into t from crm_giwa.soporte_tickets where id = tid;
   if t.id is null or t.tarea_id is not null then return t.tarea_id; end if;
-  resp := crm_giwa.norm_mail((select valor from crm_giwa.cot_config where clave = 'Soporte_ResponsableCotizar'));
+  if not (crm_giwa.es_equipo() or t.empresa_id = crm_giwa.mi_empresa_portal()) then raise exception 'No tenés permiso.'; end if;
+  resp :=crm_giwa.norm_mail((select valor from crm_giwa.cot_config where clave = 'Soporte_ResponsableCotizar'));
   if not exists (select 1 from crm_giwa.usuarios where mail = resp) then resp := crm_giwa.mail_admin(); end if;
   frec := (select trim(x) from crm_giwa.cot_config c, unnest(string_to_array(coalesce(c.valor, ''), ',')) x
             where c.clave = 'Tarea_Frecuencia' and crm_giwa.norm(trim(x)) = 'unica' limit 1);
