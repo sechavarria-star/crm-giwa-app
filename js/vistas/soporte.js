@@ -301,7 +301,7 @@
     var resto = S.d.emps.filter(function (e) { return !hab[e.id]; });
     var h = '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="sopa-emp" aria-label="Empresa a habilitar">' + opts(resto.map(function (e) { return [e.id, e.nombre]; }), '', 'Habilitar otra empresa…') + '</select>' +
       uiBtn('Habilitar en el portal', 'mas', 's', 'data-sahab="1"') +
-      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Tildá «Puede entrar» y tocá «Invitar»: se le crea el usuario y le llega un mail con el link al portal. Entra con Google o pidiendo un link a su mail.</span></div>';
+      '<span class="u-s11-mt">El cliente ve sólo lo de su empresa. Tildá «Puede entrar» y le llega un mail con «Activar portal»: crea su contraseña y queda adentro. Después entra con su mail y contraseña, o con Google.</span></div>';
     h += '<div id="sop-mails" class="u-mb12"></div>';
     setTimeout(pintarMails, 0);
     if (!S.d.se.length) return h + '<div class="empty">Ninguna empresa habilitada todavía.</div>';
@@ -366,10 +366,8 @@
         if (!(await invitar(b.getAttribute('data-sainv')))) { b.disabled = false; return; }
       } else if (b.hasAttribute('data-sareenv')) {
         var mr = b.getAttribute('data-sareenv');
-        if (!(await ask('Le llega de nuevo el mail con el link al portal y cómo entrar.', '¿Reenviar la invitación a ' + mr + '?', { ok: 'Reenviar' }))) return;
-        await rpc('soporte_mail_invitacion', { mail: mr });
-        await db().from('soporte_accesos').update({ invitado: new Date().toISOString() }).eq('mail', mr);
-        toast('Invitación en camino (sale en el próximo minuto)', 'ok');
+        if (!(await ask('Le llega de nuevo el mail con «Activar portal» (sirve 7 días).', '¿Reenviar la invitación a ' + mr + '?', { ok: 'Reenviar' }))) return;
+        if (!(await invitar(mr))) return;
       } else if (b.hasAttribute('data-sacopia')) {
         try { await navigator.clipboard.writeText(PORTAL_URL); toast('Link del portal copiado: ' + PORTAL_URL, 'ok'); } catch (x) { toast(PORTAL_URL, 'inf'); }
         return;
@@ -392,7 +390,13 @@
   async function cambioAccesos(t, el) {
     try {
       if (t.hasAttribute('data-saemp')) { var p = { empresa_id: t.getAttribute('data-e') }; p[t.getAttribute('data-saemp')] = t.checked; await rpc('soporte_guardar_empresa', { p: p }); }
-      else if (t.hasAttribute('data-saacc')) { var k = JSON.parse(t.getAttribute('data-saacc')); await rpc('soporte_acceso', { p: { mail: k.m, empresa_id: k.e, habilitado: t.checked } }); }
+      else if (t.hasAttribute('data-saacc')) {
+        var k = JSON.parse(t.getAttribute('data-saacc'));
+        await rpc('soporte_acceso', { p: { mail: k.m, empresa_id: k.e, habilitado: t.checked } });
+        // tildar «Puede entrar» ya invita: se le crea el usuario y le llega el mail con «Activar portal»
+        var ya = S.d.acc.find(function (a) { return a.mail === k.m; });
+        if (t.checked && !(ya && ya.auth_user_id && ya.invitado)) { await invitar(k.m); await cargar(); return pintar(el); }
+      }
       else return;
       toast('Guardado', 'ok'); await cargar(); pintar(el);
     } catch (x) { toast(x.message || String(x), 'err'); t.checked = !t.checked; }

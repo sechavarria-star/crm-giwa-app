@@ -2,7 +2,7 @@
    portal.js · el portal de soporte de los clientes (soporte/index.html)
    ──────────────────────────────────────────────────────────────────────
    Reemplaza el front de soporte-gs (Index.html del Apps Script). El cliente
-   entra con Google o con un link por mail (Supabase Auth) y ve SÓLO lo de su
+   entra con su mail y contraseña, o con Google (Supabase Auth), y ve SÓLO lo de su
    empresa: todo pasa por las funciones portal_* de la base, que sacan la
    empresa del mail de la sesión. Nunca le llegan notas internas, montos,
    tarifas ni la clasificación puesta a mano (eso lo garantiza la base).
@@ -31,30 +31,62 @@ var P_EST_TXT = { 'Nuevo': 'Recibido', 'En proceso': 'En proceso', 'Esperando cl
 function pEst(e) { return '<span class="ui-st ' + (P_EST[e] || 'ui-p-neutro') + '">' + esc(P_EST_TXT[e] || e) + '</span>'; }
 
 // ── entrar ─────────────────────────────────────────────────────
+// Mail y contraseña (17/11 → 06/11/2026, pedido de Sebastián). La contraseña la crea el cliente
+// con «Activar portal» (invitación) u «Olvidé mi contraseña»: los dos mails los manda el cartero.
+async function portalEntrar(ev) {
+  ev.preventDefault();
+  $('acceso-entrar').disabled = true;
+  var r = await sb().auth.signInWithPassword({ email: pv('acceso-mail').toLowerCase(), password: $('acceso-pass').value });
+  $('acceso-entrar').disabled = false;
+  if (r.error) return toast(/invalid/i.test(r.error.message) ? 'Mail o contraseña incorrectos. Si es tu primera vez, tocá «Olvidé mi contraseña».' : r.error.message, 'err');
+  arrancarPortal();
+}
+// Google vuelve a la raíz del CRM (ya permitida en el Auth compartido); el CRM manda al cliente a /soporte
 function portalGoogle() {
-  return sb().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname + location.search, queryParams: { prompt: 'select_account' } } });
+  return sb().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/', queryParams: { prompt: 'select_account' } } });
 }
 async function portalLink() {
   var m = pv('acceso-mail').toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(m)) return toast('Escribí tu mail', 'err');
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(m)) { $('acceso-mail').focus(); return toast('Escribí tu mail y volvé a tocar «Olvidé mi contraseña»', 'err'); }
   $('acceso-link').disabled = true;
-  // El link lo arma la Edge Function soporte-ingreso y lo manda el cartero desde la cuenta de GIWA
-  // (no el mail en inglés de Supabase). Contesta lo mismo haya o no acceso.
   var r = await sb().functions.invoke('soporte-ingreso', { body: { mail: m } });
   $('acceso-link').disabled = false;
-  if (r.error) return toast('No pudimos mandar el link. Probá de nuevo en un rato.', 'err');
-  pantalla('Revisá tu mail', 'Si ' + m + ' tiene acceso al portal, en un minuto te llega un mail de Soporte GIWA con el botón para entrar. Abrilo desde este mismo navegador; el link sirve una sola vez.', false);
+  if (r.error) return toast('No pudimos mandar el mail. Probá de nuevo en un rato.', 'err');
+  pantalla('Revisá tu mail', 'Si ' + m + ' tiene acceso al portal, en un minuto te llega un mail de Soporte GIWA con el botón para crear tu contraseña.', 'nada');
 }
+async function portalClave(ev) {
+  ev.preventDefault();
+  if ($('clave-1').value !== $('clave-2').value) return toast('Las dos contraseñas no coinciden', 'err');
+  $('clave-ok').disabled = true;
+  var r = await sb().auth.updateUser({ password: $('clave-1').value });
+  $('clave-ok').disabled = false;
+  if (r.error) return toast(/weak|short|least/i.test(r.error.message) ? 'La contraseña es muy corta o muy simple.' : r.error.message, 'err');
+  toast('Listo: desde ahora entrás con tu mail y esta contraseña', 'ok');
+  arrancarPortal();
+}
+// form: 'login' (mail y contraseña) · 'clave' (crear contraseña) · 'nada'
 function pantalla(tit, msg, form) {
   $('app').hidden = true; $('acceso').hidden = false;
   set('acceso-tit', tit); set('acceso-msg', msg);
-  $('acceso-form').hidden = !form; $('acceso-salir').hidden = form;
+  form = form === true ? 'login' : form || 'nada';
+  $('acceso-form').hidden = form !== 'login'; $('clave-form').hidden = form !== 'clave'; $('acceso-salir').hidden = form !== 'nada';
 }
 
 async function arrancarPortal() {
+  // «Activar portal» / «Olvidé mi contraseña»: ?activar=<código> → sesión (soporte-activar + verifyOtp) → crear contraseña
+  var q = new URLSearchParams(location.search), cod = q.get('activar');
+  if (cod) {
+    q.delete('activar'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : ''));
+    try { await sb().auth.signOut({ scope: 'local' }); } catch (e) {}
+    var a = await sb().functions.invoke('soporte-activar', { body: { codigo: cod } });
+    var err = a.error ? ((a.error.context && (await a.error.context.json().catch(function () { return {}; })).error) || 'No pudimos activar el portal.') : '';
+    if (err) return pantalla('No pudimos activar el portal', err, 'login');
+    var v = await sb().auth.verifyOtp({ token_hash: a.data.token_hash, type: 'magiclink' });
+    if (v.error) return pantalla('No pudimos activar el portal', 'Probá de nuevo desde el botón del mail.', 'login');
+    return pantalla('Creá tu contraseña', 'Con ' + a.data.mail + ' y esta contraseña vas a entrar las próximas veces.', 'clave');
+  }
   var s = (await sb().auth.getSession()).data.session;
-  if (!s) return pantalla(CRM_ERROR_LOGIN ? 'No pudiste entrar' : 'Soporte', CRM_ERROR_LOGIN ||
-    'Cargá y seguí tus pedidos de soporte. Entrá con el mail que te dimos de alta.', true);
+  if (!s) return pantalla(CRM_ERROR_LOGIN ? 'No pudiste entrar' : 'Soporte', CRM_ERROR_LOGIN || 'Cargá y seguí tus pedidos de soporte.', 'login');
   try { await cargar(); }
   catch (e) {
     var eq = await db().rpc('es_equipo');

@@ -1,11 +1,10 @@
 // ============================================================
 // Edge Function: soporte-ingreso
-// El link para entrar al portal de soporte (crm.giwa-ia.com/soporte), por el cartero. 06/11/2026.
+// «Olvidé mi contraseña» del portal de soporte (crm.giwa-ia.com/soporte), por el cartero. 06/11/2026.
+// Manda un mail con un botón (código de 1 día) para crear una contraseña nueva.
 //
-// Supabase Auth mandaba el «Magic Link» desde noreply@mail.app.supabase.io, en inglés y a
-// Correo no deseado. Acá se arma el link con auth.admin.generateLink (no manda nada) y se
-// deja en la cola de mails de soporte (crm_giwa.soporte_mail_ingreso), que el cartero manda
-// desde la cuenta de GIWA con el formato de los demás mails.
+// No usa los mails de Supabase Auth: deja el mail en la cola de soporte
+// (crm_giwa.soporte_mail_ingreso) y lo manda el cartero desde la cuenta de GIWA.
 //
 // Sólo para mails habilitados en el portal (soporte_accesos) de una empresa activa. Si
 // todavía no tenía usuario de Auth, se lo crea (como «Crear usuario»). Siempre contesta lo
@@ -42,9 +41,15 @@ async function mandarLink(mail: string) {
     if (!error) await admin.from("soporte_accesos").update({ auth_user_id: data.user.id, invitado: new Date().toISOString() }).eq("id", acc.id);
     else if (!/already|registered|exists/i.test(error.message)) throw error;
   }
-  const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email: mail, options: { redirectTo: PORTAL } });
-  if (error) throw error;
-  const { error: e2 } = await admin.rpc("soporte_mail_ingreso", { mail, link: data.properties.action_link });
+  // Un pedido cada 2 minutos: si no, el código nuevo dejaría sin efecto al del mail anterior sin mandar otro
+  const { data: reciente } = await admin.from("soporte_mail_cola").select("id").eq("tipo", "ingreso").eq("para", mail)
+    .gt("creado", new Date(Date.now() - 120000).toISOString()).limit(1);
+  if (reciente?.length) return;
+  // «Olvidé mi contraseña»: un código de 1 día; soporte-activar lo cambia por una sesión y el portal pide la nueva
+  const codigo = Array.from(crypto.getRandomValues(new Uint8Array(24))).map((x) => x.toString(16).padStart(2, "0")).join("");
+  const hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codigo)))).map((x) => x.toString(16).padStart(2, "0")).join("");
+  await admin.from("soporte_accesos").update({ activar_hash: hash, activar_vence: new Date(Date.now() + 864e5).toISOString() }).eq("id", acc.id);
+  const { error: e2 } = await admin.rpc("soporte_mail_ingreso", { mail, link: PORTAL + "?activar=" + codigo });
   if (e2) throw e2;
 }
 

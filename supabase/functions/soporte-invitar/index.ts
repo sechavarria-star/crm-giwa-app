@@ -6,13 +6,13 @@
 // El registro libre del Auth compartido (Giwa_Database) está apagado y crear un usuario
 // requiere la service_role, que sólo vive acá (la inyecta Supabase en la función).
 // No usa los mails de Auth (sus templates son de todo el proyecto y no se tocan): deja la
-// invitación con el link al portal en la cola de soporte, que manda el cartero (etapa 6).
-// Sin contraseña: el cliente entra con Google (Supabase vincula la cuenta porque el mail coincide y ya está confirmado) o con
-// el link por mail del portal (signInWithOtp, shouldCreateUser:false).
+// invitación en la cola de soporte, que manda el cartero. Trae «Activar portal»: un código de
+// 7 días que soporte-activar cambia por una sesión para que el cliente cree su contraseña.
 //
 // Acceso: Authorization: Bearer <access_token> de alguien del equipo (crm_giwa.usuarios,
 // es_giwa y activo). Sólo crea usuarios para mails habilitados en crm_giwa.soporte_accesos.
-// Pedido: POST {"mail": "cliente@empresa.com"} → {ok, ya_existia, portal}
+// Pedido: POST {"mail": "cliente@empresa.com"} → {ok, ya_existia, portal, mail_encolado}
+// Sirve también para reenviar la invitación: si el usuario ya existe, sólo arma un código nuevo y la encola.
 // verify_jwt apagado a propósito: el preflight CORS no trae token; se valida adentro.
 // ============================================================
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
@@ -24,6 +24,12 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
   auth: { persistSession: false, autoRefreshToken: false },
   db: { schema: "crm_giwa" },
 });
+
+function nuevoCodigo() { return Array.from(crypto.getRandomValues(new Uint8Array(24))).map((x) => x.toString(16).padStart(2, "0")).join(""); }
+async function sha256(t: string) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+  return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
 
 class ErrorSoporte extends Error {
   constructor(msg: string, public status = 400) { super(msg); }
@@ -75,7 +81,10 @@ async function invitar(p: Record<string, unknown>) {
 
   const { error: e2 } = await admin.from("soporte_accesos").update({ auth_user_id: id, invitado: new Date().toISOString() }).eq("id", acc.id);
   if (e2) throw e2;
-  const { error: e3 } = await admin.rpc("soporte_mail_invitacion", { mail });
+  // «Activar portal»: un código de 7 días (se guarda sólo su hash); soporte-activar lo cambia por una sesión
+  const codigo = nuevoCodigo();
+  await admin.from("soporte_accesos").update({ activar_hash: await sha256(codigo), activar_vence: new Date(Date.now() + 7 * 864e5).toISOString() }).eq("id", acc.id);
+  const { error: e3 } = await admin.rpc("soporte_mail_invitacion", { mail, link: PORTAL + "?activar=" + codigo });
   return { ok: true, ya_existia: yaExistia, portal: PORTAL, mail_encolado: !e3 };
 }
 
