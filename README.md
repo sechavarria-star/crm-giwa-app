@@ -41,12 +41,8 @@ Configuration → Redirect URLs. Entra quien esté activo en `crm_giwa.usuarios`
 
 ## Estado de la migración
 
-| Módulo | Dónde funciona |
-|---|---|
-| Hoy | App nueva |
-| Clientes | App nueva |
-| Administración | App nueva |
-| Proyectos (PM) | App nueva (falta Cotizar, Agenda y Nuevo proyecto) |
-| Soporte | Módulo nuevo, en preparación (los tickets de su app) |
-| Cotizador | CRM actual |
-| Configuración | App nueva (Telegram, Plantilla Doc, Mantenimiento y Diagnósticos siguen en el CRM actual) |
+Hoy, Clientes, Administración, Proyectos, Cotizador, Estado financiero, Herramientas y Configuración
+funcionan en la app nueva. El Apps Script queda para Drive y Gmail (`Puente.js`) y para lo que todavía
+no pasó (Plantilla Doc, Mantenimiento). Soporte está en preparación.
+
+Formas de trabajo y decisiones vigentes: `CLAUDE.md`.
