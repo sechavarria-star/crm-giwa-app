@@ -8,7 +8,7 @@ base: entra por la Edge Function `soporte-cartero` con una clave compartida.
 
 ## Instalarlo (una sola vez, logueado con la cuenta que va a mandar)
 
-1. En el CRM: **Soporte › Accesos al portal › Mails › «Generar clave»** (Administración).
+1. En el CRM: **Soporte › Accesos al portal › Mails › «Generar clave»** (cualquiera del equipo).
    Copiá la clave: se muestra una sola vez.
 2. https://script.google.com con la cuenta que manda → **Nuevo proyecto**.
    Nombre: `cartero-soporte`.
