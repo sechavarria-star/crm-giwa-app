@@ -300,8 +300,26 @@ function _uiMoneda(sel) {
   Object.defineProperty(sel, 'value', { configurable: true, get: function () { return d.get.call(this); }, set: function (v) { d.set.call(this, v); pinta(); } });
   pinta();
 }
+// Campo de archivos en castellano (06/11/2026): el botón nativo dice «Choose Files / No file chosen» según el idioma
+// del navegador. Se oculta el input (sigue siendo el mismo, .files no cambia) y se dibuja «Elegir archivos» + los nombres.
+function _uiArchivo(inp) {
+  inp.classList.add('ui-arch-inp');
+  var multi = inp.multiple, caja = document.createElement('label');
+  caja.className = 'ui-arch' + (inp.classList.contains('fc') ? ' fc' : '');
+  if (inp.id) caja.htmlFor = inp.id;
+  caja.innerHTML = '<span class="ui-arch-b">' + uiIco('clip') + (multi ? 'Elegir archivos' : 'Elegir archivo') + '</span><span class="ui-arch-n"></span>';
+  var pinta = function () {
+    var fs = Array.prototype.map.call(inp.files || [], function (f) { return f.name; });
+    caja.querySelector('.ui-arch-n').textContent = !fs.length ? (multi ? 'Ningún archivo elegido' : 'Ningún archivo elegido') : fs.length === 1 ? fs[0] : fs.length + ' archivos: ' + fs.join(', ');
+  };
+  if (!inp.id) caja.addEventListener('click', function (ev) { ev.preventDefault(); inp.click(); });
+  inp.addEventListener('change', pinta);
+  inp.parentNode.insertBefore(caja, inp.nextSibling);
+  pinta();
+}
 function _uiCampos(raiz) {
   if (!raiz.querySelectorAll) return;
+  raiz.querySelectorAll('input[type="file"]:not(.ui-arch-inp)').forEach(_uiArchivo);
   raiz.querySelectorAll('input[type="date"]:not(.ui-fecha-nat)').forEach(_uiFecha);
   raiz.querySelectorAll('input[data-monto]').forEach(_uiMonto);
   raiz.querySelectorAll('select').forEach(function (s) {

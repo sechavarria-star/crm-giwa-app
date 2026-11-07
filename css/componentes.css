@@ -446,3 +446,11 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .dev-riel .ui-tl-i::before { left: 0; right: 0; top: 6px; bottom: auto; width: auto; height: 1px; }
 .dev-riel .ui-tl-i:first-child::before { top: 6px; left: 6px; }
 .dev-riel .ui-tl-i:last-child::before { bottom: auto; right: calc(100% - 7px); }
+
+/* Campo de archivos en castellano (ui.js · _uiArchivo) */
+.ui-arch-inp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.ui-arch { display: flex; align-items: center; gap: var(--e3); cursor: pointer; min-width: 0; }
+.ui-arch-b { display: inline-flex; align-items: center; gap: var(--e2); flex: none; padding: 3px 10px; border-radius: var(--r); border: 1px solid var(--contorno); color: var(--texto); font-size: var(--t-s); }
+.ui-arch:hover .ui-arch-b { border-color: var(--brillo); }
+.ui-arch-b .ui-ico { width: 14px; height: 14px; }
+.ui-arch-n { color: var(--texto2); font-size: var(--t-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
