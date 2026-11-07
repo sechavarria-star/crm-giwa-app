@@ -70,6 +70,7 @@ function pantalla(tit, msg, form) {
   set('acceso-tit', tit); set('acceso-msg', msg);
   form = form === true ? 'login' : form || 'nada';
   $('acceso-form').hidden = form !== 'login'; $('clave-form').hidden = form !== 'clave'; $('acceso-salir').hidden = form !== 'nada';
+  if (form === 'login') botonGoogle($('acceso-gis'), { respaldo: $('acceso-google'), alEntrar: arrancarPortal });
 }
 
 async function arrancarPortal() {

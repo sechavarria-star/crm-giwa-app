@@ -11,6 +11,10 @@ var CRM_CONFIG = {
   supabaseKey: 'sb_publishable_sHdrgf8l6HwnKgK38gWnFQ_fEEVgG4f',
   schema:      'crm_giwa',
   dominio:     'giwa-ia.com',
+  // Botón nativo de Google (Google Identity Services, 06/11/2026): Google muestra «para ir a crm.giwa-ia.com»
+  // y no la dirección de Supabase. Es el cliente OAuth del envoltorio del CRM viejo (público, no es un secreto);
+  // tiene que figurar en Supabase › Authentication › Providers › Google › Client IDs.
+  googleClientId: '527644613244-ul6hntt2bl0d4hktnd89k2g66qhpicms.apps.googleusercontent.com',
   // El CRM actual (el Apps Script, con su envoltorio de login): ahí siguen
   // las pantallas que todavía no pasaron a esta app. crm.giwa-ia.com es
   // ahora esta app; el viejo quedó en la dirección de GitHub Pages de crm-giwa.

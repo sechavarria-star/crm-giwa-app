@@ -51,6 +51,33 @@ function entrarConGoogle() {
     }
   });
 }
+// ── Botón nativo de Google (GIS): la ventanita sale desde nuestra página y le pasa el token a Supabase ──
+// signInWithIdToken con nonce (Google firma el hash; Supabase verifica el original). Si algo falla
+// (Google no carga, o Supabase no acepta el cliente), queda el botón de siempre (signInWithOAuth).
+//   el: dónde dibujarlo · op: { hd: dominio permitido (CRM) , alEntrar: fn, respaldo: botón de antes }
+function botonGoogle(el, op) {
+  op = op || {};
+  var usarRespaldo = function () { if (op.respaldo) op.respaldo.hidden = false; if (el) el.hidden = true; };
+  if (!el || !CRM_CONFIG.googleClientId) return usarRespaldo();
+  var dibujar = async function () {
+    try {
+      var crudo = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
+      var hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(crudo)))).map(function (x) { return x.toString(16).padStart(2, '0'); }).join('');
+      google.accounts.id.initialize({ client_id: CRM_CONFIG.googleClientId, nonce: hash, hd: op.hd || undefined, auto_select: false, itp_support: true,
+        callback: async function (r) {
+          var s = await sb().auth.signInWithIdToken({ provider: 'google', token: r.credential, nonce: crudo });
+          if (s.error) { toast('No pudimos entrar con Google: ' + s.error.message, 'err'); return usarRespaldo(); }
+          if (op.alEntrar) op.alEntrar(); else location.reload();
+        } });
+      el.innerHTML = ''; el.hidden = false; if (op.respaldo) op.respaldo.hidden = true;
+      google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'pill', logo_alignment: 'left', width: Math.min(320, el.offsetWidth || 300), locale: 'es' });
+    } catch (e) { usarRespaldo(); }
+  };
+  if (window.google && google.accounts && google.accounts.id) return dibujar();
+  var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+  sc.onload = dibujar; sc.onerror = usarRespaldo; document.head.appendChild(sc);
+}
+
 async function salir() {
   try { await sb().auth.signOut(); } catch (e) {}
   CRM_USUARIO = null;

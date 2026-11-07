@@ -148,6 +148,8 @@ function pantallaAcceso(titulo, texto, conBoton) {
   set('acceso-tit', titulo);
   set('acceso-msg', texto);
   document.getElementById('acceso-btn').hidden = !conBoton;
+  document.getElementById('acceso-gis').hidden = true;
+  if (conBoton) botonGoogle(document.getElementById('acceso-gis'), { hd: CRM_CONFIG.dominio, respaldo: document.getElementById('acceso-btn') });
   document.getElementById('acceso-salir').hidden = conBoton;
 }
 
