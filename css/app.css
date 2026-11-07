@@ -632,5 +632,5 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .por-gis { display: flex; justify-content: center; min-height: 44px; color-scheme: light; }   /* el iframe de Google queda transparente (con esquema oscuro pintaba un recuadro blanco) */
 .por-gis iframe { color-scheme: light; background: transparent !important; }
 .por-gis[hidden] { display: none; }
-.por-emp .ui-logo { width: 24px; height: 24px; border-radius: 6px; border: 0; flex: none; }   /* el logo del cliente entra en la barra de 36 px */
-.por-emp .ui-logo img { padding: 1px; }
+.por-emp .ui-logo { width: 28px; height: 28px; border-radius: 50%; border: 0; flex: none; overflow: hidden; }   /* el logo del cliente, entero, en un círculo dentro de la barra de 36 px */
+.por-emp .ui-logo img { padding: 4px; object-fit: contain; }
