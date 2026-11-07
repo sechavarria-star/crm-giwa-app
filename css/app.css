@@ -628,3 +628,4 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .u-nowrap { white-space: nowrap; }
 .por-form { display: flex; flex-direction: column; align-items: stretch; }
 .por-google { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.por-google[hidden] { display: none; }
