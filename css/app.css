@@ -635,3 +635,7 @@ a[href^="mailto:"].btn-ico, a[href^="mailto:"] .ico { color: var(--principal); }
 .por-gis[hidden] { display: none; }
 .por-emp .ui-logo, .por-emp .ui-logo.ui-img { width: 40px; height: 40px; border-radius: 50%; border: 0; flex: none; overflow: hidden; background: transparent; }   /* el logo del cliente, sin recuadro, centrado en la barra de 52 px */
 .por-emp .ui-logo img { padding: 0; object-fit: cover; }
+.por-compacto .fg { margin-bottom: 10px; }
+.por-compacto .por-tipos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.por-compacto .por-tipo { padding: 8px 10px; }
+@media (max-width: 720px) { .por-compacto .por-tipos { grid-template-columns: minmax(0, 1fr); } }

@@ -196,16 +196,17 @@ function nuevoPedido(rel) {
   var I = P.ini, des = I.desarrollos || [];
   modal('m-pn'); set('m-pn-tit', rel ? 'Volvió a pasar · ' + rel.id : 'Nuevo pedido');
   var tipos = (I.listas.tipo || []), ayuda = { 'Algo no funciona': 'Algo dejó de andar o da un error', 'Consulta': 'Una duda sobre cómo usar algo', 'Quiero algo nuevo': 'Una mejora o algo que hoy no hace: lo cotizamos' };
-  $('m-pn-c').innerHTML =
-    '<div class="fg"><label class="fl" for="pn-des">Sobre qué <span class="req">*</span></label><select class="fc" id="pn-des">' +
+  // Compacto (06/11/2026): entra en una pantalla sin scroll, con el mismo tamaño de letra
+  $('m-pn-c').innerHTML = '<div class="por-compacto">' +
+    '<div class="g2"><div class="fg"><label class="fl" for="pn-des">Sobre qué <span class="req">*</span></label><select class="fc" id="pn-des">' +
       pOpts(des.map(function (d) { return [d.id, d.proyecto && d.proyecto !== d.titulo ? d.proyecto + ' · ' + d.titulo : d.titulo]; }), rel ? rel.desarrollo_id : (des.length === 1 ? des[0].id : ''), 'Elegí la aplicación') + '</select></div>' +
+      '<div class="fg"><label class="fl" for="pn-pri">Urgencia</label><select class="fc" id="pn-pri">' + pOpts(I.listas.prioridad || [], 'Media') + '</select></div></div>' +
     '<div class="fg"><span class="fl">Qué necesitás</span><div class="por-tipos">' + tipos.map(function (t, i) {
       return '<label class="por-tipo"><input type="radio" name="pn-tipo" value="' + esc(t) + '"' + ((rel ? rel.tipo === t : i === 0) ? ' checked' : '') + '><span><b>' + esc(t) + '</b><br><span class="u-s11-mt">' + esc(ayuda[t] || '') + '</span></span></label>'; }).join('') + '</div></div>' +
-    '<div class="g2"><div class="fg"><label class="fl" for="pn-pri">Urgencia</label><select class="fc" id="pn-pri">' + pOpts(I.listas.prioridad || [], 'Media') + '</select></div>' +
+    '<div class="g2"><div class="fg"><label class="fl" for="pn-tit">Título <span class="req">*</span></label><input class="fc" id="pn-tit" maxlength="200" value="' + esc(rel ? 'Vuelve: ' + rel.titulo : '') + '"></div>' +
       '<div class="fg"><label class="fl" for="pn-mod">Pantalla o módulo</label><input class="fc" id="pn-mod" list="pn-mods" placeholder="Opcional"><datalist id="pn-mods">' + (I.modulos || []).map(function (m) { return '<option value="' + esc(m) + '">'; }).join('') + '</datalist></div></div>' +
-    '<div class="fg"><label class="fl" for="pn-tit">Título <span class="req">*</span></label><input class="fc" id="pn-tit" maxlength="200" value="' + esc(rel ? 'Vuelve: ' + rel.titulo : '') + '"></div>' +
-    '<div class="fg"><label class="fl" for="pn-desc">Contanos qué pasa</label><textarea class="fc" id="pn-desc" rows="5" placeholder="Qué hiciste, qué esperabas y qué pasó. Si hay un ejemplo (un número, un nombre), mejor.">' + (rel ? esc('Relacionado con ' + rel.id + '.\n') : '') + '</textarea></div>' +
-    '<div class="fg"><label class="fl" for="pn-arch">Capturas o archivos</label><input class="fc" id="pn-arch" type="file" multiple><div class="ft-info">Hasta 10 MB cada uno.</div></div>';
+    '<div class="fg"><label class="fl" for="pn-desc">Contanos qué pasa</label><textarea class="fc" id="pn-desc" rows="3" placeholder="Qué hiciste, qué esperabas y qué pasó. Si hay un ejemplo (un número, un nombre), mejor.">' + (rel ? esc('Relacionado con ' + rel.id + '.\n') : '') + '</textarea></div>' +
+    '<div class="fg"><label class="fl" for="pn-arch">Capturas o archivos <span class="u-s11-mt">· hasta 10 MB cada uno</span></label><input class="fc" id="pn-arch" type="file" multiple></div></div>';
   $('m-pn-pie').innerHTML = '<button class="btn bg" data-cerrar="m-pn">Cancelar</button><button class="btn bp" id="pn-ok">Enviar pedido</button>';
   $('pn-ok').onclick = async function () {
     var b = this; b.disabled = true;
