@@ -397,7 +397,7 @@ var SIM = (function () {
     var dCostos = el.querySelector('#sm-costos'); if (dCostos) S.costos = dCostos.classList.contains('open');   // se repinta entero: conserva si estaba abierto
     el.innerHTML = '<div class="sim">' + uiHd('Simulador Costos Meta', 'WhatsApp Business API y gestión de turnos: cuánto factura Meta y cómo le queda al cliente.',
         '<span class="u-s11 u-c-mt">Dólar oficial BCRA ' + ars(S.tc) + (S.tcFecha ? ' al <span class="m">' + ff(S.tcFecha) + '</span>' : ' · valor de referencia') + '</span>' +
-        uiBtn('Modo presentación', 'tablero', 's', 'data-sim="pres"') + uiBtn('Exportar propuesta', 'lista', 's', 'data-sim="propuesta"') + uiBtn('Imprimir', 'documento', 's', 'data-sim="imprimir"')) +
+        (PUBLICO ? '' : uiBtn('Modo presentación', 'tablero', 's', 'data-sim="pres"') + uiBtn('Exportar propuesta', 'lista', 's', 'data-sim="propuesta"') + uiBtn('Imprimir', 'documento', 's', 'data-sim="imprimir"'))) +
       tabs(TABS.filter(function (t) { return !PUBLICO || t[0] !== 'mrr'; }), S.tab, 'tab') +
       ({ calc: htmlCalc, vivo: htmlVivo, mrr: htmlMrr, tg: htmlTg }[S.tab])() +
       '<div class="mo" id="m-sim"><div class="md"><div class="mh"><span class="mt2" id="m-sim-t"></span></div><div class="mb2" id="m-sim-b"></div><div class="mf" id="m-sim-f"></div></div></div></div>';
