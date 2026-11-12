@@ -238,7 +238,7 @@
       its.length ? grp('GIWA') + grp('Cliente') : '<div class="ui-nota-t">Sin costos asociados. Tocá «+ Costos».</div>');
     // FUNCIONALIDADES: lo seleccionado, por funcionalidad, con el lápiz que abre «Corregir»
     var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m); }), npe = pend(v).length;
-    h += uiDesp({ th: '<span class="ui-lat-h">Funcionalidades</span> <span class="ui-nota-t">· <span class="ui-num">' + fs.length + '</span> tildadas · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h' +
+    h += uiDesp({ th: '<span class="ui-lat-h">Funcionalidades</span> <span class="ui-nota-t cot-nt">· <span class="ui-num">' + fs.length + '</span> tildadas · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h' +
         (npe ? ' · <span class="ui-p-pendiente"><span class="ui-num">' + npe + '</span> por definir</span>' : '') + '</span>', open: edOpen('fun', true), attrs: 'data-ed="fun"',
         v: uiBtn('Abrir cuestionario', 'lista', 's', 'data-cot="fun"') }, '<div class="cot-c2">' + seleccion(v, true) + '</div>');
     // Más información: forma de pago, inicio, duración, garantía, descripción y los valores de hora usados

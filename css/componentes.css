@@ -509,3 +509,13 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-arch:hover .ui-arch-b { border-color: var(--brillo); }
 .ui-arch-b .ui-ico { width: 14px; height: 14px; }
 .ui-arch-n { color: var(--texto2); font-size: var(--t-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+/* Proyectos agrupados por cliente otra vez (12/11/2026) */
+.pm-emp { border-bottom: 1px solid var(--marco); }
+.pm-emp-h { display: flex; align-items: center; gap: var(--e3); padding: var(--e3) var(--e2); cursor: pointer; list-style: none; font-size: var(--t-l); }
+.pm-emp-h::-webkit-details-marker { display: none; }
+.pm-emp-h .ui-ch { display: inline-flex; transition: transform .15s; }
+.pm-emp[open] > .pm-emp-h .ui-ch { transform: rotate(90deg); }
+.pm-emp-n { font-size: var(--t-xl); }
+.pm-emp-b { padding: 0 0 var(--e3) var(--e5); }
+.cot-nt { text-transform: none; letter-spacing: 0; }

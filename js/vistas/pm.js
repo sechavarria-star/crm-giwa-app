@@ -326,7 +326,7 @@
       ab && P.f && P.f.id === p.id ? fichaCuerpo(p, true) : '');
   }
   // Proyectos = el universo completo (29/10/2026): los mismos chips de Seguimiento más Finalizado
-  // y Rechazado; lista plana por título (sin agrupar por cliente); al desplegar, la ficha completa.
+  // y Rechazado; agrupados por cliente (12/11/2026); al desplegar, la ficha completa.
   var PR_FIL = SEG_FIL.slice(0, 4).concat([['finalizado', 'Finalizado', 'xg', 'c']], SEG_FIL.slice(4), [['rechazado', 'No aceptado', 'xz', 'x']]);
   function usuarios() { return Object.keys(P.users).map(function (m) { return { mail: m, name: P.users[m] }; }); }
   function proyPasa(p, fil) {
@@ -347,12 +347,22 @@
     h = htmlKpis(f) + barraFiltro(PR_FIL, fil, function (k) { return all.filter(function (p) { return proyPasa(p, k); }).length; }, 'prchip', all.length, f.length) + h;
     if (!f.length) return h + '<div class="ui-nota-t">Sin proyectos para este filtro.</div>';
     f.sort(function (a, b) {
+      var em = (a.empresa || '').localeCompare(b.empresa || '', 'es'); if (em) return em;
       if (R.orden === 'nombre') return (a.nombre || '').localeCompare(b.nombre || '', 'es');
       if (R.orden === 'prob') return (b.probabilidad || 0) - (a.probabilidad || 0);
       if (R.orden === 'fecha') return String(b.fecha_propuesta || '').localeCompare(String(a.fecha_propuesta || ''));
       return (b.monto_final_ars || 0) - (a.monto_final_ars || 0);
     });
-    return h + '<div>' + f.map(tarjetaProy).join('') + '</div>';
+    // Agrupado por cliente otra vez (12/11/2026): la barra del cliente con sus totales y, debajo, sus proyectos
+    var by = {}, ord = [];
+    f.forEach(function (p) { var e = p.empresa || 'Sin empresa'; if (!by[e]) { by[e] = []; ord.push(e); } by[e].push(p); });
+    return h + '<div>' + ord.map(function (emp) {
+      var ps = by[emp], ab = R.abiertas[emp] !== undefined ? R.abiertas[emp] : (!!q || ps.some(function (p) { return p.id === P.inline; }));
+      var cont = sum(ps, mTotal), rec = sum(ps, mRecurrente);
+      return '<details class="pm-emp" data-emp="' + esc(emp) + '"' + (ab ? ' open' : '') + '><summary class="pm-emp-h"><span class="ui-ch">' + uiIco('derecha') + '</span>' + uiLogo(emp, (P.emps[emp] || {}).logo) +
+        '<span class="pm-emp-n">' + esc(emp) + '</span><span class="ui-nota-t"><span class="ui-num">' + ps.length + '</span> proyecto' + (ps.length === 1 ? '' : 's') + '</span><span class="u-f1"></span>' +
+        (cont ? '<span class="ui-num ui-p-contratado">' + fmt(cont) + '</span>' : '') + (rec ? '<span class="ui-num ui-p-abono">' + fmt(rec) + '/mes</span>' : '') + '</summary>' +
+        '<div class="pm-emp-b">' + ps.map(tarjetaProy).join('') + '</div></details>'; }).join('') + '</div>';
   }
 
   // ══ FICHA DEL PROYECTO (5b · lectura) ════════════════════════
@@ -372,7 +382,7 @@
       db().from('entregables').select('id,titulo,tipo,accesos,creado').eq('proyecto_id', id).order('creado', { ascending: false }),
       db().from('proyectos').select('fecha_cierre_probable').eq('id', id).maybeSingle(),
       db().from('cobros').select('desarrollo_id,cuota_nro,tipo_comprobante,comprobante_nro,comprobante_fecha,deposito_fecha,monto_ars,link_fc').eq('proyecto_id', id).order('comprobante_fecha'),
-      db().from('desarrollos').select('id,monto_cotizado').eq('proyecto_id', id)
+      db().from('desarrollos').select('id,monto_cotizado,mantenimiento_horas').eq('proyecto_id', id)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     P.f = {
@@ -381,8 +391,35 @@
       // comentarios del proyecto (la columna puede traer varios, separados por coma), los más nuevos primero
       coms: r[1].data.filter(function (c) { return crmLista(c.proyecto_id).indexOf(id) >= 0; })
         .sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')) || (a.orden - b.orden); }),
-      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null, entregables: r[5].data, cierreProb: (r[6].data || {}).fecha_cierre_probable, cobros: r[7].data, cotizado: r[8].data.reduce(function (o, d) { o[d.id] = Number(d.monto_cotizado) || 0; return o; }, {})
+      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null, entregables: r[5].data, cierreProb: (r[6].data || {}).fecha_cierre_probable, cobros: r[7].data, cotizado: r[8].data.reduce(function (o, d) { o[d.id] = Number(d.monto_cotizado) || 0; return o; }, {}), an: {}
     };
+    // Análisis económico (12/11/2026): el mismo del Cotizador (cot_analisis), por desarrollo con horas
+    var mhs = {}; r[8].data.forEach(function (d) { mhs[d.id] = Number(d.mantenimiento_horas) || 0; });
+    var devs = (p.items || []).filter(function (it) { return !esMant(it) && _canonSol(it.estado) !== 'rechazada' && Number(it.horas) > 0; });
+    var an = await Promise.all(devs.map(function (it) {
+      var mm = (p.items || []).filter(function (x) { return esMant(x) && (x.mant_de_ids || []).indexOf(it.id) >= 0; })[0];
+      return db().rpc('cot_analisis', { o: { tipo: it.tipo, horas: Number(it.horas) || 0, precio: Number(it.total_ars) || 0,
+        abono: mm ? Number(mm.cuota_act) || Number(mm.valor_cuota) || 0 : 0, mant_hs: mm ? mhs[mm.id] || 0 : 0, vh: Number(it.vh) || 0 } }); }));
+    devs.forEach(function (it, i) { if (an[i] && !an[i].error) P.f.an[it.id] = an[i].data; });
+  }
+  // Análisis económico en la pestaña Económico: referencia de mercado, alertas y qué conviene sumar
+  function analisisFicha(p) {
+    var A = (P.f && P.f.an) || {}, ids = Object.keys(A); if (!ids.length) return '';
+    var row = function (t, m, cls) { return '<div class="cot-an-i"><span>' + t + '</span>' + (m != null ? '<div class="cot-an-m' + (cls ? ' ' + cls : '') + '">' + m + '</div>' : '') + '</div>'; };
+    return '<div class="cot-lat"><div class="ui-lat-h u-mt10 cot-t-az">Análisis económico</div>' + ids.map(function (id) {
+      var a = A[id], it = (p.items || []).find(function (x) { return x.id === id; }) || {}, M = a.mercado;
+      var h = '<div class="cot-sel-t"><span class="ui-f1">' + esc(it.titulo || it.tipo_nombre || id) + '</span><span class="ui-num ui-nota-t">' + Math.round(Number(it.horas) || 0) + ' h</span></div>';
+      if (M) {
+        h += row(esc(M.rol) + ' · semi senior · USD <span class="ui-num">' + M.usd_min + '</span>–<span class="ui-num">' + M.usd_max + '</span> la hora<span class="cot-sub">' + esc(M.fuente || '') + ' · <span class="ui-num">' + (ff(M.fecha) || '') + '</span></span>',
+          '<span class="ui-num">' + fmt(M.ars_min) + ' – ' + fmt(M.ars_max) + '</span>');
+        if (M.usd_hora) h += row('Precio = USD <span class="ui-num">' + String(M.usd_hora).replace('.', ',') + '</span> la hora',
+          M.posicion === 'debajo' ? 'por debajo del mercado' : M.posicion === 'encima' ? 'por encima del mercado' : 'dentro del mercado', M.posicion === 'dentro' ? 'ui-e-finalizado' : 'ui-p-pendiente');
+      }
+      (a.alertas || []).forEach(function (x) { var c = x.nivel === 'error' ? 'ui-p-error' : 'ui-p-pendiente';
+        h += row('<span class="cot-dot ' + c + '"></span>' + esc(x.texto), x.monto ? '<span class="ui-num">' + fmt(x.monto) + (x.mensual ? '/mes' : '') + '</span>' : null, c); });
+      (a.sugerencias || []).forEach(function (x) { h += row('<span class="ui-e-finalizado">Sumar</span> · ' + esc(x.texto) + ' (<span class="ui-num">' + fmt(x.a) + '</span> por mes)', '<span class="ui-num">+' + fmt(x.monto) + '/mes</span>', 'ui-e-finalizado'); });
+      if (!M && !(a.alertas || []).length && !(a.sugerencias || []).length) h += '<div class="ui-nota-t">Sin alertas.</div>';
+      return h; }).join('') + '<div class="ui-nota-t u-mt10">Son sugerencias: no cambian nada.</div></div>';
   }
   function crmLista(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
   function deDondeSale(p) {
@@ -680,7 +717,7 @@
     }
     var hs = sum(p.items, 'horas');
     if (hs) h += '<div class="ui-lat-h">Del contrato</div><div class="ui-lat-g">' + uiKpi('Horas vendidas', Math.round(hs) + ' h', 'p-neutro') + '</div>';
-    return h + '</div>';
+    return h + analisisFicha(p) + '</div>';
   }
   function econDes(it) {
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
