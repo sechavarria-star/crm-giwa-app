@@ -8,9 +8,9 @@
      · Borrador: proyecto + desarrollos + minuta; no escribe horas ni costos.
      · Crear: pasa a Prospecto y escribe horas, costos y la tarea de integración.
      · Aprobar, enviar y no aceptar se hacen en Proyectos (un solo flujo).
-   Por desarrollo: Incluye (Mantenimiento propio o compartido, Entrega,
-   Seguimiento, Costos de terceros), Funcionalidades (cuestionario Sí / No /
-   Por definir, nota, cantidad, etapa futura, buscar) y Lo que suma.
+   Por desarrollo: Incluye (Mantenimiento propio o compartido, Costos que paga
+   GIWA), Funcionalidades (cuestionario en tres zonas: por contestar · incluye y
+   por definir · Lo que suma) y Lo que suma con el análisis del abono (12/11/2026).
    En la reunión: minuta o README, tildar desde el texto (función cot-interpretar).
    Reutilizar: un proyecto anterior para otra empresa, en un solo modal.
    El alta se guarda sola en este navegador hasta que se graba.
@@ -19,12 +19,13 @@
   var C = { ini: null, cat: {}, sub: 'lista', ver: null };   // ini = cot_inicio · cat = catálogo por tipo
   var CN = null, _t = {}, POP = '';
   var LS = 'cot-alta-v2';
-  var INCLUYE = [['Entrega', 'Entrega'], ['Seguimiento y reportes', 'Seguimiento']];   // bloques que van en «Incluye», no en el cuestionario
   var ETAPAS = ['Diseño', 'Configuración', 'Pruebas', 'Producción'];
   var MIN = [['problema', 'Problema'], ['situacion', 'Situación actual'], ['objetivo', 'Objetivo'], ['acuerdos', 'Acuerdos'],
              ['pendientes', 'Pendientes'], ['proximos', 'Próximos pasos'], ['decision', 'Fecha de decisión']];
-  var TER_CAT = ['Canales', 'Consumo (IA)', 'Infraestructura', 'Licencia'];
-  var RESP = [['Sí', 'check', 'Sí'], ['No', 'cerrar', 'No'], ['Pendiente', 'arena', 'Por definir']];
+  // Costos que paga GIWA (12/11/2026): infraestructura, consumo de IA y, si se ofrece, Meta (se traslada en el abono)
+  var TER_CAT = ['Canales', 'Consumo (IA)', 'Infraestructura'];
+  // Respuestas en íconos chicos (12/11/2026): Sí verde · Por definir ámbar · No gris
+  var RESP = [['Sí', 'check', 'Sí', 'si'], ['Pendiente', 'arena', 'Por definir', 'pe'], ['No', 'cerrar', 'No', 'no']];
 
   // ── datos ────────────────────────────────────────────────────
   async function rpc(fn, args) { var r = await db().rpc(fn, args || {}); if (r.error) throw new Error(r.error.message); return r.data; }
@@ -68,13 +69,15 @@
   // Abono sugerido (regla de oro 22/10): 5 h + 0,5 WhatsApp + 0,5 Instagram + 1 integración, una vez cada uno
   function mantHs(v) {
     var V = C.ini.valores, R = C.ini.reglas, ids = Object.keys(sel(v)), hay = function (l) { return (l || []).some(function (x) { return ids.indexOf(x) >= 0; }); };
-    return Math.round((V.mant_base + (hay(R.wa) ? V.mant_canal : 0) + (hay(R.ig) ? V.mant_canal : 0) + (hay(R.rw) ? V.mant_integ : 0)) * 100) / 100;
+    return Math.round((V.mant_base + (hay(R.wa) ? V.mant_canal : 0) + (hay(R.ig) ? V.mant_canal : 0) + (hay(R.rw) ? V.mant_integ : 0) + (aud(v) ? V.mant_aud || 0 : 0)) * 100) / 100;
   }
+  // Auditoría de conversaciones: es mensual, suma al mantenimiento (cot_config.mant_hs_auditoria)
+  function aud(v) { return Object.keys(sel(v)).some(function (id) { var m = mod(v, id); return m && /auditor/i.test(m.nombre); }); }
+  function mantTxt(v) { return 'monitoreo, reunión mensual, análisis y ajustes' + (aud(v) ? ', auditoría de conversaciones' : ''); }
   function horasDe(v, id) {
     var m = mod(v, id); if (!m || !si(v, id) || v.etapa[id] === 'futura') return 0;
     return m.horas * m.factor * (m.instancia ? (v.cant[id] || 1) : 1) + hijas(v, id).reduce(function (s, x) { return s + horasDe(v, x.id); }, 0);
   }
-  function madreIncluye(v, b) { return raices(v).filter(function (m) { return m.bloque === b; })[0] || null; }
   // Pendiente = Por definir, o una madre en Sí con opciones sin contestar
   function pend(v) { return mods(v).filter(function (m) { if (v.r[m.id] === 'Pendiente') return true; var hs = hijas(v, m.id); return si(v, m.id) && hs.length && !hs.some(function (x) { return est(v, x.id); }); }); }
   function items(x) { return !x ? [] : (x.items || (x.cid ? [{ cid: x.cid, cantidad: x.cantidad || 1 }] : [])); }
@@ -86,6 +89,9 @@
       if ((id !== '_terceros' && (!si(v, id) || v.etapa[id] === 'futura')) || (x.paga === 'GIWA') !== (paga === 'GIWA')) return; t += extTot(x); });
     return t;
   }
+  // Meta que paga GIWA y traslada en el abono (Canales dentro de los costos que paga GIWA)
+  function metaGiwa(v) { var x = v.ext._terceros; if (!x || x.paga !== 'GIWA') return 0;
+    return Math.round(items(x).reduce(function (s, y) { var c = C.ini.contrataciones.filter(function (k) { return k.id === y.cid; })[0]; return s + (c && c.categoria === 'Canales' ? precioC(c) * (y.cantidad || 0) : 0); }, 0)); }
   function empresa() { return (C.ini.empresas || []).filter(function (e) { return e.id === CN.empresa; })[0] || null; }
   function tipoNom(id) { var t = (C.ini.tipos || []).filter(function (x) { return x.id === id; })[0]; return t ? t.nombre : id; }
 
@@ -109,7 +115,7 @@
   // ── pintar ───────────────────────────────────────────────────
   function pintar(el) {
     if (_montado !== 'cot') return;
-    var tabs = uiTabs([['lista', 'Borradores y prospectos', 'data-cot="sub" data-s="lista"'], ['reunion', 'En la reunión', 'data-cot="sub" data-s="reunion"'], ['nuevo', CN && CN.pid ? 'Editar ' + CN.pid : 'Nuevo proyecto', 'data-cot="sub" data-s="nuevo"']],
+    var tabs = uiTabs([['lista', 'Borradores y prospectos', 'data-cot="sub" data-s="lista"'], ['reunion', 'En la reunión', 'data-cot="sub" data-s="reunion"'], ['nuevo', CN && CN.pid ? ['Editar', (empresa() || {}).nombre, CN.nombre].filter(Boolean).join(' · ') : 'Nuevo proyecto', 'data-cot="sub" data-s="nuevo"']],
                       C.sub === 'ver' ? 'lista' : C.sub);
     var cuerpo = C.sub === 'nuevo' ? htmlEditor() : C.sub === 'ver' ? htmlVer() : C.sub === 'reunion' ? htmlReunion() : htmlLista();
     el.innerHTML = uiHd('Cotizador', 'Cotizar un proyecto por funcionalidad, guardarlo como borrador y crearlo como prospecto.',
@@ -142,7 +148,8 @@
     var e = empresa(), alta = !CN.pid, ds = CN.devs.filter(function (d) { return d.tipo; });
     var tot = ds.reduce(function (s, d) { return s + total(d); }, 0), ab = ds.reduce(function (s, d) { return s + (propio(d) ? d.mant.abono || 0 : 0); }, 0);
     var npend = ds.reduce(function (s, d) { return s + pend(d).length; }, 0);
-    var acc = uiBtn('Minuta', 'documento', 's', 'data-cot="minuta"') +
+    // La minuta es una exportación: aparece recién cuando el proyecto está guardado (12/11/2026)
+    var acc = (alta ? '' : uiBtn('Exportar minuta', 'documento', 's', 'data-cot="minuta"')) +
       (alta ? uiBtn('Guardar borrador', 'guardar', 's', 'data-cot="guardar"') + uiBtn('Crear proyecto', 'check', 'p', 'data-cot="crear"') + uiIb('borrar', 'Descartar lo cargado', 'bor', 'data-cot="descartar"')
             : uiBtn('Guardar cambios', 'guardar', 's', 'data-cot="guardar"') + (CN.estado === 'Borrador' ? uiBtn('Crear proyecto', 'check', 'p', 'data-cot="crear"') : '') +
               uiIb('borrar', 'Borrar el proyecto', 'bor', 'data-cot="borrar" data-id="' + esc(CN.pid) + '"'));
@@ -167,14 +174,14 @@
           (CN.empresa ? '<button type="button" class="ui-lnk ui-azul" data-cot="contacto">+ Contacto nuevo</button>' : '') + '</div>' +
         '<div class="fg"><label class="fl" for="cot-ow">Responsables</label><select class="fc" id="cot-ow"><option value="">+ Agregar responsable</option>' +
           (C.ini.usuarios || []).filter(function (u) { return CN.owners.indexOf(u.mail) < 0; }).map(function (u) { return '<option value="' + esc(u.mail) + '">' + esc(u.nombre) + '</option>'; }).join('') + '</select>' + ow + '</div></div>' +
-      '<div class="fg"><div class="u-row8"><label class="fl u-f1" for="cot-min">Minuta de reunión · resumen ejecutivo</label>' +
+      '<div class="fg"><div class="u-row8"><label class="fl u-f1" for="cot-min">Resumen ejecutivo</label>' +
         uiIb('buscar', 'Buscar una minuta guardada', '', 'data-cot="min-buscar"') + '</div><textarea class="fc" id="cot-min" rows="3">' + esc(CN.minuta.texto || '') + '</textarea></div>';
     h += uiDesp({ t: 'Datos del cliente', open: true }, cliente);
     // Desarrollos
     var lista = ds.length ? CN.devs.map(function (d, i) { return d.tipo ? tarjetaDev(d, i) : ''; }).join('') : '<div class="ui-nota-t">Todavía no hay desarrollos. Tocá «Nuevo desarrollo».</div>';
     h += uiDesp({ t: 'Desarrollos', n: ds.length, open: true, v: '<span class="ui-num">' + fmt(tot) + '</span>' + (ab ? ' · <span class="ui-num ui-p-abono">' + fmt(ab) + '/mes</span>' : '') },
       lista + '<div class="ui-barra">' + uiBtn('Nuevo desarrollo', 'mas', 's', 'data-cot="dev-nuevo"') + '</div>');
-    return '<div class="ui-cols"><div>' + h + '</div><div>' + lateral(dev()) + '</div></div>';
+    return '<div class="ui-cols"><div>' + h + '</div><div class="cot-lat">' + lateral(dev()) + '</div></div>';
   }
   // Un desarrollo: tipo, título, alcance y precio; el elegido muestra lo que incluye
   function tarjetaDev(d, i) {
@@ -194,18 +201,12 @@
     };
     var mt = v.mant, cmp = mt.on && !propio(v) ? CN.devs[mt.comparte] : null;
     var h = linea(mt.on, 'Mantenimiento', 'ui-p-abono', cmp ? 'compartido con ' + esc(cmp.titulo || tipoNom(cmp.tipo))
-        : '<span class="ui-num">' + mt.hs + '</span> h por mes · monitoreo, reunión mensual, análisis y ajustes · IPC cada <span class="ui-num">3</span> meses',
+        : '<span class="ui-num">' + mt.hs + '</span> h por mes · ' + mantTxt(v) + ' · IPC cada <span class="ui-num">3</span> meses',
       cmp ? '—' : fmt(mt.abono || 0) + '/mes', 'mant', 'Editar el mantenimiento');
-    INCLUYE.forEach(function (b) {
-      var m = madreIncluye(v, b[0]); if (!m) return;
-      var on = si(v, m.id), hs = on ? horasDe(v, m.id) : 0, hs2 = hijas(v, m.id).filter(function (x) { return si(v, x.id); }).map(nom);
-      h += linea(on, b[1], 'ui-e-aprobado', (hs2.length ? esc(hs2.join(' · ')) : 'sin opciones elegidas') + ' · <span class="ui-num">' + (Math.round(hs * 10) / 10) + '</span> h',
-        fmt(Math.round(hs * vh(v))), 'inc:' + m.id, 'Elegir qué incluye');
-    });
     var tx = v.ext._terceros, nT = items(tx).length;
-    h += linea(!!tx, 'Costos de terceros', 'ui-p-usd', nT + ' servicio' + (nT === 1 ? '' : 's') + ' · paga ' + (tx && tx.paga === 'GIWA' ? 'GIWA' : 'el cliente'),
-      fmt(extTot(tx)) + '/mes', 'ter', 'Elegir servicios y quién paga');
-    var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m) && !INCLUYE.some(function (b) { return b[0] === m.bloque; }); });
+    h += linea(!!tx, 'Costos que paga GIWA', 'ui-p-usd', '<span class="ui-num">' + nT + '</span> servicio' + (nT === 1 ? '' : 's') + (tx && tx.paga !== 'GIWA' ? ' · paga el cliente' : ''),
+      fmt(extTot(tx)) + '/mes', 'ter', 'Elegir los servicios');
+    var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m); });
     var fh = fs.reduce(function (s, id) { var m = mod(v, id); return s + m.horas * m.factor * (m.instancia ? (v.cant[id] || 1) : 1); }, 0);
     var sinResp = bloques(v).filter(function (b) { return faltan(v, b).length; }).length;
     h += '<div class="ui-linea"><span class="ui-f1">Funcionalidades · <span class="ui-num">' + fs.length + '</span> tildada' + (fs.length === 1 ? '' : 's') + ' · <span class="ui-num">' + (Math.round(fh * 10) / 10) + '</span> h' +
@@ -234,17 +235,30 @@
     var porE = {}; (e.detalle || []).forEach(function (d) { porE[d.etapa] = (porE[d.etapa] || 0) + Number(d.horas); });
     var fut = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura'; }), p = pend(v);
     var integ = (C.ini.reglas.integ || []).filter(function (id) { return si(v, id); }).map(function (id) { return v.notas[id] || nom(mod(v, id)); });
-    var r = v.ref, h = '<div class="ui-lat-h">Lo que suma</div>';
+    var r = v.ref, h = '<div class="ui-lat-h ui-e-finalizado">Lo que suma</div>';
     if (!CN.empresa) h += '<div class="ui-nota-t">Sin cliente el precio va sin Tier (×1). Elegí la empresa.</div>';
     if (r) { var pct = r.cobrado ? Math.round((total(v) / r.cobrado - 1) * 1000) / 10 : 0;
       h += '<div class="ui-nota-t">Parecido a lo que ya cotizaste: <b>' + esc(r.cliente || '') + ' · ' + esc(r.que || '') + '</b> · <span class="ui-num">' + r.horas + '</span> h · cobrado <span class="ui-num">' + fmt(r.cobrado) + '</span>' +
         (r.mmr ? ' · abono <span class="ui-num">' + fmt(r.mmr) + '/mes</span>' : '') + '. Éste va <span class="ui-num">' + String(Math.abs(pct)).replace('.', ',') + ' %</span> ' + (pct >= 0 ? 'por encima.' : 'por debajo.') + '</div><br>'; }
-    h += kv('Valor hora · ' + esc(e.tier || 'sin Tier'), fmt(Math.round(vh(v)))) + kv('Sugerido · ' + (Math.round(e.horas * 10) / 10) + ' h', fmt(sugerido(v))) +
-      kv('Precio final', fmt(total(v)), 'ui-p-contratado') + (propio(v) ? kv('Abono · ' + v.mant.hs + ' h por mes', fmt(v.mant.abono || 0), 'ui-p-abono') : '') +
-      ETAPAS.map(function (k) { return porE[k] ? kv('· ' + k, (Math.round(porE[k] * 10) / 10) + ' h') : ''; }).join('') +
-      kv('Dificultad', esc(e.dificultad)) + kv('Costo interno', fmt(e.costo_ars)) +
-      kv('Costos del cliente por mes', fmt(extMes(v, 'Cliente'))) + kv('Costos nuestros por mes', fmt(extMes(v, 'GIWA')));
+    // Jerarquía (12/11/2026): precio final · sugerido · análisis del abono · lo interno en gris
+    var cls = function (n) { return n >= 0 ? 'ui-e-finalizado' : 'ui-p-error'; };
+    h += '<div class="cot-pf"><span class="ui-lbl">Precio final</span><span class="ui-num ui-p-contratado">' + fmt(total(v)) + '</span>' + usd(total(v)) + '</div>' +
+      '<div class="cot-sec">' + kv('Sugerido · <span class="cot-n">' + (Math.round(e.horas * 10) / 10) + '</span> h', fmt(sugerido(v))) + '</div>';
+    // Análisis del abono: lo que entra por mes, la relación a 12 meses, el margen y el recupero del costo
+    var ab = propio(v) ? v.mant.abono || 0 : 0, meta = metaGiwa(v), cMes = Math.round((propio(v) ? v.mant.hs : 0) * ((C.ini.valores || {}).costo || 0) + extMes(v, 'GIWA'));
+    var mMes = ab + meta - cMes, m12 = total(v) - (e.costo_ars || 0) + 12 * mMes, falta = (e.costo_ars || 0) - total(v);
+    h += '<div class="ui-lat-h u-mt10">Análisis del abono</div>';
+    if (!propio(v)) h += '<div class="ui-nota-t">' + (v.mant.on ? 'El mantenimiento es compartido con otro desarrollo.' : 'Sin mantenimiento: no hay abono mensual.') + '</div>';
+    else h += kv('Abono · <span class="cot-n">' + v.mant.hs + '</span> h por mes', fmt(ab), 'ui-p-abono') +
+      (meta ? kv('Meta a cargo de GIWA, se traslada', fmt(meta) + '/mes', 'ui-p-abono') : '');
+    h += kv('Relación a <span class="cot-n">12</span> meses', fmt(total(v) + 12 * (ab + meta))) + kv('Margen a <span class="cot-n">12</span> meses', fmt(m12), cls(m12)) +
+      '<div class="ui-kv">Recupero del costo<span class="' + (falta <= 0 || mMes > 0 ? 'ui-e-finalizado' : 'ui-p-error') + '">' +
+        (falta <= 0 ? 'con la implementación' : mMes > 0 ? 'en <span class="cot-n">' + Math.ceil(falta / mMes) + '</span> meses' : 'no se recupera') + '</span></div>';
     if (CN.devs.filter(function (d) { return d.tipo; }).length > 1) h += kv('Total del proyecto', fmt(CN.devs.reduce(function (s, d) { return s + (d.tipo ? total(d) : 0); }, 0)), 'ui-p-contratado');
+    h += '<div class="cot-int"><div class="ui-lat-h u-mt10">Interno</div>' + kv('Valor hora · ' + esc(e.tier || 'sin Tier'), fmt(Math.round(vh(v)))) +
+      kv('Costo interno', fmt(e.costo_ars)) + kv('Costo por mes', fmt(cMes)) + kv('Dificultad', esc(e.dificultad)) +
+      ETAPAS.map(function (k) { return porE[k] ? kv(k, (Math.round(porE[k] * 10) / 10) + ' h') : ''; }).join('') +
+      (extMes(v, 'Cliente') ? kv('Costos del cliente por mes', fmt(extMes(v, 'Cliente'))) : '') + '</div>';
     h += '<div class="ui-lat-h u-mt10">Integraciones</div><div class="u-s11">' + (integ.length ? esc(integ.join(' · ')) : 'Ninguna') + '</div>';
     h += '<div class="ui-lat-h u-mt10">Etapa futura</div><div class="u-s11">' + (fut.length ? esc(fut.map(nom).join(' · ')) : 'Nada por ahora') + '</div>';
     if (p.length) h += '<div class="ui-lat-h u-mt10 ui-p-pendiente">Pendientes · ' + p.length + '</div><div class="u-s11">' + esc(p.map(function (m) { return m.pregunta || nom(m); }).join(' · ')) + '</div>';
@@ -252,7 +266,7 @@
   }
 
   // ── Cuestionario (Funcionalidades): Preguntas · Respuestas · Lo que suma ──
-  function bloques(v) { var o = []; raices(v).forEach(function (m) { if (!esBase(m) && !INCLUYE.some(function (b) { return b[0] === m.bloque; }) && o.indexOf(m.bloque) < 0) o.push(m.bloque); }); return o; }
+  function bloques(v) { var o = []; raices(v).forEach(function (m) { if (!esBase(m) && o.indexOf(m.bloque) < 0) o.push(m.bloque); }); return o; }
   function madresDe(v, b) { return raices(v).filter(function (m) { return m.bloque === b && !esBase(m); }); }
   function faltan(v, b) { return v.na[b] ? [] : madresDe(v, b).filter(function (m) { var s = est(v, m.id); return !s || s === 'Pendiente'; }); }
   function funAbrir() {
@@ -267,31 +281,51 @@
     var ab = {}; b.querySelectorAll('[data-bl]').forEach(function (d) { ab[d.getAttribute('data-bl')] = d.classList.contains('open'); });
     var bus = (document.getElementById('fun-bus') || {}).value || '';
     var base = raices(v).filter(esBase), hB = base.reduce(function (s, m) { return s + (si(v, m.id) ? m.horas * m.factor : 0); }, 0);
-    var bl = bloques(v), primero = bl.filter(function (x) { return faltan(v, x).length; })[0];
+    // Tres zonas (12/11/2026): a la izquierda lo que falta contestar y, plegado en gris, lo que no va;
+    // en el medio lo incluido (verde) y lo por definir (ámbar); a la derecha Lo que suma
+    var bl = bloques(v), primero = bl.filter(function (x) { return !v.na[x] && sinResp(v, x).length; })[0], nos = [];
     var preg = '<input class="ui-campo" id="fun-bus" placeholder="Buscar en el cuestionario…" aria-label="Buscar" value="' + esc(bus) + '"><br><br>' +
       uiDesp({ t: 'Base del agente · siempre incluida', n: (Math.round(hB * 10) / 10) + ' h', attrs: 'data-bl="__base"', open: !!ab.__base },
         base.map(function (m) { return '<div class="ui-linea"><label class="u-row6 ui-f1"><input type="checkbox"' + (si(v, m.id) ? ' checked' : '') + ' data-resp="' + esc(m.id) + '" data-k="base"> ' + esc(nom(m)) + '</label>' +
           '<span class="ui-num ui-nota-t">' + (Math.round(m.horas * m.factor * 10) / 10) + ' h</span></div>'; }).join('')) +
       bl.map(function (x, i) {
-        var f = faltan(v, x), ok = !f.length, ms = madresDe(v, x), n = ms.length - f.length;
-        var open = ab[x] !== undefined ? ab[x] : (!ok && x === primero);
-        return uiDesp({ t: (i + 1) + '. ' + x, n: ok ? 'Listo' : n + '/' + ms.length, open: open, attrs: 'data-bl="' + esc(x) + '"' },
-          v.na[x] ? uiBtn('Reabrir', 'repetir', 's', 'data-fun="reabrir" data-b="' + esc(x) + '"')
-            : ms.map(function (m, j) { return madre(v, m, (i + 1) + '.' + (j + 1)); }).join('') +
-              (ok ? '' : '<div class="ui-barra">' + uiBtn('Omitir las de este bloque', 'cerrar', 's', 'data-fun="omitir" data-b="' + esc(x) + '"') + '</div>'));
+        if (v.na[x]) { nos.push('<button type="button" class="cot-no" data-fun="reabrir" data-b="' + esc(x) + '" data-tip="Volver a preguntar">' + uiIco('cerrar') + esc(x) + ' · omitido</button>'); return ''; }
+        madresDe(v, x).forEach(function (m) { if (est(v, m.id) === 'No') nos.push('<button type="button" class="cot-no" data-resp="' + esc(m.id) + '" data-k="" data-tip="Volver a preguntar">' + uiIco('cerrar') + esc(nom(m)) + '</button>'); });
+        var ms = sinResp(v, x); if (!ms.length) return '';
+        var open = ab[x] !== undefined ? ab[x] : x === primero;
+        return uiDesp({ t: (i + 1) + '. ' + x, n: ms.length + ' por contestar', open: open, attrs: 'data-bl="' + esc(x) + '"',
+            v: '<button type="button" class="ui-lnk ui-gris" data-fun="omitir" data-b="' + esc(x) + '">Omitir bloque</button>' },
+          ms.map(function (m) { return madre(v, m); }).join(''));
       }).join('');
-    b.innerHTML = '<div class="cot-fun"><div>' + preg + '</div><div>' + respuestas(v) + '</div><div>' + lateral(v) + '</div></div>';
+    if (!bl.some(function (x) { return !v.na[x] && sinResp(v, x).length; })) preg += '<div class="ui-nota-t u-mt10">No queda nada por contestar.</div>';
+    if (nos.length) preg += '<div class="ui-lat-h u-mt10">No incluye · <span class="ui-num">' + nos.length + '</span></div><div class="cot-nos">' + nos.join('') + '</div>';
+    b.innerHTML = '<div class="cot-fun"><div>' + preg + '</div><div>' + incluidas(v) + '</div><div class="cot-lat">' + lateral(v) + '</div></div>';
     if (bus) buscar(bus);
   }
-  // Una pregunta madre: Sí · No · Por definir; si es Sí o Por definir, sus opciones debajo; la nota abajo
-  function madre(v, m, num) {
-    var s = est(v, m.id), q = esc(m.id);
+  function sinResp(v, b) { return madresDe(v, b).filter(function (m) { return !est(v, m.id); }); }
+  // Una pregunta madre: íconos Sí · Por definir · No a la derecha; si es Sí o Por definir, sus opciones y la nota debajo.
+  // Lo sugerido se marca, pero no suma hasta que se tilda.
+  function madre(v, m) {
+    var s = est(v, m.id), q = esc(m.id), sii = s === 'Sí' || s === 'Futura';
     var rad = RESP.map(function (k) { var on = s === k[0] || (k[0] === 'Sí' && s === 'Futura');
-      return '<button type="button" class="ui-btn ui-s' + (on ? ' on' : '') + '" data-resp="' + q + '" data-k="' + (on ? '' : k[0]) + '" aria-pressed="' + on + '">' + uiIco(k[1]) + k[2] + '</button>'; }).join('');
-    var abre = (s === 'Sí' || s === 'Futura' || s === 'Pendiente') && hijas(v, m.id).length;
-    return '<div class="cot-q" data-txt="' + esc(((m.pregunta || '') + ' ' + m.nombre).toLowerCase()) + '"><div class="cot-q-t"><span class="ui-num ui-nota-t">' + num + '</span> ' + esc(m.pregunta || m.nombre) +
-      (m.horas ? ' <span class="ui-num ui-nota-t">' + (Math.round(m.horas * m.factor * 10) / 10) + ' h</span>' : '') + '</div>' +
-      '<div class="ui-barra">' + rad + '</div>' + ((s === 'Sí' || s === 'Futura') ? extras(v, m) : '') + (abre ? '<div class="cot-hijas">' + opciones(v, m.id, 1) + '</div>' : '') + nota(v, m) + '</div>';
+      return '<button type="button" class="ui-ib cot-r-' + k[3] + (on ? ' on' : '') + '" data-resp="' + q + '" data-k="' + (on ? '' : k[0]) + '" aria-pressed="' + on + '" data-tip="' + k[2] + '" aria-label="' + k[2] + '">' + uiIco(k[1]) + '</button>'; }).join('') +
+      (sii ? uiIb('calendario', s === 'Futura' ? 'Volver a la 1ª etapa' : 'Pasar a una etapa futura', '', 'data-fun="futura" data-id="' + q + '"') : '');
+    var abre = (sii || s === 'Pendiente') && hijas(v, m.id).length;
+    var hs = sii && v.est ? horasDe(v, m.id) : m.horas * m.factor;
+    return '<div class="cot-q" data-txt="' + esc(((m.pregunta || '') + ' ' + m.nombre).toLowerCase()) + '"><div class="cot-q-t"><span class="ui-f1">' + esc(m.pregunta || m.nombre) +
+      (hs ? ' <span class="ui-num ui-nota-t">' + (Math.round(hs * 10) / 10) + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') +
+      (s === 'Futura' ? ' <span class="ui-p-abono u-s11">· etapa futura</span>' : '') + '</span><span class="cot-r">' + rad + '</span></div>' +
+      (sii ? extras(v, m) : '') + (abre ? '<div class="cot-hijas">' + opciones(v, m.id, 1) + '</div>' : '') + (s || v.notas[m.id] ? nota(v, m) : '') + '</div>';
+  }
+  // Lo incluido (Sí, en verde) y lo por definir (ámbar), por bloque, con sus opciones para seguir ajustando
+  function incluidas(v) {
+    var por = function (k) { var o = {}, ord = [];
+      raices(v).filter(function (m) { return !esBase(m) && !v.na[m.bloque] && (k === 'Sí' ? /^(Sí|Futura)$/.test(est(v, m.id)) : est(v, m.id) === k); })
+        .forEach(function (m) { if (!o[m.bloque]) { o[m.bloque] = ''; ord.push(m.bloque); } o[m.bloque] += madre(v, m); });
+      return ord.map(function (b) { return '<div class="ui-lat-h u-mt10">' + esc(b) + '</div>' + o[b]; }).join(''); };
+    var si2 = por('Sí'), pe = por('Pendiente');
+    return '<div class="ui-lat-h ui-e-finalizado">Incluye</div>' + (si2 || '<div class="ui-nota-t">Lo que contestes con Sí pasa acá.</div>') +
+      (pe ? '<div class="cot-pe"><div class="ui-lat-h u-mt10 ui-p-pendiente">Por definir</div>' + pe + '</div>' : '');
   }
   function opciones(v, id, niv) {
     return hijas(v, id).map(function (m) { var on = si(v, m.id), hh = Math.round(m.horas * m.factor * 10) / 10;
@@ -316,23 +350,6 @@
       if (items(x).length) h += '<label class="u-row6 u-s11-mt"><input type="checkbox"' + (x.paga === 'GIWA' ? ' checked' : '') + ' data-extpaga="' + esc(m.id) + '"> Lo paga GIWA · <span class="ui-num">' + fmt(extTot(x)) + '/mes</span></label>';
     }
     return h;
-  }
-  // Respuestas: lo que define el alcance; cada Sí se puede pasar a etapa futura (sale del precio, queda en la minuta)
-  function respuestas(v) {
-    var horas = {}; ((v.est && v.est.detalle) || []).forEach(function (d) { horas[d.id] = (horas[d.id] || 0) + Number(d.horas); });
-    var ico2 = { 'Sí': ['check', 'ui-e-finalizado'], 'No': ['cerrar', 'ui-nota-t'], 'Pendiente': ['arena', 'ui-p-pendiente'], 'Futura': ['calendario', 'ui-p-abono'] };
-    var linea = function (m) { var s = est(v, m.id), ic = ico2[s] || ['cerrar', 'ui-nota-t'];
-      return '<div class="ui-linea"><span class="' + ic[1] + '">' + uiIco(ic[0]) + '</span><span class="ui-f1">' + esc(nom(m)) + (m.instancia && v.cant[m.id] > 1 ? ' ×' + v.cant[m.id] : '') +
-        (v.notas[m.id] ? '<div class="ui-nota-t">' + esc(v.notas[m.id]) + '</div>' : '') + '</span>' +
-        '<span class="ui-num ui-nota-t">' + (s === 'Sí' ? (Math.round((horas[m.id] || 0) * 10) / 10) + ' h' : '') + '</span>' +
-        (s === 'Sí' || s === 'Futura' ? uiIb('calendario', s === 'Futura' ? 'Volver a la 1ª etapa' : 'Pasar a una etapa futura', '', 'data-fun="futura" data-id="' + esc(m.id) + '"') : '') + '</div>'; };
-    var por = {}, orden = [];
-    raices(v).filter(function (m) { return est(v, m.id) && !esBase(m); }).forEach(function (m) {
-      var L = [m]; var baja = function (x) { hijas(v, x.id).forEach(function (y) { if (est(v, y.id)) { L.push(y); baja(y); } }); }; baja(m);
-      if (!por[m.bloque]) { por[m.bloque] = ''; orden.push(m.bloque); } por[m.bloque] += L.map(linea).join('');
-    });
-    return '<div class="ui-lat-h">Respuestas</div>' + (orden.length ? orden.map(function (b) { return '<div class="ui-lat-h u-mt10">' + esc(b) + '</div>' + por[b]; }).join('')
-      : '<div class="ui-nota-t">Lo que respondas aparece acá: es el resultado de la minuta.</div>');
   }
   function buscar(t) {
     t = String(t || '').toLowerCase().trim();
@@ -410,7 +427,7 @@
     var m = modal('m-mant', 'Mantenimiento · ' + (v.titulo || tipoNom(v.tipo)),
       '<div class="g2"><div class="fg"><label class="fl" for="mt-hs">Horas por mes · sugerido <span class="ui-num">' + mantHs(v) + '</span> h</label><input class="fc u-tr" type="number" min="1" step="0.5" id="mt-hs" value="' + mt.hs + '"></div>' +
       '<div class="fg"><label class="fl" for="mt-ab">Abono mensual · <span id="mt-sug"></span></label><input class="fc u-tr" type="number" min="0" id="mt-ab" data-monto value="' + (mt.abono || 0) + '"></div></div>' +
-      '<div class="u-s11-mt">Incluye monitoreo, reunión mensual, análisis y ajustes. Hora de soporte <span class="ui-num">' + fmt(sop) + '</span>. Ajuste por IPC cada <span class="ui-num">3</span> meses. El monto es tuyo: cambialo si querés.</div>' +
+      '<div class="u-s11-mt">Incluye ' + mantTxt(v) + '. Hora de soporte <span class="ui-num">' + fmt(sop) + '</span>. Ajuste por IPC cada <span class="ui-num">3</span> meses. El monto es tuyo: cambialo si querés.</div>' +
       (otros ? '<div class="fg u-mt10"><label class="fl" for="mt-comp">Compartido con</label><select class="fc" id="mt-comp"><option value="">No, es propio de este desarrollo</option>' + otros + '</select></div>' : ''),
       '<button class="btn bg" data-cerrar="m-mant">Cancelar</button><button class="btn bp" data-mt-ok="1">Listo</button>');
     var sug = function () { set('mt-sug', 'sugerido <span class="ui-num">' + fmt(Math.round((Number(document.getElementById('mt-hs').value) || 0) * sop)) + '</span>'); };
@@ -429,20 +446,17 @@
   function terPintar() {
     var v = dev(), x = v.ext._terceros || { paga: 'Cliente', items: [] }, L = C.ini.contrataciones;
     var cant = function (cid) { var y = items(x).filter(function (k) { return k.cid === cid; })[0]; return y ? y.cantidad : 0; };
-    set('ter-b', '<div class="u-row8 u-mb10"><span class="fl u-m0">Lo paga</span><span class="ui-mon" role="group"><button type="button" class="ui-mon-b' + (x.paga !== 'GIWA' ? ' on' : '') + '" data-ter-paga="Cliente">El cliente</button>' +
-      '<button type="button" class="ui-mon-b' + (x.paga === 'GIWA' ? ' on' : '') + '" data-ter-paga="GIWA">GIWA</button></span><span class="ui-f1"></span><span class="ui-num">' + fmt(extTot(x)) + '/mes</span></div>' +
+    set('ter-b', '<div class="u-row8 u-mb10"><span class="ui-f1 ui-nota-t">Sólo lo que paga GIWA. Meta es opcional: si GIWA lo paga, se traslada en el abono.</span><span class="ui-num">' + fmt(extTot(x)) + '/mes</span></div>' +
       TER_CAT.map(function (k) { var Lk = L.filter(function (c) { return c.categoria === k; }); if (!Lk.length) return '';
-        return uiDesp({ t: k === 'Canales' ? 'Meta · WhatsApp' : k, n2: true, open: k === 'Canales' || Lk.some(function (c) { return cant(c.id) > 0; }) },
+        return uiDesp({ t: k === 'Canales' ? 'Ofrecer el pago de Meta · WhatsApp' : k, n2: true, open: Lk.some(function (c) { return cant(c.id) > 0; }) },
           Lk.map(function (c) { return '<div class="ui-linea"><span class="ui-f1">' + esc(c.producto) + ' <span class="ui-nota-t">' + esc(c.unidad || '') + ' · <span class="ui-num">' + fmt(precioC(c)) + '</span></span></span>' +
             '<input class="fc u-wauto u-tr" type="number" min="0" step="1" value="' + (cant(c.id) || '') + '" placeholder="0" data-ter-q="' + esc(c.id) + '"></div>'; }).join('')); }).join(''));
   }
   function terPop() {
     var v = dev();
-    if (!v.ext._terceros) {   // si tiene WhatsApp, arranca con el volumen de Meta de siempre
-      var wa = (C.ini.reglas.wa || []).some(function (id) { return si(v, id); }), u = C.ini.contrataciones.filter(function (c) { return /utilidad/i.test(c.producto) && /whatsapp/i.test(c.producto); })[0];
-      v.ext._terceros = { paga: 'Cliente', items: wa && u ? [{ cid: u.id, cantidad: C.ini.valores.meta_msj }] : [] };
-    }
-    var m = modal('m-ter', 'Costos de terceros', '<div id="ter-b"></div>', '<button class="btn bg" data-ter-quitar="1">Quitar todos</button><button class="btn bp" data-cerrar="m-ter">Listo</button>');
+    // Todo lo de acá lo paga GIWA; nada arranca cargado (Meta se ofrece, no se supone)
+    if (!v.ext._terceros) v.ext._terceros = { paga: 'GIWA', items: [] }; else v.ext._terceros.paga = 'GIWA';
+    var m = modal('m-ter', 'Costos que paga GIWA', '<div id="ter-b"></div>', '<button class="btn bg" data-ter-quitar="1">Quitar todos</button><button class="btn bp" data-cerrar="m-ter">Listo</button>');
     m.onchange = function (ev) { var t = ev.target; if (!t.hasAttribute('data-ter-q')) return; var cid = t.getAttribute('data-ter-q'), n = Number(t.value) || 0;
       extSet('_terceros', function (x) { x.items = x.items.filter(function (y) { return y.cid !== cid; }); if (n > 0) x.items.push({ cid: cid, cantidad: n }); }); };
     m.onclick = function (ev) { var b = ev.target.closest('[data-ter-paga],[data-ter-quitar]'); if (!b) return;
@@ -503,7 +517,7 @@
       if (reuse && !Object.keys(nv.r).length) { reuse.ids.forEach(function (x) { nv.r[x] = 'Sí'; }); nv.cant = Object.assign({}, reuse.cant || {}); nv.base = { de: reuse.id }; }
       CN.i = CN.devs.indexOf(nv); closeM('m-dev');
       catalogo(tipo).then(function () {
-        if (cambioTipo || !v) mods(nv).forEach(function (x) { if (x.sugerido && !nv.r[x.id]) nv.r[x.id] = 'Sí'; });   // lo sugerido arranca en Sí
+        if (cambioTipo || !v) mods(nv).forEach(function (x) { if (x.sugerido && esBase(x) && !nv.r[x.id]) nv.r[x.id] = 'Sí'; });   // sólo la base arranca puesta; lo sugerido no suma hasta tildarlo
         conMadres(nv);
         repintar(); estimar(CN.i); auto();
       }).catch(function (e) { toast(e.message, 'err'); });
@@ -585,32 +599,30 @@
   }
   async function reTipo(limpio) {
     try { await catalogo(RE.tipo); } catch (e) { return toast(e.message, 'err'); }
-    if (limpio || !Object.keys(RE.r).length) { RE.r = {}; RE.cant = {}; RE.notas = {}; RE.ia = {}; mods(RE).forEach(function (m) { if (m.sugerido) RE.r[m.id] = 'Sí'; }); }
+    if (limpio || !Object.keys(RE.r).length) { RE.r = {}; RE.cant = {}; RE.notas = {}; RE.ia = {}; mods(RE).forEach(function (m) { if (m.sugerido && esBase(m)) RE.r[m.id] = 'Sí'; }); }
     rePinta(); reEstimar();
-  }
-  function reFila(m, niv) {
-    var on = si(RE, m.id), hh = Math.round(m.horas * m.factor * 10) / 10, integ = (C.ini.reglas.integ || []).indexOf(m.id) >= 0;
-    var h = '<div class="cot-op" style="--niv:' + niv + '"><label class="u-row6"><input type="checkbox"' + (on ? ' checked' : '') + ' data-re-ck="' + esc(m.id) + '"> ' +
-      '<span class="ui-f1' + (RE.ia[m.id] ? ' ui-p-abono' : on ? '' : ' ui-nota-t') + '">' + esc(m.pregunta || m.nombre) + '</span>' + (hh ? '<span class="ui-num ui-nota-t">' + hh + ' h</span>' : '') + '</label>';
-    if (on && m.instancia) h += '<div class="u-row8 u-s11-mt">Cantidad <input class="fc u-wauto" type="number" min="1" value="' + (RE.cant[m.id] || 1) + '" data-re-cant="' + esc(m.id) + '"></div>';
-    if (on && integ) h += '<input class="fc" placeholder="Nombre del sistema" value="' + esc(RE.notas[m.id] || '') + '" data-re-nota="' + esc(m.id) + '" aria-label="Nombre del sistema">';
-    if (on) h += hijas(RE, m.id).map(function (x) { return reFila(x, niv + 1); }).join('');
-    return h + '</div>';
   }
   function rePinta() {
     var box = document.getElementById('re-lista'); if (!box) return;
     var base = raices(RE).filter(esBase), hB = base.reduce(function (s, m) { return s + m.horas * m.factor; }, 0), por = {}, orden = [];
     raices(RE).filter(function (m) { return !esBase(m); }).forEach(function (m) { if (!por[m.bloque]) { por[m.bloque] = []; orden.push(m.bloque); } por[m.bloque].push(m); });
+    // Un solo cuestionario (12/11/2026): acá se ve lo tildado; se contesta en el mismo cuestionario de Nuevo proyecto
+    var tild = function (m) { var L = []; var baja = function (x) { if (!si(RE, x.id)) return; L.push(x); hijas(RE, x.id).forEach(baja); }; baja(m); return L; };
     box.innerHTML = (base.length ? '<div class="ui-kv">Base del agente · siempre incluida<span class="ui-num">' + hB + ' h</span></div>' : '') +
-      orden.map(function (b) { return '<div class="ui-lat-h u-mt10">' + esc(b) + '</div>' + por[b].map(function (m) { return reFila(m, 0); }).join(''); }).join('');
+      orden.map(function (b) { var L = [].concat.apply([], por[b].map(tild)); if (!L.length) return '';
+        return '<div class="ui-lat-h u-mt10">' + esc(b) + '</div>' + L.map(function (m) { return '<div class="u-s11' + (RE.ia[m.id] ? ' ui-p-abono' : '') + '">' + esc(nom(m)) + '</div>'; }).join(''); }).join('') +
+      '<div class="ui-barra u-mt10">' + uiBtn('Abrir el cuestionario', 'lista', 'p', 'data-re="cuest"') + '</div>';
     set('re-msg', RE.msg + (RE.propuesta ? '<div class="fg u-mt10"><label class="fl" for="re-prop">Propuesta para el cliente</label><textarea class="fc" rows="4" id="re-prop">' + esc(RE.propuesta) + '</textarea></div>' : ''));
     reTotal();
   }
   function reAbono() { return RE.abono != null ? RE.abono : Math.round(mantHs(RE) * soporte()); }
   function reTotal() {
-    var e = RE.est, h = e ? Math.round(e.horas * 10) / 10 : 0;
-    set('re-tot', '<span>Pago único <span class="ui-num">' + (e ? fmt(sugerido(RE)) : '…') + '</span> ' + (e ? usd(sugerido(RE)) : '') + ' · <span class="ui-num">' + h + '</span> h' + (RE.empresa ? '' : ' <span class="ui-nota-t">(sin Tier: elegí el cliente)</span>') + '</span>' +
-      '<label class="u-row6">Por mes <input class="fc u-wauto u-tr ui-num" type="number" min="0" id="re-ab" value="' + reAbono() + '" data-tip="Sugerido: ' + mantHs(RE) + ' h de soporte. El monto es tuyo: cambialo si querés."></label>' +
+    // Montos en la moneda elegida (ARS o USD al tipo de cambio del día); el abono se guarda siempre en pesos
+    var e = RE.est, h = e ? Math.round(e.horas * 10) / 10 : 0, mon = RE.mon === 'USD' && tc() ? 'USD' : 'ARS';
+    var cv = function (n) { return mon === 'USD' ? Math.round(n / tc() * 100) / 100 : Math.round(n); };
+    set('re-tot', '<select id="re-mon" aria-label="Moneda"><option' + (mon === 'ARS' ? ' selected' : '') + '>ARS</option><option' + (mon === 'USD' ? ' selected' : '') + '>USD</option></select>' +
+      '<span>Pago único <span class="ui-num">' + (e ? fmt(cv(sugerido(RE)), mon) : '…') + '</span> · <span class="ui-num">' + h + '</span> h' + (RE.empresa ? '' : ' <span class="ui-nota-t">(sin Tier: elegí el cliente)</span>') + '</span>' +
+      '<label class="u-row6">Por mes <input class="fc u-wauto u-tr ui-num" type="number" min="0" id="re-ab"' + (mon === 'USD' ? ' step="0.01"' : ' data-monto') + ' value="' + cv(reAbono()) + '" data-tip="Sugerido: ' + mantHs(RE) + ' h de soporte. El monto es tuyo: cambialo si querés."></label>' +
       '<span class="ui-f1"></span>' + uiBtn('Pasar a Nuevo proyecto', 'derecha', 's', 'data-re="nuevo"') + uiBtn('Guardar borrador', 'guardar', 'p', 'data-re="guardar"'));
   }
   function reEstimar() {
@@ -624,7 +636,8 @@
     if (t.id === 're-tipo') { RE.tipo = t.value; return reTipo(true); }
     if (t.id === 're-tit') { RE.titulo = t.value.trim(); return; }
     if (t.id === 're-min') { RE.minuta = t.value; return; }
-    if (t.id === 're-ab') { RE.abono = t.value === '' ? null : Number(t.value) || 0; return; }
+    if (t.id === 're-mon') { RE.mon = t.value; return reTotal(); }
+    if (t.id === 're-ab') { var n = Number(String(t.value).replace(',', '.')) || 0; RE.abono = t.value === '' ? null : Math.round(RE.mon === 'USD' && tc() ? n * tc() : n); return; }
     if (t.id === 're-prop') { RE.propuesta = t.value; return; }
     if (t.hasAttribute('data-re-cant')) { RE.cant[t.getAttribute('data-re-cant')] = Math.max(1, Number(t.value) || 1); return reEstimar(); }
     if (t.hasAttribute('data-re-nota')) { RE.notas[t.getAttribute('data-re-nota')] = t.value.trim(); return; }
@@ -634,12 +647,11 @@
   }
   // Arma la cotización con lo cargado: la misma que usan Nuevo proyecto y Guardar
   function reCotizacion() {
-    var x = nuevo(), v = vacio(), wa = (C.ini.reglas.wa || []).some(function (id) { return si(RE, id); }), u = C.ini.contrataciones.filter(function (c) { return /utilidad/i.test(c.producto) && /whatsapp/i.test(c.producto); })[0];
+    var x = nuevo(), v = vacio();
     x.empresa = RE.empresa; x.nombre = RE.titulo || tipoNom(RE.tipo); x.minuta = { texto: RE.minuta, objetivo: RE.minuta, propuesta: RE.propuesta || undefined, origen: RE.leido ? 'Leído del texto' : 'En la reunión' };
     var cs = C.ini.contactos.filter(function (c) { return c.empresa === RE.empresa; }); if (cs.length === 1) x.sponsors = [cs[0].id];
     v.tipo = RE.tipo; v.titulo = x.nombre; v.r = RE.r; v.cant = RE.cant; v.notas = RE.notas; v.est = RE.est;
     v.mant = Object.assign(v.mant, { on: true, hs: mantHs(RE), abono: reAbono(), manual: RE.abono != null });
-    if (wa && u) v.ext._terceros = { paga: 'Cliente', items: [{ cid: u.id, cantidad: RE.wa || C.ini.valores.meta_msj }] };
     x.devs = [v]; return x;
   }
   async function reClick(a, el) {
@@ -656,6 +668,10 @@
       RE.wa = r.data.wa_msj || 0; RE.propuesta = r.data.propuesta || ''; RE.leido = true;
       RE.msg = 'Tildó <span class="ui-num">' + Object.keys(RE.ia).length + '</span> opciones. Revisalas: las violetas son las que agregó.' + (op.length ? ' Opcionales, sin tildar: ' + esc(op.map(function (m) { return nom(mod(RE, m.id)); }).join(', ')) + '.' : '');
       rePinta(); return reEstimar();
+    }
+    if (a === 'cuest') {   // el mismo cuestionario de Nuevo proyecto
+      if (CN && !CN.pid && CN.devs.some(function (d) { return d.tipo; }) && !(await ask('Lo que tenés cargado en Nuevo proyecto se reemplaza.', 'Abrir el cuestionario', { ok: 'Reemplazar' }))) return;
+      CN = reCotizacion(); RE = null; C.sub = 'nuevo'; pintar(el); auto(); estimar(0); return funAbrir();
     }
     if (!RE.est) return toast('Esperá que termine de calcular', 'inf');
     if (a === 'nuevo') {

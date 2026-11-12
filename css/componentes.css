@@ -315,7 +315,30 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .md.md-xl { max-width: min(1280px, 96vw); }
 .cot-fun { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .9fr); gap: var(--e5); align-items: start; }
 .cot-q { padding: var(--e3) 0; border-bottom: 1px solid var(--marco); }
-.cot-q-t { font-size: var(--t-l); margin-bottom: var(--e2); }
+.cot-q-t { font-size: var(--t-l); margin-bottom: var(--e2); display: flex; align-items: center; gap: var(--e3); }
+/* Respuestas en íconos chicos y tres zonas (12/11/2026): Sí verde · Por definir ámbar · No gris y plegado */
+.cot-r { display: inline-flex; gap: 2px; flex: none; }
+.cot-r .ui-ib { color: var(--texto2); }
+.cot-r .ui-ib.cot-r-si.on { color: var(--e-finalizado); background: var(--suave-cobrado); }
+.cot-r .ui-ib.cot-r-pe.on { color: var(--p-pendiente); background: var(--suave-detenido); }
+.cot-r .ui-ib.cot-r-no.on { color: var(--texto); background: var(--suave-fila); }
+.cot-pe .cot-q { border-left: 2px solid var(--p-pendiente); padding-left: var(--e3); }
+.cot-nos { display: flex; flex-wrap: wrap; gap: var(--e1) var(--e4); }
+.cot-no { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 2px 0; font-family: var(--f-texto); font-size: var(--t-s); color: var(--texto2); cursor: pointer; }
+.cot-no .ui-ico { width: 12px; height: 12px; }
+.cot-n { font-family: var(--f-num); }
+.cot-no:hover { color: var(--texto); }
+/* Lo que suma con jerarquía: precio final · sugerido · análisis del abono · interno en gris */
+.cot-pf { display: flex; flex-direction: column; gap: 2px; padding: var(--e2) 0 var(--e3); border-bottom: 1px solid var(--marco); }
+.cot-pf > .ui-num { font-size: var(--t-num); }
+.cot-pf .ui-p-usd { font-size: var(--t-s); }
+.cot-sec .ui-kv, .cot-sec .ui-kv .ui-num { color: var(--texto2); font-size: var(--t-m); }
+.cot-int .ui-kv { font-size: var(--t-s); padding: var(--e1) 0; }
+.cot-int .ui-kv .ui-num { font-size: var(--t-s); color: var(--texto2); }
+.cot-lat .ui-kv .ui-num.ui-e-finalizado { color: var(--e-finalizado); }
+.cot-lat .ui-kv .ui-num.ui-p-error { color: var(--p-error); }
+.cot-lat .ui-kv .ui-num.ui-p-abono { color: var(--p-abono); }
+.cot-lat .ui-kv .ui-num.ui-p-contratado { color: var(--p-contratado); }
 .cot-hijas { margin: var(--e2) 0; }
 .cot-op { padding: var(--e1) 0 var(--e1) calc(var(--niv, 0) * var(--e4)); font-size: var(--t-m); }
 .cot-nota { margin-top: var(--e2); min-height: 0; }
