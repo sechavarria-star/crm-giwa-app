@@ -231,7 +231,7 @@
     if (!v || !v.tipo) return '<div class="ui-lat-h">Lo que suma</div><div class="ui-nota-t">Cargá un desarrollo.</div>';
     if (v.err) return uiAviso(v.err, 'adv');
     var e = v.est; if (!e) return '<div class="ui-lat-h">Lo que suma</div><div class="ui-nota-t">Calculando…</div>';
-    var kv = function (l, x, cls) { return '<div class="ui-kv">' + l + '<span class="ui-num' + (cls ? ' ' + cls : '') + '">' + x + '</span></div>'; };
+    var kv = function (l, x, cls) { return '<div class="ui-kv"><span>' + l + '</span><span class="ui-num' + (cls ? ' ' + cls : '') + '">' + x + '</span></div>'; };
     var porE = {}; (e.detalle || []).forEach(function (d) { porE[d.etapa] = (porE[d.etapa] || 0) + Number(d.horas); });
     var fut = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura'; }), p = pend(v);
     var integ = (C.ini.reglas.integ || []).filter(function (id) { return si(v, id); }).map(function (id) { return v.notas[id] || nom(mod(v, id)); });
@@ -243,16 +243,16 @@
     // Jerarquía (12/11/2026): precio final · sugerido · análisis del abono · lo interno en gris
     var cls = function (n) { return n >= 0 ? 'ui-e-finalizado' : 'ui-p-error'; };
     h += '<div class="cot-pf"><span class="ui-lbl">Precio final</span><span class="ui-num ui-p-contratado">' + fmt(total(v)) + '</span>' + usd(total(v)) + '</div>' +
-      '<div class="cot-sec">' + kv('Sugerido · <span class="cot-n">' + (Math.round(e.horas * 10) / 10) + '</span> h', fmt(sugerido(v))) + '</div>';
+      '<div class="cot-sec">' + kv('Sugerido · <span class="cot-n">' + String(Math.round(e.horas * 10) / 10).replace('.', ',') + '</span> h', fmt(sugerido(v))) + '</div>';
     // Análisis del abono: lo que entra por mes, la relación a 12 meses, el margen y el recupero del costo
     var ab = propio(v) ? v.mant.abono || 0 : 0, meta = metaGiwa(v), cMes = Math.round((propio(v) ? v.mant.hs : 0) * ((C.ini.valores || {}).costo || 0) + extMes(v, 'GIWA'));
     var mMes = ab + meta - cMes, m12 = total(v) - (e.costo_ars || 0) + 12 * mMes, falta = (e.costo_ars || 0) - total(v);
     h += '<div class="ui-lat-h u-mt10">Análisis del abono</div>';
     if (!propio(v)) h += '<div class="ui-nota-t">' + (v.mant.on ? 'El mantenimiento es compartido con otro desarrollo.' : 'Sin mantenimiento: no hay abono mensual.') + '</div>';
-    else h += kv('Abono · <span class="cot-n">' + v.mant.hs + '</span> h por mes', fmt(ab), 'ui-p-abono') +
+    else h += kv('Abono · <span class="cot-n">' + String(v.mant.hs).replace('.', ',') + '</span> h por mes', fmt(ab), 'ui-p-abono') +
       (meta ? kv('Meta a cargo de GIWA, se traslada', fmt(meta) + '/mes', 'ui-p-abono') : '');
     h += kv('Relación a <span class="cot-n">12</span> meses', fmt(total(v) + 12 * (ab + meta))) + kv('Margen a <span class="cot-n">12</span> meses', fmt(m12), cls(m12)) +
-      '<div class="ui-kv">Recupero del costo<span class="' + (falta <= 0 || mMes > 0 ? 'ui-e-finalizado' : 'ui-p-error') + '">' +
+      '<div class="ui-kv"><span>Recupero del costo</span><span class="' + (falta <= 0 || mMes > 0 ? 'ui-e-finalizado' : 'ui-p-error') + '">' +
         (falta <= 0 ? 'con la implementación' : mMes > 0 ? 'en <span class="cot-n">' + Math.ceil(falta / mMes) + '</span> meses' : 'no se recupera') + '</span></div>';
     if (CN.devs.filter(function (d) { return d.tipo; }).length > 1) h += kv('Total del proyecto', fmt(CN.devs.reduce(function (s, d) { return s + (d.tipo ? total(d) : 0); }, 0)), 'ui-p-contratado');
     h += '<div class="cot-int"><div class="ui-lat-h u-mt10">Interno</div>' + kv('Valor hora · ' + esc(e.tier || 'sin Tier'), fmt(Math.round(vh(v)))) +
@@ -293,8 +293,8 @@
         madresDe(v, x).forEach(function (m) { if (est(v, m.id) === 'No') nos.push('<button type="button" class="cot-no" data-resp="' + esc(m.id) + '" data-k="" data-tip="Volver a preguntar">' + uiIco('cerrar') + esc(nom(m)) + '</button>'); });
         var ms = sinResp(v, x); if (!ms.length) return '';
         var open = ab[x] !== undefined ? ab[x] : x === primero;
-        return uiDesp({ t: (i + 1) + '. ' + x, n: ms.length + ' por contestar', open: open, attrs: 'data-bl="' + esc(x) + '"',
-            v: '<button type="button" class="ui-lnk ui-gris" data-fun="omitir" data-b="' + esc(x) + '">Omitir bloque</button>' },
+        return uiDesp({ t: (i + 1) + '. ' + x, n: ms.length, open: open, attrs: 'data-bl="' + esc(x) + '"',
+            v: '<button type="button" class="cot-no" data-fun="omitir" data-b="' + esc(x) + '" data-tip="Pasa a No incluye">Omitir</button>' },
           ms.map(function (m) { return madre(v, m); }).join(''));
       }).join('');
     if (!bl.some(function (x) { return !v.na[x] && sinResp(v, x).length; })) preg += '<div class="ui-nota-t u-mt10">No queda nada por contestar.</div>';
@@ -313,7 +313,7 @@
     var abre = (sii || s === 'Pendiente') && hijas(v, m.id).length;
     var hs = sii && v.est ? horasDe(v, m.id) : m.horas * m.factor;
     return '<div class="cot-q" data-txt="' + esc(((m.pregunta || '') + ' ' + m.nombre).toLowerCase()) + '"><div class="cot-q-t"><span class="ui-f1">' + esc(m.pregunta || m.nombre) +
-      (hs ? ' <span class="ui-num ui-nota-t">' + (Math.round(hs * 10) / 10) + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') +
+      (hs ? ' <span class="ui-num ui-nota-t">' + String(Math.round(hs * 10) / 10).replace('.', ',') + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') +
       (s === 'Futura' ? ' <span class="ui-p-abono u-s11">· etapa futura</span>' : '') + '</span><span class="cot-r">' + rad + '</span></div>' +
       (sii ? extras(v, m) : '') + (abre ? '<div class="cot-hijas">' + opciones(v, m.id, 1) + '</div>' : '') + (s || v.notas[m.id] ? nota(v, m) : '') + '</div>';
   }
