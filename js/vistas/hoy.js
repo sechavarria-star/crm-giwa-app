@@ -35,7 +35,7 @@
     var r = await Promise.all([
       db().from('v_tareas').select('*').eq('hidden', false),
       db().from('v_cobros_pendientes').select('dias'),
-      db().from('v_facturar_mensuales').select('item_id'),
+      db().from('v_facturar_mensuales').select('item_id,periodo_key'),
       db().from('v_facturar_saldos').select('item_id'),
       db().rpc('umbral', { clave: 'alerta_cobro_vencido_dias', por_defecto: 30 }),
       db().from('usuarios').select('mail,nombre').eq('es_giwa', true).eq('activo', true).order('orden'),
@@ -49,8 +49,10 @@
     H.nov = r[7].data.map(function (e) { var a = (e.accesos || [])[0] || {}; return { proy: nomP[e.proyecto_id] || e.proyecto_id, tipo: e.tipo || '', titulo: e.titulo || a.nombre || '', url: String(a.url || ''), creado: e.creado }; });
     H.users = r[5].data.map(function (u) { return { mail: String(u.mail || '').trim().toLowerCase(), name: u.nombre || u.mail }; });
     var dv = Number(r[4].data) || 30;
+    // Abonos a facturar: sólo los del mes en curso. La vista da el primer mes sin factura; si ya se facturó, es el siguiente (12/11/2026)
+    var h0 = new Date(), mesK = h0.getFullYear() + '-' + h0.getMonth();
     H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
-                mens: r[2].data.length, saldos: r[3].data.length };
+                mens: r[2].data.filter(function (m) { return m.periodo_key === mesK; }).length, saldos: r[3].data.length };
     H.ok = true;
   }
 
