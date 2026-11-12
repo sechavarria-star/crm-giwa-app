@@ -82,16 +82,21 @@
   function pend(v) { return mods(v).filter(function (m) { if (v.r[m.id] === 'Pendiente') return true; var hs = hijas(v, m.id); return si(v, m.id) && hs.length && !hs.some(function (x) { return est(v, x.id); }); }); }
   function items(x) { return !x ? [] : (x.items || (x.cid ? [{ cid: x.cid, cantidad: x.cantidad || 1 }] : [])); }
   function precioC(c) { return c ? (Number(c.ars) || Number(c.usd) * tc()) : 0; }
-  function extTot(x) { var L = C.ini.contrataciones; return Math.round(items(x).reduce(function (s, y) { var c = L.filter(function (k) { return k.id === y.cid; })[0]; return s + precioC(c) * (y.cantidad || 0); }, 0)); }
+  // Costos asociados (12/11/2026): cada ítem dice de quién es (GIWA o Cliente); los externos a mano traen nombre y monto
+  function contr(cid) { return C.ini.contrataciones.filter(function (k) { return k.id === cid; })[0] || null; }
+  function pagaDe(x, y) { return (y.paga || (x && x.paga) || 'Cliente') === 'GIWA' ? 'GIWA' : 'Cliente'; }
+  function itemMes(y) { if (!y.cid) return y.rec === 'Único' ? 0 : Number(y.monto) || 0; return precioC(contr(y.cid)) * (y.cantidad || 0); }
+  function extTot(x) { return Math.round(items(x).reduce(function (s, y) { return s + itemMes(y); }, 0)); }
   function extMes(v, paga) {
-    var t = 0;
+    var t = 0, P = paga === 'GIWA' ? 'GIWA' : 'Cliente';
     Object.keys(v.ext).forEach(function (id) { var x = v.ext[id];
-      if ((id !== '_terceros' && (!si(v, id) || v.etapa[id] === 'futura')) || (x.paga === 'GIWA') !== (paga === 'GIWA')) return; t += extTot(x); });
-    return t;
+      if (id !== '_terceros' && (!si(v, id) || v.etapa[id] === 'futura')) return;
+      items(x).forEach(function (y) { if (pagaDe(x, y) === P) t += itemMes(y); }); });
+    return Math.round(t);
   }
   // Meta que paga GIWA y traslada en el abono (Canales dentro de los costos que paga GIWA)
-  function metaGiwa(v) { var x = v.ext._terceros; if (!x || x.paga !== 'GIWA') return 0;
-    return Math.round(items(x).reduce(function (s, y) { var c = C.ini.contrataciones.filter(function (k) { return k.id === y.cid; })[0]; return s + (c && c.categoria === 'Canales' ? precioC(c) * (y.cantidad || 0) : 0); }, 0)); }
+  function metaGiwa(v) { var x = v.ext._terceros; if (!x) return 0;
+    return Math.round(items(x).reduce(function (s, y) { var c = contr(y.cid); return s + (c && c.categoria === 'Canales' && pagaDe(x, y) === 'GIWA' ? itemMes(y) : 0); }, 0)); }
   function empresa() { return (C.ini.empresas || []).filter(function (e) { return e.id === CN.empresa; })[0] || null; }
   function tipoNom(id) { var t = (C.ini.tipos || []).filter(function (x) { return x.id === id; })[0]; return t ? t.nombre : id; }
 
@@ -107,6 +112,8 @@
         v.mant.exc = Math.round(soporte());
         var ids = ((v.est && v.est.detalle) || []).map(function (d) { return d.id; });
         v.ref = ids.length ? await rpc('cot_referencia', { tipo: v.tipo, ids: ids, pid: CN.pid || '' }) : null;
+        v.an = v.est ? await rpc('cot_analisis', { o: { tipo: v.tipo, horas: v.est.horas, precio: total(v), abono: propio(v) ? v.mant.abono || 0 : 0,
+          mant_hs: propio(v) ? v.mant.hs : 0, vh: vh(v), extra_mes: extMes(v, 'GIWA') } }) : null;
       } catch (e) { v.err = e.message; v.est = null; }
       repintar(); auto();
     }, 300);
@@ -121,7 +128,11 @@
     el.innerHTML = uiHd('Cotizador', 'Cotizar un proyecto por funcionalidad, guardarlo como borrador y crearlo como prospecto.',
       uiBtn('Reutilizar proyecto', 'repetir', 's', 'data-cot="reutilizar"') + uiBtn('Carga rápida', 'mas', 's', 'data-cot="rapida"')) + tabs + '<div id="cot-c">' + cuerpo + '</div>';
   }
-  function repintar() { var c = document.getElementById('cot-c'); if (!c || C.sub !== 'nuevo') return; c.innerHTML = htmlEditor(); if (abierto('m-fun')) funPintar(); }
+  function repintar() { var c = document.getElementById('cot-c'); if (!c || C.sub !== 'nuevo') return; edGuardar(); c.innerHTML = htmlEditor(); if (abierto('m-fun')) funPintar(); if (abierto('m-cor')) corPintar(); }
+  // Qué desplegables de la ventana de edición están abiertos (se conserva al repintar)
+  C.edAb = {};
+  function edGuardar() { document.querySelectorAll('#cot-c [data-ed]').forEach(function (d) { C.edAb[d.getAttribute('data-ed')] = d.classList.contains('open'); }); }
+  function edOpen(k, def) { return C.edAb[k] !== undefined ? C.edAb[k] : def; }
   function abierto(id) { var m = document.getElementById(id); return !!(m && m.classList.contains('open')); }
 
   // Borradores y Prospectos (los que todavía se editan acá)
@@ -164,116 +175,186 @@
         uiIb('cerrar', 'Quitar', '', 'data-cot="sp-quitar" data-i="' + i + '"') + '</div>'; }).join('');
     var ow = CN.owners.map(function (m, i) { var u = (C.ini.usuarios || []).filter(function (x) { return x.mail === m; })[0];
       return '<div class="ui-linea"><span class="ui-f1">' + esc(u ? u.nombre : m) + '</span>' + uiIb('cerrar', 'Quitar', '', 'data-cot="ow-quitar" data-i="' + i + '"') + '</div>'; }).join('');
-    var cliente = '<div class="g2"><div class="fg"><label class="fl" for="cot-emp">Empresa <span class="req">*</span></label><select class="fc" id="cot-emp"><option value="">— Empresa —</option>' +
+    var cliente = '<div class="g2 cot-ed-g"><div class="fg"><label class="fl" for="cot-emp">Empresa <span class="req">*</span></label><select class="fc" id="cot-emp"><option value="">— Empresa —</option>' +
         C.ini.empresas.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === CN.empresa ? ' selected' : '') + '>' + esc(x.nombre) + '</option>'; }).join('') + '</select>' +
         (e ? '<div class="u-s11-mt">' + uiTier(e.tier) + ' × <span class="ui-num">' + String(e.mult).replace('.', ',') + '</span></div>' : '') + '</div>' +
-      '<div class="fg"><label class="fl" for="cot-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="cot-nom" value="' + esc(CN.nombre) + '"></div></div>' +
-      '<div class="fg"><label class="fl" for="cot-cierre">Fecha probable de cierre de negociación</label><input class="fc" type="date" id="cot-cierre" value="' + esc(CN.fecha_cierre || '') + '"></div>' +
-      '<div class="g2"><div class="fg"><label class="fl" for="cot-sp">Sponsors</label><select class="fc" id="cot-sp"><option value="">' + (CN.empresa ? '+ Agregar sponsor' : 'Elegí la empresa') + '</option>' +
+      '<div class="fg"><label class="fl" for="cot-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="cot-nom" value="' + esc(CN.nombre) + '"></div>' +
+      '<div class="fg"><label class="fl" for="cot-cierre">Cierre probable de la negociación</label><input class="fc" type="date" id="cot-cierre" value="' + esc(CN.fecha_cierre || '') + '"></div>' +
+      '<div class="fg"><label class="fl" for="cot-sp">Sponsors</label><select class="fc" id="cot-sp"><option value="">' + (CN.empresa ? '+ Agregar sponsor' : 'Elegí la empresa') + '</option>' +
           cs.filter(function (c) { return CN.sponsors.indexOf(c.id) < 0; }).map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.nombre) + '</option>'; }).join('') + '</select>' + sp +
           (CN.empresa ? '<button type="button" class="ui-lnk ui-azul" data-cot="contacto">+ Contacto nuevo</button>' : '') + '</div>' +
         '<div class="fg"><label class="fl" for="cot-ow">Responsables</label><select class="fc" id="cot-ow"><option value="">+ Agregar responsable</option>' +
           (C.ini.usuarios || []).filter(function (u) { return CN.owners.indexOf(u.mail) < 0; }).map(function (u) { return '<option value="' + esc(u.mail) + '">' + esc(u.nombre) + '</option>'; }).join('') + '</select>' + ow + '</div></div>' +
       '<div class="fg"><div class="u-row8"><label class="fl u-f1" for="cot-min">Resumen ejecutivo</label>' +
         uiIb('buscar', 'Buscar una minuta guardada', '', 'data-cot="min-buscar"') + '</div><textarea class="fc" id="cot-min" rows="3">' + esc(CN.minuta.texto || '') + '</textarea></div>';
-    h += uiDesp({ t: 'Datos del cliente', open: true }, cliente);
-    // Desarrollos
-    var lista = ds.length ? CN.devs.map(function (d, i) { return d.tipo ? tarjetaDev(d, i) : ''; }).join('') : '<div class="ui-nota-t">Todavía no hay desarrollos. Tocá «Nuevo desarrollo».</div>';
-    h += uiDesp({ t: 'Desarrollos', n: ds.length, open: true, v: '<span class="ui-num">' + fmt(tot) + '</span>' + (ab ? ' · <span class="ui-num ui-p-abono">' + fmt(ab) + '/mes</span>' : '') },
+    h += uiDesp({ t: 'Datos del cliente', open: edOpen('datos', alta), attrs: 'data-ed="datos"' }, cliente);
+    // Desarrollos: cada uno se abre con un clic; el mantenimiento es un desarrollo aparte, con su lápiz
+    var n = 0, lista = ds.length ? CN.devs.map(function (d, i) { if (!d.tipo) return ''; n++; var x = tarjetaDev(d, i, n); if (propio(d)) n++; return x; }).join('')
+      : '<div class="ui-nota-t">Todavía no hay desarrollos. Tocá «Nuevo desarrollo».</div>';
+    h += uiDesp({ t: 'Desarrollos', n: n, open: true, v: '<span class="ui-num">' + fmt(tot) + '</span>' + (ab ? ' · <span class="ui-num ui-p-abono">' + fmt(ab) + '/mes</span>' : '') },
       lista + '<div class="ui-barra">' + uiBtn('Nuevo desarrollo', 'mas', 's', 'data-cot="dev-nuevo"') + '</div>');
-    return '<div class="ui-cols"><div>' + h + '</div><div class="cot-lat">' + lateral(dev()) + '</div></div>';
+    // Tres columnas (mock aprobado): datos y desarrollos · análisis económico · Lo que suma (fijos al bajar)
+    return '<div class="cot-ed"><div class="cot-ed-c">' + h + '</div><div class="cot-c1 cot-ed-s">' + analisisHtml(dev()) + '</div><div class="cot-c3 cot-lat cot-ed-s">' + lateral(dev(), true) + '</div></div>';
   }
-  // Un desarrollo: tipo, título, alcance y precio; el elegido muestra lo que incluye
-  function tarjetaDev(d, i) {
+  // Un desarrollo: número, tipo y título, total y lápiz (datos del desarrollo); abierto, lo que incluye. Debajo, su mantenimiento.
+  function tarjetaDev(d, i, n) {
     var on = i === CN.i;
     var h = '<div class="ui-dev' + (on ? ' open' : '') + '" data-cot="dev-ir" data-i="' + i + '">' +
       '<span class="ui-dev-barra ui-e-prospecto"></span><span class="ui-ch">' + uiIco('derecha') + '</span><span class="ui-tipo ui-e-prospecto">' + uiIco('tablero') + '</span>' +
-      '<div><div class="ui-dev-n">' + esc(tipoNom(d.tipo)) + ' · ' + esc(d.titulo || 'Sin título') + (ESCALA[d.escala] && d.escala !== 'completo' ? ' <span class="ui-nota-t">· ' + ESCALA[d.escala].toLowerCase() + '</span>' : d.mejora ? ' <span class="ui-nota-t">· mejora</span>' : '') + '</div>' +
+      '<div><div class="ui-dev-n"><span class="ui-num">' + n + '</span>. ' + esc(tipoNom(d.tipo)) + ' · ' + esc(d.titulo || 'Sin título') + (ESCALA[d.escala] && d.escala !== 'completo' ? ' <span class="ui-nota-t">· ' + ESCALA[d.escala].toLowerCase() + '</span>' : d.mejora ? ' <span class="ui-nota-t">· mejora</span>' : '') + '</div>' +
         '<div class="ui-sub-t">' + esc(d.objetivo || 'Sin alcance') + '</div></div>' +
       '<div class="ui-dev-der"><span class="ui-num">' + (d.est ? fmt(total(d)) : '…') + '</span><span class="ui-fila-ic">' + uiAcc('editar', 'data-cot="dev-editar" data-i="' + i + '"') + '</span></div></div>';
-    return h + (on ? '<div class="ui-devc">' + incluye(d) + '</div>' : '');
-  }
-  // Incluye: Mantenimiento, Entrega, Seguimiento, Costos de terceros y Funcionalidades; el sistema externo y Meta, siempre a la vista
-  function incluye(v) {
-    var linea = function (on, nombre, col, dato, suma, acc, tip) {
-      return '<div class="ui-linea"><label class="u-row6"><input type="checkbox"' + (on ? ' checked' : '') + ' data-cot-ck="' + acc + '"> <span class="' + col + '">' + nombre + '</span></label>' +
-        '<span class="ui-f1 ui-nota-t">' + (on ? dato : '') + '</span>' + (on ? '<span class="ui-num ' + col + '">' + suma + '</span>' + uiAcc('editar', 'data-cot="' + acc + '"').replace('data-tip="Editar"', 'data-tip="' + esc(tip) + '"') : '') + '</div>';
-    };
-    var mt = v.mant, cmp = mt.on && !propio(v) ? CN.devs[mt.comparte] : null;
-    var h = linea(mt.on, 'Mantenimiento', 'ui-p-abono', cmp ? 'compartido con ' + esc(cmp.titulo || tipoNom(cmp.tipo))
-        : '<span class="ui-num">' + mt.hs + '</span> h por mes · ' + mantTxt(v) + ' · IPC cada <span class="ui-num">3</span> meses',
-      cmp ? '—' : fmt(mt.abono || 0) + '/mes', 'mant', 'Editar el mantenimiento');
-    var tx = v.ext._terceros, nT = items(tx).length;
-    h += linea(!!tx, 'Costos que paga GIWA', 'ui-p-usd', '<span class="ui-num">' + nT + '</span> servicio' + (nT === 1 ? '' : 's') + (tx && tx.paga !== 'GIWA' ? ' · paga el cliente' : ''),
-      fmt(extTot(tx)) + '/mes', 'ter', 'Elegir los servicios');
-    var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m); });
-    var fh = fs.reduce(function (s, id) { var m = mod(v, id); return s + m.horas * m.factor * (m.instancia ? (v.cant[id] || 1) : 1); }, 0);
-    var sinResp = bloques(v).filter(function (b) { return faltan(v, b).length; }).length;
-    h += '<div class="ui-linea"><span class="ui-f1">Funcionalidades · <span class="ui-num">' + fs.length + '</span> tildada' + (fs.length === 1 ? '' : 's') + ' · <span class="ui-num">' + (Math.round(fh * 10) / 10) + '</span> h' +
-      (sinResp ? ' · <span class="ui-p-pendiente"><span class="ui-num">' + sinResp + '</span> secciones sin responder</span>' : '') + '</span>' + uiBtn('Abrir cuestionario', 'lista', 's', 'data-cot="fun"') + '</div>';
-    // Siempre a la vista: el sistema externo (nombre y API) y la cuenta de Meta
-    var R = C.ini.reglas, integ = (R.integ || []).filter(function (id) { return si(v, id); })[0];
-    if (integ) {
-      var sinApi = hijas(v, integ).filter(function (x) { return /api/i.test(x.pregunta + ' ' + x.nombre); })[0];
-      h += '<div class="ui-linea-sub"><span>Sistema de la empresa: <b>' + esc(v.notas[integ] || 'falta el nombre (anotalo en la nota)') + '</b> · ' +
-        (sinApi ? (si(v, sinApi.id) ? 'no tiene API' : v.r[sinApi.id] === 'No' ? 'tiene API' : '<span class="ui-p-pendiente">falta confirmar si tiene API</span>') : '') + '</span></div>';
-    }
-    var wa = (R.wa || []).filter(function (id) { return si(v, id); })[0];
-    if (wa) {
-      var meta = hijas(v, wa).filter(function (x) { return /meta/i.test(x.pregunta + ' ' + x.nombre); })[0];
-      if (meta && est(v, meta.id) !== 'No') h += '<div class="ui-linea-sub"><span class="ui-p-pendiente">' + (si(v, meta.id) ? 'La cuenta de Meta no está verificada: puede atrasar la puesta en marcha'
-        : 'Pendiente: confirmar si la cuenta de Meta está verificada (puede atrasar la puesta en marcha)') + '</span></div>';
-    }
+    if (on) h += '<div class="ui-devc">' + incluye(d) + '</div>';
+    if (propio(d)) h += '<div class="cot-mant-f"><span class="ui-f1"><span class="ui-num">' + (n + 1) + '</span>. <span class="ui-p-abono">Mantenimiento</span> · ' + esc(d.titulo || tipoNom(d.tipo)) +
+      ' <span class="ui-nota-t">· <span class="ui-num">' + h1(d.mant.hs) + '</span> h por mes · ' + mantTxt(d) + ' · IPC cada <span class="ui-num">3</span> meses</span></span>' +
+      '<span class="ui-num ui-p-abono">' + fmt(d.mant.abono || 0) + '/mes</span><span class="ui-fila-ic">' + uiIb('editar', 'Editar el mantenimiento', 'edi', 'data-cot="mant-i" data-i="' + i + '"') +
+      uiIb('borrar', 'Quitar el mantenimiento', 'bor', 'data-cot="mant-quitar" data-i="' + i + '"') + '</span></div>';
     return h;
   }
-  // Lo que suma: la composición del precio del desarrollo elegido y lo que queda pendiente
-  function lateral(v) {
-    if (!v || !v.tipo) return '<div class="ui-lat-h">Lo que suma</div><div class="ui-nota-t">Cargá un desarrollo.</div>';
-    if (v.err) return uiAviso(v.err, 'adv');
-    var e = v.est; if (!e) return '<div class="ui-lat-h">Lo que suma</div><div class="ui-nota-t">Calculando…</div>';
-    var kv = function (l, x, cls) { return '<div class="ui-kv"><span>' + l + '</span><span class="ui-num' + (cls ? ' ' + cls : '') + '">' + x + '</span></div>'; };
-    var porE = {}; (e.detalle || []).forEach(function (d) { porE[d.etapa] = (porE[d.etapa] || 0) + Number(d.horas); });
-    var fut = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura'; }), p = pend(v);
-    var integ = (C.ini.reglas.integ || []).filter(function (id) { return si(v, id); }).map(function (id) { return v.notas[id] || nom(mod(v, id)); });
-    var r = v.ref, h = '<div class="ui-lat-h ui-e-finalizado">Lo que suma</div>';
-    if (!CN.empresa) h += '<div class="ui-nota-t">Sin cliente el precio va sin Tier (×1). Elegí la empresa.</div>';
-    if (r) { var pct = r.cobrado ? Math.round((total(v) / r.cobrado - 1) * 1000) / 10 : 0;
-      h += '<div class="ui-nota-t">Parecido a lo que ya cotizaste: <b>' + esc(r.cliente || '') + ' · ' + esc(r.que || '') + '</b> · <span class="ui-num">' + r.horas + '</span> h · cobrado <span class="ui-num">' + fmt(r.cobrado) + '</span>' +
-        (r.mmr ? ' · abono <span class="ui-num">' + fmt(r.mmr) + '/mes</span>' : '') + '. Éste va <span class="ui-num">' + String(Math.abs(pct)).replace('.', ',') + ' %</span> ' + (pct >= 0 ? 'por encima.' : 'por debajo.') + '</div><br>'; }
-    // Jerarquía (12/11/2026): precio final · sugerido · análisis del abono · lo interno en gris
-    var cls = function (n) { return n >= 0 ? 'ui-e-finalizado' : 'ui-p-error'; };
-    h += '<div class="cot-pf"><span class="ui-lbl">Precio final</span><span class="ui-num ui-p-contratado">' + fmt(total(v)) + '</span>' + usd(total(v)) + '</div>' +
-      '<div class="cot-sec">' + kv('Sugerido · <span class="cot-n">' + String(Math.round(e.horas * 10) / 10).replace('.', ',') + '</span> h', fmt(sugerido(v))) + '</div>';
-    // Análisis del abono: lo que entra por mes, la relación a 12 meses, el margen y el recupero del costo
-    var ab = propio(v) ? v.mant.abono || 0 : 0, meta = metaGiwa(v), cMes = Math.round((propio(v) ? v.mant.hs : 0) * ((C.ini.valores || {}).costo || 0) + extMes(v, 'GIWA'));
-    var mMes = ab + meta - cMes, m12 = total(v) - (e.costo_ars || 0) + 12 * mMes, falta = (e.costo_ars || 0) - total(v);
-    h += '<div class="ui-lat-h u-mt10">Análisis del abono</div>';
-    if (!propio(v)) h += '<div class="ui-nota-t">' + (v.mant.on ? 'El mantenimiento es compartido con otro desarrollo.' : 'Sin mantenimiento: no hay abono mensual.') + '</div>';
-    else h += kv('Abono · <span class="cot-n">' + String(v.mant.hs).replace('.', ',') + '</span> h por mes', fmt(ab), 'ui-p-abono') +
-      (meta ? kv('Meta a cargo de GIWA, se traslada', fmt(meta) + '/mes', 'ui-p-abono') : '');
-    h += kv('Relación a <span class="cot-n">12</span> meses', fmt(total(v) + 12 * (ab + meta))) + kv('Margen a <span class="cot-n">12</span> meses', fmt(m12), cls(m12)) +
-      '<div class="ui-kv"><span>Recupero del costo</span><span class="' + (falta <= 0 || mMes > 0 ? 'ui-e-finalizado' : 'ui-p-error') + '">' +
-        (falta <= 0 ? 'con la implementación' : mMes > 0 ? 'en <span class="cot-n">' + Math.ceil(falta / mMes) + '</span> meses' : 'no se recupera') + '</span></div>';
-    if (CN.devs.filter(function (d) { return d.tipo; }).length > 1) h += kv('Total del proyecto', fmt(CN.devs.reduce(function (s, d) { return s + (d.tipo ? total(d) : 0); }, 0)), 'ui-p-contratado');
-    h += '<div class="cot-int"><div class="ui-lat-h u-mt10">Interno</div>' + kv('Valor hora · ' + esc(e.tier || 'sin Tier'), fmt(Math.round(vh(v)))) +
-      kv('Costo interno', fmt(e.costo_ars)) + kv('Costo por mes', fmt(cMes)) + kv('Dificultad', esc(e.dificultad)) +
-      ETAPAS.map(function (k) { return porE[k] ? kv(k, (Math.round(porE[k] * 10) / 10) + ' h') : ''; }).join('') +
-      (extMes(v, 'Cliente') ? kv('Costos del cliente por mes', fmt(extMes(v, 'Cliente'))) : '') + '</div>';
-    h += '<div class="ui-lat-h u-mt10">Integraciones</div><div class="u-s11">' + (integ.length ? esc(integ.join(' · ')) : 'Ninguna') + '</div>';
-    h += '<div class="ui-lat-h u-mt10">Etapa futura</div><div class="u-s11">' + (fut.length ? esc(fut.map(nom).join(' · ')) : 'Nada por ahora') + '</div>';
-    if (p.length) h += '<div class="ui-lat-h u-mt10 ui-p-pendiente">Pendientes · ' + p.length + '</div><div class="u-s11">' + esc(p.map(function (m) { return m.pregunta || nom(m); }).join(' · ')) + '</div>';
+  // Stack necesario: sale de las respuestas (dónde corre, canales, modelo, integraciones); lo que falta confirmar, en ámbar
+  function stack(v) {
+    var R = C.ini.reglas, p = [];
+    mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] !== 'futura' && !esBase(m) && m.padre && /canal|infraestructura|dónde|modelo|datos/i.test(m.bloque + ' ' + (mod(v, m.padre) || {}).pregunta) && !hijas(v, m.id).some(function (x) { return si(v, x.id); }); })
+      .forEach(function (m) { p.push(esc(nom(m))); });
+    (R.integ || []).filter(function (id) { return si(v, id); }).forEach(function (id) {
+      var api = hijas(v, id).filter(function (x) { return /api/i.test(x.pregunta + ' ' + x.nombre); })[0];
+      p.push(esc(v.notas[id] || nom(mod(v, id))) + (api && !est(v, api.id) ? ' <span class="ui-p-pendiente">(API por confirmar)</span>' : api && si(v, api.id) ? ' <span class="ui-nota-t">(sin API)</span>' : '')); });
+    var wa = (R.wa || []).filter(function (id) { return si(v, id); })[0], meta = wa ? hijas(v, wa).filter(function (x) { return /meta/i.test(x.pregunta + ' ' + x.nombre); })[0] : null;
+    if (meta && est(v, meta.id) !== 'No') p.push('<span class="ui-p-pendiente">' + (si(v, meta.id) ? 'cuenta de Meta sin verificar' : 'falta confirmar si la cuenta de Meta está verificada') + '</span>');
+    return p.join(' · ');
+  }
+  // Lo que incluye un desarrollo abierto: stack, costos asociados, FUNCIONALIDADES y Más información
+  function incluye(v) {
+    var h = '', st = stack(v);
+    if (st) h += '<div class="cot-fila"><span class="cot-fila-l">Stack necesario</span><span class="ui-f1">' + st + '<span class="cot-sub">Sale de las respuestas: dónde corre, canales, modelo de IA e integraciones.</span></span></div>';
+    if (!v.mant.on) h += '<div class="cot-fila"><span class="cot-fila-l">Mantenimiento</span><span class="ui-f1 ui-nota-t">Sin mantenimiento mensual.</span>' + uiBtn('Mantenimiento', 'mas', 's', 'data-cot="mant-on"') + '</div>';
+    // Costos asociados: lo que paga GIWA y lo que paga el cliente; un solo botón «+ Costos»
+    var tx = v.ext._terceros, its = items(tx), lin = function (y) { var c = contr(y.cid);
+      return '<div class="ui-kv cot-sel-i"><span>' + esc(c ? c.producto : (y.nombre || 'Costo externo')) + (c ? ' · <span class="cot-n">' + h1(y.cantidad) + '</span> ' + esc((c.unidad || '').toLowerCase()) : '') + '</span>' +
+        '<span class="ui-num">' + fmt(Math.round(y.cid ? itemMes(y) : Number(y.monto) || 0)) + (y.cid || y.rec !== 'Único' ? '/mes' : ' único') + '</span></div>'; };
+    var grp = function (P) { var L = its.filter(function (y) { return pagaDe(tx, y) === P; }); return L.length ? '<div class="cot-sel-n u-mt6">' + (P === 'GIWA' ? 'Paga GIWA' : 'Paga el cliente') + '</div>' + L.map(lin).join('') : ''; };
+    h += uiDesp({ th: '<span class="ui-lat-h">Costos asociados</span>', n: its.length || '', open: edOpen('costos', false), attrs: 'data-ed="costos"',
+        v: '<span class="ui-nota-t">GIWA <span class="ui-num">' + fmt(extMes(v, 'GIWA')) + '/mes</span> · Cliente <span class="ui-num">' + fmt(extMes(v, 'Cliente')) + '/mes</span></span>' + uiBtn('Costos', 'mas', 's', 'data-cot="ter"') },
+      its.length ? grp('GIWA') + grp('Cliente') : '<div class="ui-nota-t">Sin costos asociados. Tocá «+ Costos».</div>');
+    // FUNCIONALIDADES: lo seleccionado, por funcionalidad, con el lápiz que abre «Corregir»
+    var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m); }), npe = pend(v).length;
+    h += uiDesp({ th: '<span class="ui-lat-h">Funcionalidades</span> <span class="ui-nota-t">· <span class="ui-num">' + fs.length + '</span> tildadas · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h' +
+        (npe ? ' · <span class="ui-p-pendiente"><span class="ui-num">' + npe + '</span> por definir</span>' : '') + '</span>', open: edOpen('fun', true), attrs: 'data-ed="fun"',
+        v: uiBtn('Abrir cuestionario', 'lista', 's', 'data-cot="fun"') }, '<div class="cot-c2">' + seleccion(v, true) + '</div>');
+    // Más información: forma de pago, inicio, duración, garantía, descripción y los valores de hora usados
+    var fg = function (id, l, ctl) { return '<div class="fg"><label class="fl" for="' + id + '">' + l + '</label>' + ctl + '</div>'; };
+    h += uiDesp({ th: '<span class="ui-lat-h">Más información</span>', open: edOpen('mas', false), attrs: 'data-ed="mas"' },
+      '<div class="g2">' +
+        fg('dv-fp', 'Forma de pago', '<select class="fc" id="dv-fp" data-cot-v="forma_pago"><option value="">—</option>' + (C.ini.modelos || []).map(function (o) { return '<option value="' + esc(o.id) + '"' + (v.forma_pago === o.id ? ' selected' : '') + '>' + esc(o.nombre) + '</option>'; }).join('') + '</select>') +
+        fg('dv-ini', 'Fecha de inicio', '<input class="fc" type="date" id="dv-ini" data-cot-v="inicio" value="' + esc(v.inicio || '') + '">') +
+        fg('dv-sem', 'Duración en semanas', '<input class="fc u-tr ui-num" type="number" min="0" id="dv-sem" data-cot-v="semanas" value="' + esc(v.semanas || '') + '">') +
+        fg('dv-gar', 'Días de garantía', '<input class="fc u-tr ui-num" type="number" min="0" id="dv-gar" data-cot-v="garantia" value="' + esc(v.garantia || '') + '">') + '</div>' +
+      fg('dv-desc', 'Descripción', '<textarea class="fc" rows="2" id="dv-desc" data-cot-v="objetivo">' + esc(v.objetivo || '') + '</textarea>') +
+      '<div class="ui-nota-t">Valor hora <span class="ui-num">' + fmt(Math.round(vh(v))) + '</span> · ' + esc((v.est && v.est.tier) || 'sin Tier') + ' · hora de soporte <span class="ui-num">' + fmt(Math.round(soporte())) + '</span> · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h estimadas</div>');
+    return h;
+  }
+  // Análisis económico (cot_analisis): referencia de mercado, alertas y qué conviene sumar o sacar. Son sugerencias: no cambian nada.
+  function analisisHtml(v) {
+    var tit = '<div class="ui-lat-h cot-t-az">Análisis económico</div>';
+    if (!v || !v.tipo) return tit + '<div class="ui-nota-t">Cargá un desarrollo.</div>';
+    var a = v.an; if (!a || !v.est) return tit + '<div class="ui-nota-t">Calculando…</div>';
+    var row = function (txt, monto, cls) { return '<div class="cot-an-i"><span>' + txt + '</span>' + (monto != null ? '<div class="cot-an-m' + (cls ? ' ' + cls : '') + '">' + monto + '</div>' : '') + '</div>'; };
+    var dot = function (c) { return '<span class="cot-dot ' + c + '"></span>'; };
+    var M = a.mercado, h = tit + '<div class="ui-lat-h u-mt10">Referencia de mercado</div>';
+    if (M) {
+      h += row(esc(M.rol) + ' · semi senior · USD <span class="cot-n">' + M.usd_min + '</span>–<span class="cot-n">' + M.usd_max + '</span> la hora<span class="cot-sub">' + esc(M.fuente || '') + ' · <span class="cot-n">' + ff(M.fecha) + '</span> · para <span class="cot-n">' + h1(v.est.horas) + '</span> h</span>',
+        '<span class="ui-num">' + fmt(M.ars_min) + ' – ' + fmt(M.ars_max) + '</span>');
+      if (M.usd_hora) h += row('Tu precio · <span class="cot-n">' + fmt(total(v)) + '</span> = USD <span class="cot-n">' + h1(M.usd_hora) + '</span> la hora',
+        M.posicion === 'debajo' ? 'por debajo del mercado' : M.posicion === 'encima' ? 'por encima del mercado' : 'dentro del mercado', M.posicion === 'dentro' ? 'ui-e-finalizado' : 'ui-p-pendiente');
+    } else h += '<div class="ui-nota-t">Sin referencia de mercado para este tipo de desarrollo.</div>';
+    if (v.ref) h += row('Parecido a lo que ya vendiste · ' + esc(v.ref.cliente || '') + ' · ' + esc(v.ref.que || ''), '<span class="ui-num">' + fmt(v.ref.cobrado) + '</span>');
+    var al = (a.alertas || []).slice(), np = pend(v).length;
+    h += '<div class="ui-lat-h u-mt10">Alertas</div>';
+    if (!al.length && !np) h += '<div class="ui-nota-t">Sin alertas.</div>';
+    al.forEach(function (x) { h += row(dot(x.nivel === 'error' ? 'ui-p-error' : 'ui-p-pendiente') + esc(x.texto) + (x.sop ? ' (<span class="cot-n">' + fmt(x.sop) + '</span> contra <span class="cot-n">' + fmt(x.costo_h) + '</span>)' : ''),
+      x.monto ? '<span class="ui-num">' + fmt(x.monto) + (x.mensual ? '/mes' : '') + '</span>' : null, x.nivel === 'error' ? 'ui-p-error' : 'ui-p-pendiente'); });
+    if (np) h += row(dot('ui-p-pendiente') + 'Quedan <span class="cot-n">' + np + '</span> pregunta' + (np === 1 ? '' : 's') + ' por definir', null);
+    // Qué conviene sumar o sacar
+    var su = (a.sugerencias || []).map(function (x) { return row('<span class="ui-e-finalizado">Sumar</span> · ' + esc(x.texto) + ' (<span class="cot-n">' + fmt(x.a) + '</span>' + (x.mensual ? ' por mes' : '') + ')', '<span class="ui-num">+' + fmt(x.monto) + (x.mensual ? '/mes' : '') + '</span>', 'ui-e-finalizado'); });
+    var V = C.ini.valores || {};
+    if (v.tipo === 'IA' && propio(v) && !aud(v) && V.mant_aud) su.push(row('<span class="ui-e-finalizado">Sumar</span> · auditoría de conversaciones en el mantenimiento (<span class="cot-n">' + h1(V.mant_aud) + '</span> h por mes)', '<span class="ui-num">+' + fmt(Math.round(V.mant_aud * soporte())) + '/mes</span>', 'ui-e-finalizado'));
+    mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura' && !madreFut(v, m.id); }).forEach(function (m) {
+      su.push(row('<span class="ui-e-finalizado">Sumar</span> · ' + esc(nom(m)) + ', hoy en etapa futura (<span class="cot-n">' + h1(hMod(v, m)) + '</span> h)', '<span class="ui-num">+' + fmt(Math.round(hMod(v, m) * vh(v))) + '</span>', 'ui-e-finalizado')); });
+    var H = hEst(v), big = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] !== 'futura' && !esBase(m) && m.padre && H[m.id] > 0; }).sort(function (x, y) { return H[y.id] - H[x.id]; })[0];
+    if (big) su.push(row('<span class="ui-nota-t">Para bajar el precio</span> · pasar ' + esc(nom(big)) + ' a etapa futura (<span class="cot-n">' + h1(H[big.id]) + '</span> h)', '<span class="ui-num">−' + fmt(Math.round(H[big.id] * vh(v))) + '</span>'));
+    h += '<div class="ui-lat-h u-mt10">Qué conviene sumar o sacar</div>' + (su.length ? su.join('') : '<div class="ui-nota-t">Nada para sugerir.</div>') +
+      '<div class="ui-nota-t u-mt10">Son sugerencias: no cambian nada hasta que las tildes en el cuestionario o edites el precio.</div>';
     return h;
   }
 
-  // ── Cuestionario (Funcionalidades): Preguntas · Respuestas · Lo que suma ──
+  // Estado de pantalla del cuestionario (no se guarda): qué pregunta está abierta, qué notas se ven, filtro
+  var UI = { abre: {}, nota: {}, solo: false };
+  function h1(n) { return String(Math.round((Number(n) || 0) * 10) / 10).replace('.', ','); }
+  function hMod(v, m) { return m.horas * m.factor * (m.instancia ? (v.cant[m.id] || 1) : 1); }
+  function esDe(v, x, id) { var m = x; while (m && m.padre) { if (m.padre === id) return true; m = mod(v, m.padre); } return false; }
+  // Lo tildado debajo de una madre, hasta la última opción tildada (sin etapa futura)
+  function tildadas(v, id, fut) {
+    var o = [];
+    hijas(v, id).forEach(function (x) { if (!si(v, x.id) || (v.etapa[x.id] === 'futura') !== !!fut) return;
+      var d = tildadas(v, x.id, fut); if (d.length) o = o.concat(d); else o.push(x); });
+    return o;
+  }
+  function hEst(v) { var o = {}; ((v.est && v.est.detalle) || []).forEach(function (d) { o[d.id] = (o[d.id] || 0) + Number(d.horas); }); return o; }
+
+  // Lo que suma (12/11/2026, mock aprobado): precio final · sugerido · análisis del abono · análisis interno · etapa futura.
+  // editable: en la ventana de edición el precio final se escribe (redondeos); «Volver al sugerido» lo devuelve al cálculo.
+  function lateral(v, editable) {
+    var tit = '<div class="ui-lat-h cot-t-ok">Lo que suma</div>';
+    if (!v || !v.tipo) return tit + '<div class="ui-nota-t">Cargá un desarrollo.</div>';
+    if (v.err) return tit + uiAviso(v.err, 'adv');
+    var e = v.est; if (!e) return tit + '<div class="ui-nota-t">Calculando…</div>';
+    var kv = function (l, x, cls) { return '<div class="ui-kv"><span>' + l + '</span><span class="ui-num' + (cls ? ' ' + cls : '') + '">' + x + '</span></div>'; };
+    var V = C.ini.valores || {}, r = v.ref, h = tit;
+    if (!CN.empresa) h += '<div class="ui-nota-t">Sin cliente el precio va sin Tier (×1). Elegí la empresa.</div>';
+    if (r) { var pct = r.cobrado ? Math.round((total(v) / r.cobrado - 1) * 1000) / 10 : 0;
+      h += '<div class="ui-nota-t u-mb6">Parecido a lo que ya cotizaste: ' + esc(r.cliente || '') + ' · ' + esc(r.que || '') + ' · cobrado <span class="ui-num">' + fmt(r.cobrado) + '</span>. Éste va <span class="ui-num">' +
+        String(Math.abs(pct)).replace('.', ',') + ' %</span> ' + (pct >= 0 ? 'por encima.' : 'por debajo.') + '</div>'; }
+    h += '<div class="cot-pf"><span class="ui-lbl">Precio final' + (editable ? ' · lo podés escribir' : '') + '</span>' +
+      (editable ? '<input class="fc ui-num cot-pf-in" id="cot-precio" type="number" min="0" data-monto value="' + Math.round(total(v)) + '" aria-label="Precio final">' +
+        (v.precio > 0 ? '<button type="button" class="ui-lnk ui-gris cot-pf-sug" data-cot="precio-sug">Volver al sugerido</button>' : '')
+        : '<span class="ui-num ui-p-contratado">' + fmt(total(v)) + '</span>') + usd(total(v)) + '</div>' +
+      '<div class="cot-sec">' + kv('Sugerido · <span class="cot-n">' + h1(e.horas) + '</span> h', fmt(sugerido(v))) + '</div>';
+    // Análisis del abono
+    var ab = propio(v) ? v.mant.abono || 0 : 0, meta = metaGiwa(v), cMes = Math.round((propio(v) ? v.mant.hs : 0) * (V.costo || 0) + extMes(v, 'GIWA'));
+    var mMes = ab + meta - cMes, m12 = total(v) - (e.costo_ars || 0) + 12 * mMes, falta = (e.costo_ars || 0) - total(v);
+    h += '<div class="ui-lat-h u-mt10">Análisis del abono</div>';
+    if (!propio(v)) h += '<div class="ui-nota-t">' + (v.mant.on ? 'El mantenimiento es compartido con otro desarrollo.' : 'Sin mantenimiento: no hay abono mensual.') + '</div>';
+    else h += kv('Abono · <span class="cot-n">' + h1(v.mant.hs) + '</span> h por mes', fmt(ab), 'ui-p-abono') + (meta ? kv('Meta a cargo de GIWA, se traslada', fmt(meta) + '/mes', 'ui-p-abono') : '');
+    h += kv('Relación a <span class="cot-n">12</span> meses', fmt(total(v) + 12 * (ab + meta)));
+    if (CN.devs.filter(function (d) { return d.tipo; }).length > 1) h += kv('Total del proyecto', fmt(CN.devs.reduce(function (s, d) { return s + (d.tipo ? total(d) : 0); }, 0)), 'ui-p-contratado');
+    // Análisis interno, en gris
+    var pctH = V.giwa ? Math.round((1 - (V.costo || 0) / V.giwa) * 100) : 0;
+    h += '<div class="cot-int"><div class="ui-lat-h u-mt10">Análisis interno</div>' +
+      '<div class="ui-kv"><span>Valor interno de la hora<span class="cot-sub"><span class="cot-n">' + pctH + ' %</span> menos que la hora de venta (<span class="cot-n">' + fmt(V.giwa) + '</span>)</span></span><span class="ui-num">' + fmt(V.costo) + '</span></div>' +
+      kv('Costo interno · <span class="cot-n">' + h1(e.horas) + '</span> h', fmt(e.costo_ars)) +
+      kv('Costo por mes' + (propio(v) ? ' · <span class="cot-n">' + h1(v.mant.hs) + '</span> h' : ''), fmt(cMes)) +
+      kv('Margen a <span class="cot-n">12</span> meses', fmt(m12), m12 >= 0 ? 'ui-e-finalizado' : 'ui-p-error') +
+      '<div class="ui-kv"><span>Recupero del costo</span><span class="' + (falta <= 0 || mMes > 0 ? 'ui-e-finalizado' : 'ui-p-error') + '">' +
+        (falta <= 0 ? 'con la implementación' : mMes > 0 ? 'en <span class="cot-n">' + Math.ceil(falta / mMes) + '</span> meses' : 'no se recupera') + '</span></div>' +
+      '<div class="ui-kv"><span>Dificultad</span><span>' + esc(e.dificultad || '—') + '</span></div></div>';
+    // Etapa futura: posibles ventas del proyecto, no suman al precio de hoy
+    var fut = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura' && !madreFut(v, m.id); });
+    h += '<div class="ui-lat-h u-mt10 cot-t-vi">Etapa futura</div><div class="ui-nota-t">Posibles ventas del proyecto · no suman al precio de hoy</div>' +
+      (fut.length ? fut.map(function (m) { var hx = hMod(v, m) + tildadas(v, m.id, true).reduce(function (s, x) { return s + hMod(v, x); }, 0);
+        return kv(esc(nom(m)) + ' · <span class="cot-n">' + h1(hx) + '</span> h', fmt(Math.round(hx * vh(v))), 'ui-p-abono'); }).join('') : '<div class="ui-nota-t">Nada por ahora.</div>');
+    return h;
+  }
+
+  // ── Cuestionario (Funcionalidades), tres columnas (mock aprobado 12/11/2026):
+  //    Preguntas (azul) · Seleccionado (violeta, sólo lectura) · Lo que suma (verde) ──
   function bloques(v) { var o = []; raices(v).forEach(function (m) { if (!esBase(m) && o.indexOf(m.bloque) < 0) o.push(m.bloque); }); return o; }
   function madresDe(v, b) { return raices(v).filter(function (m) { return m.bloque === b && !esBase(m); }); }
   function faltan(v, b) { return v.na[b] ? [] : madresDe(v, b).filter(function (m) { var s = est(v, m.id); return !s || s === 'Pendiente'; }); }
   function funAbrir() {
     var v = dev(); if (!v || !v.tipo) return aviso('Cargá un desarrollo.');
-    var m = modal('m-fun', 'Funcionalidades · ' + tipoNom(v.tipo) + ' · ' + (v.titulo || 'Sin título'), '<div id="fun-b"></div>',
+    var m = modal('m-fun', 'Funcionalidades · ' + tipoNom(v.tipo) + ' · ' + ((empresa() || {}).nombre ? empresa().nombre + ' · ' : '') + (v.titulo || 'Sin título'), '<div id="fun-b"></div>',
       '<button class="btn bp" data-cerrar="m-fun">Listo</button>', 'md-xl');
-    m.onclick = clickFun; m.onchange = changeFun; m.oninput = function (ev) { if (ev.target.id === 'fun-bus') buscar(ev.target.value); };
+    UI.abre = {}; m.onclick = clickFun; m.onchange = changeFun; m.oninput = function (ev) { if (ev.target.id === 'fun-bus') buscar(ev.target.value); };
     funPintar();
   }
   function funPintar() {
@@ -281,56 +362,82 @@
     var ab = {}; b.querySelectorAll('[data-bl]').forEach(function (d) { ab[d.getAttribute('data-bl')] = d.classList.contains('open'); });
     var bus = (document.getElementById('fun-bus') || {}).value || '';
     var base = raices(v).filter(esBase), hB = base.reduce(function (s, m) { return s + (si(v, m.id) ? m.horas * m.factor : 0); }, 0);
-    // Tres zonas (12/11/2026): a la izquierda lo que falta contestar y, plegado en gris, lo que no va;
-    // en el medio lo incluido (verde) y lo por definir (ámbar); a la derecha Lo que suma
-    var bl = bloques(v), primero = bl.filter(function (x) { return !v.na[x] && sinResp(v, x).length; })[0], nos = [];
-    var preg = '<input class="ui-campo" id="fun-bus" placeholder="Buscar en el cuestionario…" aria-label="Buscar" value="' + esc(bus) + '"><br><br>' +
-      uiDesp({ t: 'Base del agente · siempre incluida', n: (Math.round(hB * 10) / 10) + ' h', attrs: 'data-bl="__base"', open: !!ab.__base },
+    var bl = bloques(v), primero = bl.filter(function (x) { return faltan(v, x).length; })[0];
+    var falta = function (m) { var s = est(v, m.id), hs = hijas(v, m.id); return !s || s === 'Pendiente' || (si(v, m.id) && hs.length && !hs.some(function (x) { return est(v, x.id); })); };
+    var preg = '<div class="ui-lat-h cot-t-az">Preguntas</div>' +
+      '<div class="cot-tools"><input class="ui-campo ui-f1" id="fun-bus" placeholder="Buscar en el cuestionario…" aria-label="Buscar" value="' + esc(bus) + '">' +
+        '<label class="u-row6 u-s11"><input type="checkbox" id="fun-solo"' + (UI.solo ? ' checked' : '') + '> Ver solo lo que falta definir</label></div>' +
+      uiDesp({ t: 'Base del agente · siempre incluida', n: h1(hB) + ' h', attrs: 'data-bl="__base"', open: !!ab.__base },
         base.map(function (m) { return '<div class="ui-linea"><label class="u-row6 ui-f1"><input type="checkbox"' + (si(v, m.id) ? ' checked' : '') + ' data-resp="' + esc(m.id) + '" data-k="base"> ' + esc(nom(m)) + '</label>' +
-          '<span class="ui-num ui-nota-t">' + (Math.round(m.horas * m.factor * 10) / 10) + ' h</span></div>'; }).join('')) +
+          '<span class="ui-num ui-nota-t">' + h1(m.horas * m.factor) + ' h</span></div>'; }).join('')) +
       bl.map(function (x, i) {
-        if (v.na[x]) { nos.push('<button type="button" class="cot-no" data-fun="reabrir" data-b="' + esc(x) + '" data-tip="Volver a preguntar">' + uiIco('cerrar') + esc(x) + ' · omitido</button>'); return ''; }
-        madresDe(v, x).forEach(function (m) { if (est(v, m.id) === 'No') nos.push('<button type="button" class="cot-no" data-resp="' + esc(m.id) + '" data-k="" data-tip="Volver a preguntar">' + uiIco('cerrar') + esc(nom(m)) + '</button>'); });
-        var ms = sinResp(v, x); if (!ms.length) return '';
-        var open = ab[x] !== undefined ? ab[x] : x === primero;
-        return uiDesp({ t: (i + 1) + '. ' + x, n: ms.length, open: open, attrs: 'data-bl="' + esc(x) + '"',
-            v: '<button type="button" class="cot-no" data-fun="omitir" data-b="' + esc(x) + '" data-tip="Pasa a No incluye">Omitir</button>' },
-          ms.map(function (m) { return madre(v, m); }).join(''));
+        if (v.na[x]) return '<div class="cot-omit"><span class="ui-f1">' + (i + 1) + '. ' + esc(x) + ' · omitido</span><button type="button" class="ui-lnk ui-gris" data-fun="reabrir" data-b="' + esc(x) + '">Reabrir</button></div>';
+        var ms = madresDe(v, x), f = faltan(v, x), vis = UI.solo ? ms.filter(falta) : ms;
+        if (UI.solo && !vis.length) return '';
+        return uiDesp({ t: (i + 1) + '. ' + x, n: f.length ? (ms.length - f.length) + ' de ' + ms.length : 'Listo', open: ab[x] !== undefined ? ab[x] : x === primero, attrs: 'data-bl="' + esc(x) + '"',
+            v: f.length ? '<button type="button" class="ui-lnk ui-gris" data-fun="omitir" data-b="' + esc(x) + '">Omitir bloque</button>' : '' },
+          vis.map(function (m) { return madre(v, m); }).join(''));
       }).join('');
-    if (!bl.some(function (x) { return !v.na[x] && sinResp(v, x).length; })) preg += '<div class="ui-nota-t u-mt10">No queda nada por contestar.</div>';
-    if (nos.length) preg += '<div class="ui-lat-h u-mt10">No incluye · <span class="ui-num">' + nos.length + '</span></div><div class="cot-nos">' + nos.join('') + '</div>';
-    b.innerHTML = '<div class="cot-fun"><div>' + preg + '</div><div>' + incluidas(v) + '</div><div class="cot-lat">' + lateral(v) + '</div></div>';
+    b.innerHTML = '<div class="cot-fun"><div class="cot-c1">' + preg + '</div><div class="cot-c2">' + seleccion(v, false) + '</div><div class="cot-c3 cot-lat">' + lateral(v) + '</div></div>';
     if (bus) buscar(bus);
   }
-  function sinResp(v, b) { return madresDe(v, b).filter(function (m) { return !est(v, m.id); }); }
-  // Una pregunta madre: íconos Sí · Por definir · No a la derecha; si es Sí o Por definir, sus opciones y la nota debajo.
+  // Una pregunta madre: Sí · No · Por definir en un grupo de íconos (el elegido en azul) y «Nota» a pedido.
+  // Respondida, sus opciones se cierran en una línea con lo elegido; un clic las vuelve a abrir.
   // Lo sugerido se marca, pero no suma hasta que se tilda.
   function madre(v, m) {
-    var s = est(v, m.id), q = esc(m.id), sii = s === 'Sí' || s === 'Futura';
-    var rad = RESP.map(function (k) { var on = s === k[0] || (k[0] === 'Sí' && s === 'Futura');
-      return '<button type="button" class="ui-ib cot-r-' + k[3] + (on ? ' on' : '') + '" data-resp="' + q + '" data-k="' + (on ? '' : k[0]) + '" aria-pressed="' + on + '" data-tip="' + k[2] + '" aria-label="' + k[2] + '">' + uiIco(k[1]) + '</button>'; }).join('') +
-      (sii ? uiIb('calendario', s === 'Futura' ? 'Volver a la 1ª etapa' : 'Pasar a una etapa futura', '', 'data-fun="futura" data-id="' + q + '"') : '');
-    var abre = (sii || s === 'Pendiente') && hijas(v, m.id).length;
-    var hs = sii && v.est ? horasDe(v, m.id) : m.horas * m.factor;
-    return '<div class="cot-q" data-txt="' + esc(((m.pregunta || '') + ' ' + m.nombre).toLowerCase()) + '"><div class="cot-q-t"><span class="ui-f1">' + esc(m.pregunta || m.nombre) +
-      (hs ? ' <span class="ui-num ui-nota-t">' + String(Math.round(hs * 10) / 10).replace('.', ',') + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') +
-      (s === 'Futura' ? ' <span class="ui-p-abono u-s11">· etapa futura</span>' : '') + '</span><span class="cot-r">' + rad + '</span></div>' +
-      (sii ? extras(v, m) : '') + (abre ? '<div class="cot-hijas">' + opciones(v, m.id, 1) + '</div>' : '') + (s || v.notas[m.id] ? nota(v, m) : '') + '</div>';
+    var s = est(v, m.id), q = esc(m.id), sii = s === 'Sí' || s === 'Futura', hs0 = hijas(v, m.id);
+    var seg = '<span class="cot-seg" role="group" aria-label="Respuesta">' + RESP.map(function (k) { var on = s === k[0] || (k[0] === 'Sí' && s === 'Futura');
+      return '<button type="button" class="cot-s' + (on ? ' on' : '') + '" data-resp="' + q + '" data-k="' + (on ? '' : k[0]) + '" aria-pressed="' + on + '" data-tip="' + k[2] + '" aria-label="' + k[2] + '">' + uiIco(k[1]) + '</button>'; }).join('') + '</span>';
+    var conHijas = (sii || s === 'Pendiente') && hs0.length;
+    var abierta = conHijas && (UI.abre[m.id] || (sii && !hs0.some(function (x) { return est(v, x.id); })));
+    var cuerpo = '';
+    if (conHijas && abierta) cuerpo = '<div class="cot-hijas">' + opciones(v, m.id, 1) + '</div>';
+    else if (conHijas) { var t = mods(v).filter(function (x) { return si(v, x.id) && esDe(v, x, m.id); });
+      cuerpo = '<button type="button" class="cot-res" data-fun="abre" data-id="' + q + '">' + uiIco('derecha') + '<span class="ui-f1">' +
+        (t.length ? t.map(function (x) { return '<span' + (v.etapa[x.id] === 'futura' ? ' class="ui-p-abono"' : '') + '>' + esc(nom(x)) + '</span>'; }).join(' · ') : 'Elegí las opciones') + '</span>' +
+        (sii && v.est ? '<span class="ui-num">' + h1(horasDe(v, m.id)) + ' h</span>' : '') + '</button>'; }
+    var fut = sii && !hs0.length ? uiIb('calendario', s === 'Futura' ? 'Volver a la 1ª etapa' : 'Pasar a etapa futura', s === 'Futura' ? 'vio' : '', 'data-fun="futura" data-id="' + q + '"') : '';
+    return '<div class="cot-q" data-txt="' + esc(((m.pregunta || '') + ' ' + m.nombre).toLowerCase()) + '"><div class="cot-q-t"><span class="ui-f1' + (s === 'Futura' ? ' ui-p-abono' : '') + '">' + esc(m.pregunta || m.nombre) +
+      (m.horas ? ' <span class="ui-num ui-nota-t">' + h1(m.horas * m.factor) + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') + '</span>' +
+      fut + '<button type="button" class="ui-lnk ui-gris" data-fun="nota" data-id="' + q + '">Nota</button>' + seg + '</div>' +
+      (sii && (abierta || !hs0.length) ? extras(v, m) : '') + cuerpo + (UI.nota[m.id] || v.notas[m.id] ? nota(v, m) : '') + '</div>';
   }
-  // Lo incluido (Sí, en verde) y lo por definir (ámbar), por bloque, con sus opciones para seguir ajustando
-  function incluidas(v) {
-    var por = function (k) { var o = {}, ord = [];
-      raices(v).filter(function (m) { return !esBase(m) && !v.na[m.bloque] && (k === 'Sí' ? /^(Sí|Futura)$/.test(est(v, m.id)) : est(v, m.id) === k); })
-        .forEach(function (m) { if (!o[m.bloque]) { o[m.bloque] = ''; ord.push(m.bloque); } o[m.bloque] += madre(v, m); });
-      return ord.map(function (b) { return '<div class="ui-lat-h u-mt10">' + esc(b) + '</div>' + o[b]; }).join(''); };
-    var si2 = por('Sí'), pe = por('Pendiente');
-    return '<div class="ui-lat-h ui-e-finalizado">Incluye</div>' + (si2 || '<div class="ui-nota-t">Lo que contestes con Sí pasa acá.</div>') +
-      (pe ? '<div class="cot-pe"><div class="ui-lat-h u-mt10 ui-p-pendiente">Por definir</div>' + pe + '</div>' : '');
+  // Seleccionado: por funcionalidad (el bloque), lo tildado con sus notas; Por definir; Etapa futura.
+  // lapiz: en la ventana de edición cada funcionalidad tiene el lápiz que abre «Corregir».
+  function seleccion(v, lapiz) {
+    var H = hEst(v), por = {}, ord = [], h = lapiz ? '' : '<div class="ui-lat-h cot-t-vi">Seleccionado</div>';
+    var hx = function (x) { return H[x.id] != null ? H[x.id] : hMod(v, x); };
+    raices(v).filter(function (m) { return !esBase(m) && !v.na[m.bloque] && si(v, m.id) && v.etapa[m.id] !== 'futura'; })
+      .forEach(function (m) { if (!por[m.bloque]) { por[m.bloque] = []; ord.push(m.bloque); } por[m.bloque].push(m); });
+    if (!ord.length) h += '<div class="ui-nota-t">Lo que contestes con Sí aparece acá.</div>';
+    ord.forEach(function (b) {
+      var ids = mods(v).filter(function (x) { return x.bloque === b && si(v, x.id) && v.etapa[x.id] !== 'futura'; });
+      var tot = ids.reduce(function (s, x) { return s + (H[x.id] || 0); }, 0) || por[b].reduce(function (s, m) { return s + horasDe(v, m.id); }, 0);
+      var lin = [];
+      por[b].forEach(function (m) { if (v.notas[m.id]) lin.push('<div class="cot-sel-n">' + esc(v.notas[m.id]) + '</div>');
+        var t = tildadas(v, m.id); (t.length ? t : (hijas(v, m.id).length ? [] : [m])).forEach(function (x) {
+          lin.push('<div class="ui-kv cot-sel-i"><span>' + esc(nom(x)) + (x.instancia && v.cant[x.id] > 1 ? ' ×' + v.cant[x.id] : '') +
+            (x !== m && v.notas[x.id] ? '<span class="cot-sub">' + esc(v.notas[x.id]) + '</span>' : '') + '</span>' + (hx(x) ? '<span class="ui-num">' + h1(hx(x)) + ' h</span>' : '<span></span>') + '</div>'); }); });
+      h += '<div class="cot-sel-t"><span class="ui-f1">' + esc(b) + '</span><span class="ui-num ui-nota-t">' + h1(tot) + ' h</span>' +
+        (lapiz ? uiIb('editar', 'Corregir ' + b, 'edi', 'data-cot="corregir" data-b="' + esc(b) + '"') : '') + '</div>' + lin.join('');
+    });
+    var pe = raices(v).filter(function (m) { return !esBase(m) && !v.na[m.bloque] && est(v, m.id) === 'Pendiente'; });
+    if (pe.length) h += '<div class="ui-lat-h u-mt10 ui-p-pendiente">Por definir · <span class="cot-n">' + pe.length + '</span></div>' +
+      pe.map(function (m) { return '<div class="ui-kv cot-sel-i"><span class="ui-p-pendiente">' + esc(m.pregunta || nom(m)) + '</span>' +
+        (lapiz ? uiIb('editar', 'Corregir', 'edi', 'data-cot="corregir" data-b="' + esc(m.bloque) + '"') : '<span></span>') + '</div>'; }).join('');
+    var fu = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura' && !madreFut(v, m.id); });
+    h += '<div class="ui-lat-h u-mt10 cot-t-vi">Etapa futura</div>' + (fu.length ? fu.map(function (m) {
+      return '<div class="ui-kv cot-sel-i"><span class="ui-p-abono">' + esc(m.bloque) + ' · ' + esc(nom(m)) + '</span><span class="ui-num">' + h1(hMod(v, m)) + ' h</span></div>'; }).join('')
+      : '<div class="ui-nota-t">Nada por ahora · se pasa con el ícono de calendario de cada opción tildada.</div>');
+    if (!lapiz) h += '<div class="cot-sel-pie"><span class="ui-nota-t">La minuta sale de acá: lo relevado, por definir y etapa futura.</span>' +
+      (CN.pid ? uiBtn('Exportar minuta', 'documento', 's', 'data-fun="minuta"') : '<span class="ui-nota-t">Disponible al guardar.</span>') + '</div>';
+    return h;
   }
   function opciones(v, id, niv) {
-    return hijas(v, id).map(function (m) { var on = si(v, m.id), hh = Math.round(m.horas * m.factor * 10) / 10;
-      return '<div class="cot-op" style="--niv:' + niv + '"><label class="u-row6"><input type="checkbox"' + (on ? ' checked' : '') + ' data-resp="' + esc(m.id) + '" data-k="op"> ' +
-        '<span class="ui-f1">' + esc(m.pregunta || m.nombre) + '</span>' + (hh ? '<span class="ui-num ui-nota-t">' + hh + ' h</span>' : '') + '</label>' +
+    return hijas(v, id).map(function (m) { var on = si(v, m.id), fu = v.etapa[m.id] === 'futura', hh = m.horas * m.factor;
+      return '<div class="cot-op" style="--niv:' + niv + '"><div class="cot-op-l"><label class="u-row6 ui-f1"><input type="checkbox"' + (on ? ' checked' : '') + ' data-resp="' + esc(m.id) + '" data-k="op"> ' +
+        '<span class="ui-f1' + (fu ? ' ui-p-abono' : '') + '">' + esc(m.pregunta || m.nombre) + '</span></label>' + (hh ? '<span class="ui-num ui-nota-t">' + h1(hh) + ' h</span>' : '') +
+        (on ? uiIb('calendario', fu ? 'Volver a la 1ª etapa' : 'Pasar a etapa futura', fu ? 'vio' : '', 'data-fun="futura" data-id="' + esc(m.id) + '"') : '') + '</div>' +
         (on ? extras(v, m) + (m.efecto === 'Integración' || /sistema/i.test(m.nombre) ? nota(v, m) : '') + opciones(v, m.id, niv + 1) : '') + '</div>'; }).join('');
   }
   function nota(v, m) { return '<textarea class="fc cot-nota" rows="1" maxlength="500" placeholder="Nota…" data-nota="' + esc(m.id) + '">' + esc(v.notas[m.id] || '') + '</textarea>'; }
@@ -364,18 +471,39 @@
   function futHijas(v, id, on) { hijas(v, id).forEach(function (x) { if (v.r[x.id] === 'Sí') { if (on) v.etapa[x.id] = 'futura'; else delete v.etapa[x.id]; } futHijas(v, x.id, on); }); }
   function madreFut(v, id) { var m = mod(v, id); while (m && m.padre) { if (v.etapa[m.padre] === 'futura') return true; m = mod(v, m.padre); } return false; }
   function responder(id, k) {
-    var v = dev();
+    var v = dev(), m0 = mod(v, id);
+    if (m0 && !esBase(m0) && !(m0.padre && mod(v, m0.padre))) { UI.abre = {}; if (k === 'Sí' || k === 'Pendiente') UI.abre[id] = true; }
     if (!k) { delete v.r[id]; delete v.etapa[id]; limpiar(v, id); }
     else { v.r[id] = k; if (k === 'Sí' && madreFut(v, id)) v.etapa[id] = 'futura'; if (k !== 'Sí') { delete v.etapa[id]; limpiar(v, id); } }
     cambio();
   }
-  function cambio() { if (abierto('m-fun')) funPintar(); repintar(); estimar(CN.i); auto(); }
+  function refrescar() { if (abierto('m-fun')) funPintar(); if (abierto('m-cor')) corPintar(); }
+  function cambio() { refrescar(); repintar(); estimar(CN.i); auto(); }
+  // Corregir (mock aprobado): una funcionalidad con sus preguntas y opciones; Ok deja el cambio aplicado, Cancelar lo descarta
+  var COR = null;
+  function corregir(b) {
+    var v = dev(); if (!v) return;
+    COR = { b: b, snap: JSON.stringify({ r: v.r, etapa: v.etapa, notas: v.notas, cant: v.cant, ext: v.ext, na: v.na }) };
+    var m = modal('m-cor', 'Corregir · ' + b, '<div id="cor-b"></div><div class="ui-nota-t u-mt10">Al tocar Ok el cambio queda aplicado: se actualizan las funcionalidades seleccionadas y Lo que suma. Cancelar lo descarta.</div>',
+      '<button class="btn bg" data-cor="cancelar">Cancelar</button><button class="btn bp" data-cor="ok">Ok</button>', 'md-sm');
+    UI.abre = {};
+    m.onclick = function (ev) { var x = ev.target.closest('[data-cor]');
+      if (x) { if (x.getAttribute('data-cor') === 'cancelar' && COR) Object.assign(dev(), JSON.parse(COR.snap)); COR = null; closeM('m-cor'); return cambio(); }
+      clickFun(ev); };
+    m.onchange = changeFun;
+    corPintar();
+  }
+  function corPintar() { var b = document.getElementById('cor-b'), v = dev(); if (!b || !COR || !v) return;
+    b.innerHTML = madresDe(v, COR.b).map(function (m) { return madre(v, m); }).join('') || '<div class="ui-nota-t">Esta funcionalidad no tiene preguntas.</div>'; }
   function clickFun(ev) {
     var b = ev.target.closest('[data-resp],[data-fun]'); if (!b || b.tagName === 'INPUT') return;
     var v = dev();
     if (b.hasAttribute('data-resp')) return responder(b.getAttribute('data-resp'), b.getAttribute('data-k'));
     var a = b.getAttribute('data-fun'), id = b.getAttribute('data-id');
     if (a === 'omitir') { v.na[b.getAttribute('data-b')] = true; return cambio(); }
+    if (a === 'abre') { var ya = UI.abre[id]; UI.abre = {}; if (!ya) UI.abre[id] = true; return refrescar(); }
+    if (a === 'nota') { UI.nota[id] = !UI.nota[id]; return refrescar(); }
+    if (a === 'minuta') return minuta();
     if (a === 'reabrir') { delete v.na[b.getAttribute('data-b')]; return cambio(); }
     if (a === 'futura') { var fu = v.etapa[id] === 'futura'; if (fu) delete v.etapa[id]; else v.etapa[id] = 'futura'; futHijas(v, id, !fu); return cambio(); }
     if (a === 'ext-quitar') { extSet(id, function (x) { x.items.splice(Number(b.getAttribute('data-i')), 1); }); return; }
@@ -383,6 +511,7 @@
   }
   function changeFun(ev) {
     var t = ev.target, v = dev();
+    if (t.id === 'fun-solo') { UI.solo = t.checked; return refrescar(); }
     if (t.hasAttribute('data-resp') && t.type === 'checkbox') return responder(t.getAttribute('data-resp'), t.checked ? 'Sí' : (t.getAttribute('data-k') === 'base' ? 'No' : ''));
     if (t.hasAttribute('data-nota')) { var id = t.getAttribute('data-nota'); if (t.value.trim()) v.notas[id] = t.value.trim(); else delete v.notas[id]; return cambio(); }
     if (t.hasAttribute('data-cant')) { v.cant[t.getAttribute('data-cant')] = Math.max(1, Number(t.value) || 1); return cambio(); }
@@ -443,26 +572,47 @@
     var pinta = function () { set('inc-b', opciones(v, id, 0) || '<div class="ui-nota-t">No tiene opciones.</div>'); };
     m.onchange = function (ev) { changeFun(ev); pinta(); }; m.onclick = function (ev) { clickFun(ev); }; pinta();
   }
+  // Costos asociados (mock aprobado): tildás los servicios de Contrataciones, cargás la cantidad por mes y tocás de quién es.
+  // Los externos se cargan a mano (nombre, monto, mensual o único), como lo de URBA.
   function terPintar() {
-    var v = dev(), x = v.ext._terceros || { paga: 'Cliente', items: [] }, L = C.ini.contrataciones;
-    var cant = function (cid) { var y = items(x).filter(function (k) { return k.cid === cid; })[0]; return y ? y.cantidad : 0; };
-    set('ter-b', '<div class="u-row8 u-mb10"><span class="ui-f1 ui-nota-t">Sólo lo que paga GIWA. Meta es opcional: si GIWA lo paga, se traslada en el abono.</span><span class="ui-num">' + fmt(extTot(x)) + '/mes</span></div>' +
-      TER_CAT.map(function (k) { var Lk = L.filter(function (c) { return c.categoria === k; }); if (!Lk.length) return '';
-        return uiDesp({ t: k === 'Canales' ? 'Ofrecer el pago de Meta · WhatsApp' : k, n2: true, open: Lk.some(function (c) { return cant(c.id) > 0; }) },
-          Lk.map(function (c) { return '<div class="ui-linea"><span class="ui-f1">' + esc(c.producto) + ' <span class="ui-nota-t">' + esc(c.unidad || '') + ' · <span class="ui-num">' + fmt(precioC(c)) + '</span></span></span>' +
-            '<input class="fc u-wauto u-tr" type="number" min="0" step="1" value="' + (cant(c.id) || '') + '" placeholder="0" data-ter-q="' + esc(c.id) + '"></div>'; }).join('')); }).join(''));
+    var v = dev(), x = v.ext._terceros || { items: [] }, L = C.ini.contrataciones, its = items(x);
+    var de = function (cid) { return its.filter(function (y) { return y.cid === cid; })[0]; };
+    var seg = function (attr, paga) { return '<span class="cot-seg">' + ['GIWA', 'Cliente'].map(function (P) {
+      return '<button type="button" class="cot-s cot-s-t' + (paga === P ? ' on' : '') + '" ' + attr + ' data-p="' + P + '">' + P + '</button>'; }).join('') + '</span>'; };
+    var cats = []; L.forEach(function (c) { if (cats.indexOf(c.categoria) < 0) cats.push(c.categoria); });
+    var man = its.map(function (y, i) { return y.cid ? '' : '<div class="cot-ter-f"><input class="fc ui-f1" placeholder="Nombre del costo" value="' + esc(y.nombre || '') + '" data-ter-mn="' + i + '" aria-label="Nombre">' +
+      '<input class="fc u-wauto u-tr ui-num cot-ter-q" type="number" min="0" data-monto value="' + (Number(y.monto) || '') + '" data-ter-mm="' + i + '" aria-label="Monto">' +
+      '<select class="fc u-wauto" data-ter-mr="' + i + '" aria-label="Frecuencia"><option' + (y.rec !== 'Único' ? ' selected' : '') + '>Mensual</option><option' + (y.rec === 'Único' ? ' selected' : '') + '>Único</option></select>' +
+      seg('data-ter-pi="' + i + '"', pagaDe(x, y)) + uiIb('cerrar', 'Quitar', '', 'data-ter-mq="' + i + '"') + '</div>'; }).join('');
+    set('ter-b', '<div class="ui-nota-t u-mb10">Tildá los que van. Al tildar, cargás la cantidad por mes y tocás de quién es.</div>' +
+      cats.map(function (k) { return '<div class="ui-lat-h u-mt10">' + esc(k || 'Otros') + '</div>' + L.filter(function (c) { return c.categoria === k; }).map(function (c) { var y = de(c.id);
+        return '<div class="cot-ter-f"><label class="u-row6 ui-f1"><input type="checkbox"' + (y ? ' checked' : '') + ' data-ter-ck="' + esc(c.id) + '"> ' + esc(c.producto) +
+          ' <span class="ui-nota-t">· <span class="ui-num">' + fmt(precioC(c)) + '</span> ' + esc((c.unidad || '').toLowerCase()) + '</span></label>' +
+          (y ? '<input class="fc u-wauto u-tr ui-num cot-ter-q" type="number" min="0" value="' + (y.cantidad || '') + '" data-ter-q="' + esc(c.id) + '" aria-label="Cantidad por mes">' + seg('data-ter-pc="' + esc(c.id) + '"', pagaDe(x, y)) : '') + '</div>'; }).join(''); }).join('') +
+      '<div class="ui-lat-h u-mt10">Otros costos externos</div>' + man + '<button type="button" class="ui-lnk ui-azul" data-ter-add="1">+ Otro costo externo (nombre y monto)</button>' +
+      '<div class="cot-sel-pie"><span>Paga GIWA <span class="ui-num">' + fmt(extMes(v, 'GIWA')) + '/mes</span></span><span>Paga el cliente <span class="ui-num">' + fmt(extMes(v, 'Cliente')) + '/mes</span></span></div>');
   }
   function terPop() {
-    var v = dev();
-    // Todo lo de acá lo paga GIWA; nada arranca cargado (Meta se ofrece, no se supone)
-    if (!v.ext._terceros) v.ext._terceros = { paga: 'GIWA', items: [] }; else v.ext._terceros.paga = 'GIWA';
-    var m = modal('m-ter', 'Costos que paga GIWA', '<div id="ter-b"></div>', '<button class="btn bg" data-ter-quitar="1">Quitar todos</button><button class="btn bp" data-cerrar="m-ter">Listo</button>');
-    m.onchange = function (ev) { var t = ev.target; if (!t.hasAttribute('data-ter-q')) return; var cid = t.getAttribute('data-ter-q'), n = Number(t.value) || 0;
-      extSet('_terceros', function (x) { x.items = x.items.filter(function (y) { return y.cid !== cid; }); if (n > 0) x.items.push({ cid: cid, cantidad: n }); }); };
-    m.onclick = function (ev) { var b = ev.target.closest('[data-ter-paga],[data-ter-quitar]'); if (!b) return;
-      if (b.hasAttribute('data-ter-quitar')) { delete dev().ext._terceros; closeM('m-ter'); return cambio(); }
-      var p = b.getAttribute('data-ter-paga'); extSet('_terceros', function (x) { x.paga = p; }); };
-    terPintar(); cambio();
+    var v = dev(), snap = v.ext._terceros ? JSON.stringify(v.ext._terceros) : null;
+    if (!v.ext._terceros) v.ext._terceros = { items: [] }; v.ext._terceros.items = items(v.ext._terceros);
+    var m = modal('m-ter', 'Costos asociados · ' + (v.titulo || tipoNom(v.tipo)), '<div id="ter-b"></div>',
+      '<button class="btn bg" data-ter="cancelar">Cancelar</button><button class="btn bp" data-ter="ok">Listo</button>', 'md-sm');
+    var X = function () { return dev().ext._terceros; }, toca = function () { terPintar(); cambio(); };
+    m.onchange = function (ev) { var t = ev.target, x = X(), its = x.items;
+      if (t.hasAttribute('data-ter-ck')) { var cid = t.getAttribute('data-ter-ck');
+        if (t.checked) its.push({ cid: cid, cantidad: 1, paga: 'GIWA' }); else x.items = its.filter(function (y) { return y.cid !== cid; }); return toca(); }
+      if (t.hasAttribute('data-ter-q')) { var y = its.filter(function (k) { return k.cid === t.getAttribute('data-ter-q'); })[0]; if (y) y.cantidad = Number(t.value) || 0; return toca(); }
+      if (t.hasAttribute('data-ter-mn')) { its[Number(t.getAttribute('data-ter-mn'))].nombre = t.value.trim(); return toca(); }
+      if (t.hasAttribute('data-ter-mm')) { its[Number(t.getAttribute('data-ter-mm'))].monto = Number(t.value) || 0; return toca(); }
+      if (t.hasAttribute('data-ter-mr')) { its[Number(t.getAttribute('data-ter-mr'))].rec = t.value; return toca(); } };
+    m.onclick = function (ev) { var b = ev.target.closest('[data-ter],[data-ter-pc],[data-ter-pi],[data-ter-add],[data-ter-mq]'); if (!b) return; var x = X(), its = x.items;
+      if (b.hasAttribute('data-ter')) { if (b.getAttribute('data-ter') === 'cancelar') { if (snap) dev().ext._terceros = JSON.parse(snap); else delete dev().ext._terceros; }
+        var z = dev().ext._terceros; if (z && !items(z).length) delete dev().ext._terceros; closeM('m-ter'); return cambio(); }
+      if (b.hasAttribute('data-ter-pc')) { var y = its.filter(function (k) { return k.cid === b.getAttribute('data-ter-pc'); })[0]; if (y) y.paga = b.getAttribute('data-p'); return toca(); }
+      if (b.hasAttribute('data-ter-pi')) { its[Number(b.getAttribute('data-ter-pi'))].paga = b.getAttribute('data-p'); return toca(); }
+      if (b.hasAttribute('data-ter-add')) { its.push({ nombre: '', monto: 0, paga: 'Cliente', rec: 'Mensual' }); return terPintar(); }
+      if (b.hasAttribute('data-ter-mq')) { its.splice(Number(b.getAttribute('data-ter-mq')), 1); return toca(); } };
+    terPintar();
   }
   // Popup del desarrollo: tipo, título, alcance, mejora y «Partir de un proyecto existente»
   function devPop(i) {
@@ -727,7 +877,7 @@
   }
 
   // ── abrir, guardar, crear, borrar ──
-  function auto() { if (!CN || CN.pid) return; try { localStorage.setItem(LS, JSON.stringify(CN, function (k, x) { return k === 'est' || k === 'ref' ? undefined : x; })); } catch (e) {} }
+  function auto() { if (!CN || CN.pid) return; try { localStorage.setItem(LS, JSON.stringify(CN, function (k, x) { return k === 'est' || k === 'ref' || k === 'an' ? undefined : x; })); } catch (e) {} }
   function recuperar() { try { var x = JSON.parse(localStorage.getItem(LS) || 'null'); if (x && x.devs && !x.pid) return x; } catch (e) {} return null; }
   function olvidar() { try { localStorage.removeItem(LS); } catch (e) {} }
   async function abrirCot(pid) {
@@ -751,7 +901,7 @@
       devs: con.map(function (v) { var mt = Object.assign({}, v.mant), c = propio(v) ? null : CN.devs[v.mant.comparte];
         mt.comparte = c ? con.indexOf(c) : null;
         return { id: v.id, tipo: v.tipo, titulo: v.titulo, objetivo: v.objetivo, mejora: !!v.mejora, escala: v.escala || '', r: v.r, cant: v.cant, etapa: v.etapa, notas: v.notas, ext: v.ext, base: v.base, na: v.na,
-                 precio: v.precio || 0, mant: mt, moneda: v.moneda || 'ARS', forma_pago: v.forma_pago || '', inicio: v.inicio || '', vh: v.vh || null, vh_sop: v.vh_sop || null, semanas: v.semanas || '' }; }) };
+                 precio: v.precio || 0, mant: mt, moneda: v.moneda || 'ARS', forma_pago: v.forma_pago || '', inicio: v.inicio || '', vh: v.vh || null, vh_sop: v.vh_sop || null, semanas: v.semanas || '', garantia: v.garantia || '' }; }) };
   }
   async function guardar(crear, el) {
     var d = payload();
@@ -821,6 +971,10 @@
       if (a === 'fun') return funAbrir();
       if (a === 'mant') return mantPop();
       if (a === 'ter') return terPop();
+      if (a === 'corregir') return corregir(b.getAttribute('data-b'));
+      if (a === 'precio-sug') { dev().precio = 0; return cambio(); }
+      if (a === 'mant-i' || a === 'mant-quitar') { CN.i = Number(b.getAttribute('data-i')); if (a === 'mant-i') return mantPop(); dev().mant.on = false; return cambio(); }
+      if (a === 'mant-on') { var vm = dev(); vm.mant.on = true; if (!vm.mant.manual) { vm.mant.hs = mantHs(vm); vm.mant.abono = Math.round(vm.mant.hs * soporte()); } return mantPop(); }
       if (a.indexOf('inc:') === 0) return incPop(a.slice(4));
     };
     el.onchange = function (ev) {
@@ -834,6 +988,8 @@
       if (t.id === 'cot-ow' && t.value) { CN.owners.push(t.value); repintar(); return auto(); }
       if (t.id === 'cot-nom') { CN.nombre = t.value.trim(); return auto(); }
       if (t.id === 'cot-cierre') { CN.fecha_cierre = t.value; return auto(); }
+      if (t.id === 'cot-precio') { dev().precio = Number(t.value) || 0; return cambio(); }
+      if (t.hasAttribute('data-cot-v')) { var kv = t.getAttribute('data-cot-v'); dev()[kv] = kv === 'objetivo' ? t.value.trim() : t.value; return auto(); }
       if (t.id === 'cot-min') { CN.minuta.texto = t.value; if (!CN.minuta.objetivo || CN.minuta.objetivo === CN.minuta._obj) { CN.minuta.objetivo = t.value; CN.minuta._obj = t.value; } return auto(); }
       if (t.hasAttribute('data-cot-ck')) { var k = t.getAttribute('data-cot-ck'), v = dev();
         if (k === 'mant') { v.mant.on = t.checked; if (t.checked) { if (!v.mant.manual) { v.mant.hs = mantHs(v); v.mant.abono = Math.round(v.mant.hs * soporte()); } mantPop(); } return cambio(); }

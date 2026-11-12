@@ -313,21 +313,53 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 
 /* Cotizador · cuestionario en tres columnas: Preguntas · Respuestas · Lo que suma (03/11/2026) */
 .md.md-xl { max-width: min(1280px, 96vw); }
-.cot-fun { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .9fr); gap: var(--e5); align-items: start; }
+.cot-fun { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, .8fr); gap: var(--e5); align-items: start; }
 .cot-q { padding: var(--e3) 0; border-bottom: 1px solid var(--marco); }
 .cot-q-t { font-size: var(--t-l); margin-bottom: var(--e2); display: flex; align-items: center; gap: var(--e3); }
-/* Respuestas en íconos chicos y tres zonas (12/11/2026): Sí verde · Por definir ámbar · No gris y plegado */
-.cot-r { display: inline-flex; gap: 2px; flex: none; }
-.cot-r .ui-ib { color: var(--texto2); }
-.cot-r .ui-ib.cot-r-si.on { color: var(--e-finalizado); background: var(--suave-cobrado); }
-.cot-r .ui-ib.cot-r-pe.on { color: var(--p-pendiente); background: var(--suave-detenido); }
-.cot-r .ui-ib.cot-r-no.on { color: var(--texto); background: var(--suave-fila); }
-.cot-pe .cot-q { border-left: 2px solid var(--p-pendiente); padding-left: var(--e3); }
-.cot-nos { display: flex; flex-wrap: wrap; gap: var(--e1) var(--e4); }
-.cot-no { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 2px 0; font-family: var(--f-texto); font-size: var(--t-s); color: var(--texto2); cursor: pointer; }
-.cot-no .ui-ico { width: 12px; height: 12px; }
-.cot-n { font-family: var(--f-num); }
-.cot-no:hover { color: var(--texto); }
+/* Cuestionario en tres columnas (mock aprobado 12/11/2026): Preguntas en azul · Seleccionado violeta punteado · Lo que suma verde */
+.cot-c1, .cot-c2, .cot-c3 { border-radius: var(--r); padding: var(--e4); min-width: 0; }
+.cot-c1 { border: 1px solid var(--principal); }
+.cot-c2 { border: 1px dashed var(--secundaria); }
+.cot-c3 { border: 1px solid var(--e-finalizado); }
+.cot-fun .ui-lat-h, .cot-lat .ui-lat-h, .cot-ed .ui-lat-h { font-weight: 600; color: var(--texto); }
+.cot-fun .ui-lat-h.cot-t-az, .cot-lat .cot-t-az, .cot-ed .cot-t-az { color: var(--brillo); }
+.cot-fun .ui-lat-h.cot-t-vi, .cot-lat .cot-t-vi, .cot-ed .cot-t-vi { color: var(--secundaria-txt); }
+.cot-fun .ui-lat-h.cot-t-ok, .cot-lat .cot-t-ok, .cot-ed .cot-t-ok { color: var(--e-finalizado); }
+.cot-fun .ui-lat-h.ui-p-pendiente, .cot-ed .ui-lat-h.ui-p-pendiente { color: var(--p-pendiente); }
+.cot-tools { display: flex; align-items: center; gap: var(--e4); margin-bottom: var(--e3); }
+.cot-seg { display: inline-flex; border: 1px solid var(--contorno); border-radius: var(--r); overflow: hidden; flex: none; }
+.cot-s { width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; border-right: 1px solid var(--contorno); color: var(--texto2); cursor: pointer; padding: 0; }
+.cot-s:last-child { border-right: 0; }
+.cot-s .ui-ico { width: 13px; height: 13px; }
+.cot-s.on { background: var(--principal); color: #fff; }
+.cot-q-t .ui-lnk { flex: none; }
+.cot-res { display: flex; width: 100%; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0 4px var(--e4); color: var(--texto2); font-family: var(--f-texto); font-size: var(--t-m); text-align: left; cursor: pointer; }
+.cot-res .ui-ico { width: 12px; height: 12px; flex: none; }
+.cot-op-l { display: flex; align-items: center; gap: 8px; }
+.cot-omit { display: flex; align-items: center; gap: 8px; padding: var(--e2) 0; color: var(--texto2); font-size: var(--t-m); border-bottom: 1px solid var(--marco); }
+.cot-sel-t { display: flex; align-items: center; gap: 10px; margin-top: var(--e3); font-size: var(--t-l); }
+.cot-sel-i { padding-left: var(--e3); }
+.cot-sel-n { padding-left: var(--e3); font-size: var(--t-s); color: var(--texto2); }
+.cot-sub { display: block; font-size: var(--t-s); color: var(--texto2); margin-top: 2px; }
+.cot-sel-pie { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: var(--e4); padding-top: var(--e3); border-top: 1px solid var(--marco); }
+.cot-pf-in { font-size: var(--t-num); color: var(--p-contratado); text-align: right; }
+.cot-pf-sug { align-self: flex-start; }
+/* Ventana de edición (mock aprobado 12/11/2026): datos y desarrollos · análisis económico (azul) · Lo que suma (verde), fijos al bajar */
+.cot-ed { display: grid; grid-template-columns: minmax(0, 1fr) 330px 330px; gap: var(--e5); align-items: start; }
+.cot-ed-c { min-width: 0; }
+.cot-ed-s { position: sticky; top: var(--e4); max-height: calc(100vh - 2 * var(--e4)); overflow-y: auto; }
+@media (max-width: 1280px) { .cot-ed { grid-template-columns: minmax(0, 1fr) 330px; } .cot-ed .cot-c1 { grid-column: 1 / -1; position: static; max-height: none; order: 3; } }
+@media (max-width: 900px) { .cot-ed { grid-template-columns: minmax(0, 1fr); } .cot-ed-s { position: static; max-height: none; } }
+.cot-mant-f { display: flex; align-items: center; gap: var(--e3); padding: var(--e3) var(--e3) var(--e3) 48px; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.cot-fila { display: flex; align-items: flex-start; gap: var(--e3); padding: var(--e2) 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.cot-fila-l { width: 130px; flex: none; color: var(--texto2); }
+.cot-an-i { padding: var(--e2) 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.cot-an-m { text-align: right; margin-top: 2px; white-space: nowrap; }
+.cot-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 8px; vertical-align: middle; }
+.cot-ter-f { display: flex; align-items: center; gap: var(--e2); padding: 6px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.cot-ter-q { width: 90px; }
+.cot-s.cot-s-t { width: auto; padding: 0 10px; font-family: var(--f-texto); font-size: var(--t-s); }
+.cot-ed .ui-num, .cot-fun .ui-num, .cot-lat .ui-num, #m-ter .ui-num, #m-cor .ui-num { white-space: nowrap; }
 /* Lo que suma con jerarquía: precio final · sugerido · análisis del abono · interno en gris */
 .cot-pf { display: flex; flex-direction: column; gap: 2px; padding: var(--e2) 0 var(--e3); border-bottom: 1px solid var(--marco); }
 .cot-pf > .ui-num { font-size: var(--t-num); }
