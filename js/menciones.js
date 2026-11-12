@@ -20,8 +20,8 @@
   function pintar() {
     if (!M.box) { M.box = document.createElement('div'); M.box.className = 'ment-menu'; M.box.setAttribute('role', 'listbox'); document.body.appendChild(M.box); }
     M.box.innerHTML = M.L.map(function (n, i) { return '<button type="button" class="ment-op' + (i === M.i ? ' on' : '') + '" role="option" data-i="' + i + '">' + ico('personas') + ' ' + esc(n) + '</button>'; }).join('');
-    var r = M.campo.getBoundingClientRect();
-    M.box.style.left = r.left + 'px'; M.box.style.top = (r.bottom + 2) + 'px'; M.box.hidden = false;
+    var r = M.campo.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;   // la app se achica en pantallas de menos de 1440 (app.css)
+    M.box.style.left = (r.left / z) + 'px'; M.box.style.top = (r.bottom / z + 2) + 'px'; M.box.hidden = false;
   }
   function elegir(i) {
     var c = M.campo, nombre = M.L[i]; if (!c || !nombre) return;

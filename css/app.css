@@ -12,6 +12,8 @@
 
 /* La barra es fixed (36px) y el menú lateral también: la vista arranca debajo y a su derecha */
 .vista { padding: 52px 18px 24px; max-width: 1920px; margin: 0 auto 0 220px; box-sizing: border-box; min-width: 0; }   /* aprovecha el ancho; sólo frena en monitores muy anchos */
+/* Pantallas de menos de 1440 de ancho (notebooks a 1280): toda la app se achica para verse igual que a 1440 (12/11/2026) */
+@media (min-width: 721px) and (max-width: 1439px) { html { zoom: .89; } }
 /* Escala global en los estilos heredados (02/11/2026): leen los tokens de tokens.css */
 .fg input.fc, .fg select.fc { height: var(--alto-campo); }          /* campos de formulario; los de una fila o tabla quedan en su alto */
 .btn:not(.sm):not(.xs):not(.btn-ico) { min-height: var(--alto-btn); }

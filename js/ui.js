@@ -208,8 +208,9 @@ function _uiTipVer(ev) {
   if (!_uiTip) { _uiTip = document.createElement('div'); _uiTip.className = 'ui-tip'; document.body.appendChild(_uiTip); }
   _uiTip.textContent = el.getAttribute('data-tip'); _uiTip.hidden = false;
   var r = el.getBoundingClientRect(), w = _uiTip.offsetWidth, h = _uiTip.offsetHeight;
-  var x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8), y = r.bottom + 6;
-  if (y + h > innerHeight - 8) y = r.top - h - 6;
+  var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;   // la app se achica en pantallas de menos de 1440 (app.css)
+  var x = Math.min(Math.max(8, (r.left + r.width / 2) / z - w / 2), innerWidth / z - w - 8), y = r.bottom / z + 6;
+  if (y + h > innerHeight / z - 8) y = r.top / z - h - 6;
   _uiTip.style.left = x + 'px'; _uiTip.style.top = y + 'px';
 }
 function _uiTipOcultar(ev) {
