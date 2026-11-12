@@ -304,16 +304,16 @@
     return sec('alt', 'Otros recordatorios', alts.length, '', nuevo + (h || '<div class="empty u-p10">Nada pendiente.</div>'));
   }
 
-  // ── 7 · gastos del mes (sin impuestos) ───────────────────────
+  // ── 7 · gastos del mes (costo_giwa: sin impuestos, salvo el monotributo que es costo de GIWA · 12/11/2026) ──
   function gastos(D) {
     var hoyK = isoMas(0).slice(0, 7);
     if (A.gastosMes === null) {
       var ms = D.gastos.map(function (g) { return g.mes_key; }).filter(function (m) { return m && m <= hoyK; }).sort();
       A.gastosMes = ms[ms.length - 1] || hoyK;
     }
-    var op = D.gastos.filter(function (g) { return !g.es_impuesto && g.mes_key === A.gastosMes; })
+    var op = D.gastos.filter(function (g) { return g.costo_giwa && g.mes_key === A.gastosMes; })
       .sort(function (a, b) { return (Number(b.monto_ars) || 0) - (Number(a.monto_ars) || 0); });
-    var imp = suma(D.gastos.filter(function (g) { return g.es_impuesto && g.mes_key === A.gastosMes; }), 'monto_ars');
+    var imp = suma(D.gastos.filter(function (g) { return !g.costo_giwa && g.mes_key === A.gastosMes; }), 'monto_ars');
     var tot = suma(op, 'monto_ars'), totU = suma(op, 'monto_usd');
     var mn = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'], opts = '', h0 = new Date();
     for (var i = 0; i < 12; i++) {
@@ -598,10 +598,30 @@
     var h = '<div class="kpi-grid u-mb12">' + kpi('k-cobrado', 'Facturado 12 meses', fmt(f12), 'notas de crédito restadas') +
       kpi(mia ? 'k-contratado' : 'k-neutro', 'Tu categoría', mia ? esc(mia.categoria) : '—', mia ? 'límite ' + fmt(lim) : '') +
       kpi(pasa ? 'k-alerta' : 'k-cobrado', 'Estado', mia ? (pasa ? 'Te pasaste' : 'Dentro') : '—', mia ? pct + '% del límite' + (pasa && sug ? ' · corresponde ' + esc(sug.categoria) : '') : '') + '</div>';
-    if (!mia) h += '<div class="aviso aviso-wa u-mb12">Poné tu mail (' + esc(L[0].mail || '') + ') en la columna «Monotributo unificado» de tu categoría para activar la comparación.</div>';
+    if (!mia) h += '<div class="aviso aviso-wa u-mb12">Elegí tu categoría de monotributo en Configuración › Usuarios para activar la comparación.</div>';
+    // Simulador: lo que se escribe se suma a los 12 meses; se repinta sólo lo de abajo para no perder el foco
+    h += '<div class="u-row8 u-mb12"><label class="u-s11-mt" for="imp-sim">Si facturo</label>' +
+      '<input class="fc u-wauto" id="imp-sim" data-monto placeholder="0" value="' + (A.impSim ? A.impSim : '') + '"><span class="u-s11-mt">ARS más</span></div>';
+    return h + '<div id="imp-zona">' + impZona() + '</div>';
+  }
+  function impZona() {
+    var L = A.imp || [], f12 = Number(L[0].fact12) || 0, mia = L.find(function (x) { return x.mia; }), s = Number(A.impSim) || 0;
+    var tot = f12 + s, lim = mia ? Number(mia.limite) || 0 : 0;
+    var cae = s > 0 ? L.find(function (c) { return tot <= Number(c.limite); }) : null, h = '';
+    if (s > 0) {
+      var r = 'Llegarías a <span class="m">' + fmt(tot) + '</span> en 12 meses. ';
+      if (mia && tot <= lim) r += '<span class="u-c-ok">Seguís en tu categoría (' + esc(mia.categoria) + ')</span>: te quedan <span class="m">' + fmt(lim - tot) + '</span>.';
+      else {
+        if (mia) r += '<span class="u-c-rd">Te pasás de tu categoría (' + esc(mia.categoria) + ') por <span class="m">' + fmt(tot - lim) + '</span></span>. ';
+        r += cae ? 'Te correspondería la ' + esc(cae.categoria) + (Number(cae.mensual) ? ', con cuota de <span class="m">' + fmt(cae.mensual) + '</span>.' : '.')
+                 : '<span class="u-c-rd">Superás la última categoría (' + esc(L[L.length - 1].categoria) + ')</span>.';
+      }
+      h += '<div class="card u-mb12">' + r + '</div>';
+    }
     return h + '<div class="card u-p0 u-ovx"><table class="tbl"><thead><tr><th>Categoría</th><th class="u-tr">Límite de facturación</th><th class="u-tr">Cuota (servicios)</th><th></th></tr></thead><tbody>' +
       L.map(function (c) { return '<tr><td>' + esc(c.categoria) + '</td><td class="m u-tr">' + fmt(c.limite) + '</td><td class="m u-tr">' + (Number(c.mensual) ? fmt(c.mensual) : '—') + '</td>' +
-        '<td class="u-s10-mt">' + (c.mia ? 'tu categoría' : '') + (c.sugerida && !c.mia ? 'la que corresponde' : '') + (f12 <= Number(c.limite) ? '' : ' · te pasaste') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+        '<td class="u-s10-mt">' + (c.mia ? 'tu categoría' : '') + (c.sugerida && !c.mia ? 'la que corresponde' : '') + (f12 <= Number(c.limite) ? '' : ' · te pasaste') +
+        (cae && cae.categoria === c.categoria ? ' · con lo que facturarías' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>';
   }
 
   // ── pintar ───────────────────────────────────────────────────
@@ -639,6 +659,9 @@
     }
     // la búsqueda repinta sólo la lista, para no perder el foco del campo
     el.oninput = function (ev) {
+      if (ev.target.id === 'imp-sim') {
+        A.impSim = Number(ev.target.value) || 0; var z = document.getElementById('imp-zona'); if (z) z.innerHTML = impZona(); return;
+      }
       if (ev.target.id === 'gf-q') {
         A.gf.q = ev.target.value; var p0 = ev.target.selectionStart; pintar(el);
         var q0 = document.getElementById('gf-q'); q0.focus(); q0.setSelectionRange(p0, p0); return;

@@ -51,7 +51,8 @@
       db().from('contrataciones').select('*').order('categoria').order('producto'),
       db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
       db().from('usuarios').select('*').order('orden'),
-      db().rpc('es_admin')
+      db().rpc('es_admin'),
+      db().from('impuestos').select('categoria').order('orden')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     C.cfg = {}; C.desc = {};
@@ -66,6 +67,7 @@
     ['dificultad', 'especialidad', 'mercado'].forEach(function (t) { C.vhl[t] = (C.vh[t] || []).map(function (x) { return { k: x.k, v: Number(x.v) }; }); });
     C.cont = r[2].data;
     C.usu = r[4].data; C.admin = !!r[5].data;
+    C.monoCats = (r[6].data || []).map(function (x) { return x.categoria; }).filter(Boolean);
     C.tc = Number(r[3].data && r[3].data.valor) || Number(C.vh.tc) || _tcDefault();
   }
 
@@ -208,10 +210,11 @@
     return '<div class="u-row8 u-mb10"><div class="ui-nota-t u-f1">Quién usa el CRM. El chat de Telegram es el que recibe los avisos y el resumen diario.' +
         (C.admin ? '' : ' Sólo Administración puede cambiarlos.') + '</div>' +
         (C.admin ? '<button class="ui-btn ui-p" data-cfg="usu" data-id="">' + ico('mas') + ' Nuevo usuario</button>' : '') + '</div>' +
-      '<div class="ui-tarjeta u-p0 u-ovx"><table class="ui-tbl"><thead><tr><th>Nombre</th><th>Mail</th><th>Rol</th><th class="u-tc">Factura</th>' +
+      '<div class="ui-tarjeta u-p0 u-ovx"><table class="ui-tbl"><thead><tr><th>Nombre</th><th>Mail</th><th>Rol</th><th class="u-tc">Factura</th><th>Monotributo</th>' +
       '<th>DNI</th><th>Cargo</th><th>Telegram</th><th class="u-tc">GIWA</th><th class="u-tc">Activo</th><th></th></tr></thead><tbody>' + C.usu.map(function (u) {
         return '<tr' + (u.activo ? '' : ' class="u-op6"') + '><td>' + esc(u.nombre || '') + '</td><td class="u-c-mt">' + esc(u.mail || '') + '</td><td>' + esc(u.rol || '—') + '</td>' +
-          '<td class="u-tc">' + si(u.factura) + '</td><td class="m">' + esc(u.dni || '—') + '</td><td>' + esc(u.cargo || '—') + '</td><td class="m">' + (u.telegram ? esc(u.telegram) : '<span class="u-c-wa">sin chat</span>') + '</td>' +
+          '<td class="u-tc">' + si(u.factura) + '</td><td>' + (u.monotributo_cat ? esc(u.monotributo_cat) + (u.monotributo_giwa ? ' <span class="u-s10-mt">· costo de GIWA</span>' : '') : '<span class="u-c-mt">—</span>') + '</td>' +
+          '<td class="m">' + esc(u.dni || '—') + '</td><td>' + esc(u.cargo || '—') + '</td><td class="m">' + (u.telegram ? esc(u.telegram) : '<span class="u-c-wa">sin chat</span>') + '</td>' +
           '<td class="u-tc">' + si(u.es_giwa) + '</td><td class="u-tc">' + si(u.activo) + '</td>' +
           '<td class="u-tr">' + (C.admin ? '<button class="ui-ib ui-azul" data-cfg="usu" data-id="' + esc(u.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
@@ -230,12 +233,16 @@
       '<div class="fg"><label class="fl" for="us-cal">Calendario</label><input class="fc" id="us-cal" placeholder="mail del calendario" value="' + esc(u.calendario || '') + '"></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="us-dni">DNI (para el NDA)</label><input class="fc" id="us-dni" placeholder="DNI 12.345.678" value="' + esc(u.dni || '') + '"></div>' +
       '<div class="fg"><label class="fl" for="us-cargo">Cargo (para el NDA)</label><input class="fc" id="us-cargo" value="' + esc(u.cargo || '') + '"></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="us-mcat">Categoría de monotributo</label><select class="fc" id="us-mcat"><option value="">—</option>' +
+        (C.monoCats || []).map(function (k) { return '<option value="' + esc(k) + '"' + (k === u.monotributo_cat ? ' selected' : '') + '>' + esc(k) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="fg"><span class="fl">&nbsp;</span>' + chk('monotributo_giwa', 'Su monotributo es costo de GIWA') + '</div></div>' +
       '<div class="u-row8 u-mt6">' + chk('factura', 'Factura') + chk('es_giwa', 'Es del equipo GIWA') + chk('activo', 'Activo') + '</div>' +
       '</div><div class="mf"><button class="btn bg" data-cerrar="m-usu">Cancelar</button><button class="btn bp" id="us-ok">Guardar</button></div></div>';
     var v = function (i) { return document.getElementById(i).value.trim(); }, c = function (i) { return document.getElementById(i).checked; };
     document.getElementById('us-ok').onclick = async function () {
       var r = await db().rpc('guardar_usuario', { p: { id: id || null, nombre: v('us-nom'), mail: v('us-mail'), rol: v('us-rol'), telegram: v('us-tg'),
-        calendario: v('us-cal'), dni: v('us-dni'), cargo: v('us-cargo'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo') } });
+        calendario: v('us-cal'), dni: v('us-dni'), cargo: v('us-cargo'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo'),
+        monotributo_cat: v('us-mcat'), monotributo_giwa: c('us-monotributo_giwa') } });
       if (r.error) return toast(r.error.message, 'err');
       closeM('m-usu'); toast('Usuario guardado', 'ok'); alGuardar();
     };
