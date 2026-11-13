@@ -75,6 +75,7 @@ Lo reemplazado y su historia están en `GIWA CODE/GIWA - CRM/HISTORIAL.md` (Driv
 
 **General**
 - Las palabras son **proyecto** y **desarrollo**; «solución» ya no se usa. En pantalla, «Rechazado» se lee «No aceptado».
+- Pantallas de menos de 1440 de ancho (12/11/2026): toda la app se achica un 11 % (`zoom: .89` en `app.css`, sólo en pantalla, de 721 a 1439 px). Los `@media` siguen midiendo la ventana real y `vh`/`vw` rinden al 89 %. El JS que ubica elementos fijos divide por ese zoom (`ui.js`, `menciones.js`).
 - Montserrat para texto y Courier New para números. Modales y desplegables abiertos sobre `#0D122F`.
 - Importes sin decimales en la app. Un solo tipo de cambio: BCRA.
 - Logo del cliente: fondo blanco, `contain`, centrado. Es una excepción explícita a los fondos oscuros.

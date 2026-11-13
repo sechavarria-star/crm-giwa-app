@@ -13,7 +13,7 @@
 /* La barra es fixed (36px) y el menú lateral también: la vista arranca debajo y a su derecha */
 .vista { padding: 52px 18px 24px; max-width: 1920px; margin: 0 auto 0 220px; box-sizing: border-box; min-width: 0; }   /* aprovecha el ancho; sólo frena en monitores muy anchos */
 /* Pantallas de menos de 1440 de ancho (notebooks a 1280): toda la app se achica para verse igual que a 1440 (12/11/2026) */
-@media (min-width: 721px) and (max-width: 1439px) { html { zoom: .89; } }
+@media screen and (min-width: 721px) and (max-width: 1439px) { html { zoom: .89; } }   /* sólo en pantalla: la impresión tiene su propia escala */
 /* Escala global en los estilos heredados (02/11/2026): leen los tokens de tokens.css */
 .fg input.fc, .fg select.fc { height: var(--alto-campo); }          /* campos de formulario; los de una fila o tabla quedan en su alto */
 .btn:not(.sm):not(.xs):not(.btn-ico) { min-height: var(--alto-btn); }
@@ -426,6 +426,9 @@ details.hoy-sec > summary::-webkit-details-marker { display: none; }
 .md, .md.md-sm { width: 100%; max-width: 720px; background: var(--modal); border-color: var(--contorno); }
 .md .mh, .md .mf { background: var(--modal); }
 .md .mb2 { max-height: none; overflow: visible; }
+/* La cabecera y el pie se pegan al borde del fondo: sin esto quedaba una franja (el padding de .mo) por donde se veía pasar el contenido (12/11/2026) */
+.mo .mh { top: -16px; } .mo .mf { bottom: -16px; }
+@media (max-width: 720px) { .mo .mh { top: -6px; } .mo .mf { bottom: -6px; } }
 .mo .fc { background: var(--fondo); border: 1px solid var(--contorno); }
 .mo .fc:focus { border-color: var(--brillo); box-shadow: 0 0 0 2px rgba(58,184,255,.18); }
 .mo .fc:disabled { opacity: .55; }
