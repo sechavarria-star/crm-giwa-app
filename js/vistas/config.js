@@ -39,7 +39,7 @@
     ['Categorías de Gasto', ['Gasto_Categoria', 'categorias_gasto']]
   ];
   var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %']];
-  var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo'];
+  var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo', 'AFIP'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
   var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
   var C = { usu: [], admin: false, sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '', tab: 'clientes', num: {} };
@@ -168,7 +168,7 @@
       return '<div class="ui-tarjeta u-p0"><div class="u-row8 u-p1214"><span class="sec u-f1">' + esc(c) + '</span><span class="u-s10-mt">' + by[c].length + ' ítem' + (by[c].length === 1 ? '' : 's') + '</span></div>' +
         by[c].map(function (r) {
           var usd = Number(r.costo_usd) || 0, ars = Number(r.costo_ars) || 0;
-          return '<div class="rowb u-row8 u-p1214"><div class="u-f1m"><div class="u-fw6">' + esc(r.producto) + (r.nivel ? ' <span class="u-s10-mt">· ' + esc(r.nivel) + '</span>' : '') + '</div>' +
+          return '<div class="rowb u-row8 u-p1214"><div class="u-f1m"><div class="u-fw6">' + esc(r.producto) + (r.nivel ? ' <span class="u-s10-mt">· ' + esc(r.nivel) + '</span>' : '') + (r.tipo === 'Interno' ? ' <span class="u-s10-mt">· Interno</span>' : '') + '</div>' +
             '<div class="u-s10-mt">' + esc(r.unidad || 'Hora') + ' · ' + (ars ? fmt(Math.round(ars)) : '—') + (usd ? ' · ' + fmt(usd, 'USD') : '') + '</div></div>' +
             '<button class="ui-ib ui-azul" data-cfg="cont" data-id="' + esc(r.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' +
             '<button class="ui-ib ui-bor" data-cfg="cont-del" data-id="' + esc(r.id) + '" data-tip="Eliminar" aria-label="Eliminar">' + ico('borrar') + '</button></div>';
@@ -186,6 +186,8 @@
       '<div class="g2"><div class="fg"><label class="fl">Categoría</label><select class="fc" id="ct-cat">' + opts(CATS, r.categoria || 'Talento') + '</select></div>' +
       '<div class="fg"><label class="fl">Unidad</label><select class="fc" id="ct-uni">' + opts(UNIS, r.unidad || 'Hora') + '</select></div></div>' +
       '<div class="fg"><label class="fl">Nombre <span class="req">*</span></label><input class="fc" id="ct-nom" value="' + esc(r.producto || '') + '"></div>' +
+      // Tipo (12/11/2026): Proveedor se ofrece en el Cotizador; Interno es sólo para los gastos de GIWA
+      '<div class="fg"><label class="fl" for="ct-tipo">Tipo</label><select class="fc" id="ct-tipo">' + opts(['Proveedor', 'Interno'], r.tipo || 'Proveedor') + '</select></div>' +
       '<div class="fg"><label class="fl">Nivel</label><input class="fc" id="ct-niv" placeholder="Senior, Mid, Junior..." value="' + esc(r.nivel || '') + '"></div>' +
       '<div class="g2"><div class="fg"><label class="fl">Costo USD</label><input class="fc" type="number" id="ct-usd" data-monto value="' + (Number(r.costo_usd) || 0) + '"></div>' +
       '<div class="fg"><label class="fl">Costo ARS <small class="u-c-mt">(auto)</small></label><input class="fc" type="number" id="ct-ars" data-monto value="' + (Number(r.costo_ars) || 0) + '"></div></div>' +
@@ -196,7 +198,7 @@
     document.getElementById('ct-ok').onclick = async function () {
       if (!v('ct-nom').trim()) return toast('Nombre obligatorio', 'err');
       var res = await db().rpc('guardar_contratacion', { p: { id: id || null, categoria: v('ct-cat'), unidad: v('ct-uni'), producto: v('ct-nom'),
-        nivel: v('ct-niv'), costo_usd: _nFront(v('ct-usd')) || 0, costo_ars: _nFront(v('ct-ars')) || 0 } });
+        nivel: v('ct-niv'), tipo: v('ct-tipo'), costo_usd: _nFront(v('ct-usd')) || 0, costo_ars: _nFront(v('ct-ars')) || 0 } });
       if (res.error) return toast(res.error.message, 'err');
       closeM('m-cont'); toast('Guardado', 'ok'); alGuardar();
     };

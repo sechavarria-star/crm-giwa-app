@@ -33,7 +33,7 @@
         '<div class="cb-lin cb-lin-h"><span>Proyecto <span class="req">*</span></span><span>Desarrollo <span class="req">*</span></span><span>Concepto</span><span class="u-tr">Cuota</span><span class="u-tr">Monto</span><span></span></div>' +
         '<div id="cb-filas"></div><div><button type="button" class="ui-lnk ui-azul" id="cb-mas">+ Agregar línea</button></div>' +
         '<div class="g3"><div class="fg"><label class="fl ft-lbl" for="cb-mon">Moneda</label><select class="fc" id="cb-mon"><option>ARS</option><option>USD</option></select></div>' +
-          '<div class="fg"><label class="fl ft-lbl" for="cb-dep" id="cb-dep-l">Fecha del pago</label><input class="fc" type="date" id="cb-dep"></div>' +
+          '<div class="fg" id="cb-dep-w"><label class="fl ft-lbl" for="cb-dep" id="cb-dep-l">Fecha del pago</label><input class="fc" type="date" id="cb-dep"></div>' +
           '<div class="fg"><span class="fl ft-lbl">Total</span><div class="m cb-total" id="cb-total">—</div><div class="ui-num ui-p-usd u-s11" id="cb-usd"></div></div></div>' +
         '<div class="fg" id="cb-forma-w" hidden><label class="fl ft-lbl" for="cb-forma">Forma de pago</label><select class="fc" id="cb-forma"><option>Transferencia</option><option>Efectivo</option></select></div>' +
         '<div class="cb-adj" id="cb-adj"><input type="file" id="cb-file" accept=".pdf,application/pdf" hidden><span id="cb-adj-t">Arrastrá el PDF de la factura acá o </span>' +
@@ -194,7 +194,8 @@
       $('cb-tit').textContent = pago ? 'Registrar pago' : 'Nueva factura';
       $('cb-fc').hidden = pago; $('cb-adj').hidden = pago; $('cb-forma-w').hidden = !pago; $('cb-otra').hidden = pago;
       C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = 'Arrastrá el PDF de la factura acá o '; $('cb-adj-b').textContent = 'elegí el archivo';
-      $('cb-dep-l').innerHTML = pago ? 'Fecha del pago <span class="req">*</span>' : 'Fecha de depósito (si ya pagó)';
+      // Nueva factura sin fecha de depósito: el pago se registra después, con Registrar pago (12/11/2026)
+      $('cb-dep-w').hidden = !pago; $('cb-dep-l').innerHTML = 'Fecha del pago <span class="req">*</span>';
       $('cb-nro').value = ''; $('cb-tipo').value = 'Factura C'; $('cb-mon').value = 'ARS';
       $('cb-fecha').value = isoMas(0); $('cb-dep').value = pago ? isoMas(0) : '';
       $('cb-info').textContent = pago ? 'Queda como cobro sin comprobante, con el pago ya registrado. La factura se puede cargar después.'
@@ -222,7 +223,7 @@
       if (C.archivo) { toast('Subiendo el PDF…', 'inf'); var up = await puente('subirFactura', { archivo: C.archivo, owner: (CRM_USUARIO && CRM_USUARIO.mail) || '' }); link = up.url; pdfId = up.id; }
       var r = await db().rpc('registrar_cobro', { p: pago
         ? { tipo_comp: 'Sin comprobante', fecha: v('cb-dep'), fecha_deposito: v('cb-dep'), moneda: v('cb-mon'), forma_pago: v('cb-forma'), partes: P }
-        : { tipo_comp: v('cb-tipo'), nro_fact: v('cb-nro'), fecha: v('cb-fecha'), fecha_deposito: v('cb-dep'), moneda: v('cb-mon'), forma_pago: nc ? 'Nota de crédito' : 'Factura emitida', partes: P } });
+        : { tipo_comp: v('cb-tipo'), nro_fact: v('cb-nro'), fecha: v('cb-fecha'), fecha_deposito: null, moneda: v('cb-mon'), forma_pago: nc ? 'Nota de crédito' : 'Factura emitida', partes: P } });
       if (r.error) throw new Error(r.error.message);
       var ids = r.data.ids || [];
       if (pago) deshacerCreados('Registrar pago', 'cobros', ids);

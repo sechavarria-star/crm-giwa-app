@@ -543,7 +543,7 @@
     if (g.categoria && cats.indexOf(g.categoria) < 0) cats.push(g.categoria);
     $g('ga-cat').innerHTML = cats.map(function (c) { return '<option' + (c === g.categoria ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
     var con = await db().from('contrataciones').select('id,producto').order('producto');
-    $g('ga-con').innerHTML = '<option value="">— Ninguna —</option>' + (con.data || []).map(function (c) {
+    $g('ga-con').innerHTML = '<option value="">— Elegí la contratación —</option>' +(con.data || []).map(function (c) {
       return '<option value="' + esc(c.id) + '"' + (c.id === g.contratacion_id ? ' selected' : '') + '>' + esc(c.producto || c.id) + '</option>'; }).join('');
     $g('ga-pag').innerHTML = '<option value="">— Socio —</option>' + (A.d.users || []).map(function (u) { return '<option value="' + esc(u.mail) + '"' + (u.mail === g.pagador ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('');
     var usd = String(g.moneda || '').toUpperCase().indexOf('USD') >= 0;
@@ -556,6 +556,7 @@
     $g('ga-del').hidden = !id || dup;
     $g('ga-ok').onclick = async function () {
       if (!$g('ga-desc').value.trim()) return toast('Descripción obligatoria', 'err');
+      if (!$g('ga-con').value) return toast('Elegí la contratación del gasto', 'err');   // obligatoria (12/11/2026)
       var r = await db().rpc('guardar_gasto', { p: { id: id && !dup ? id : null, fecha: $g('ga-fecha').value, categoria: $g('ga-cat').value,
         descripcion: $g('ga-desc').value.trim(), moneda: $g('ga-mon').value, monto: Number($g('ga-monto').value) || 0, pagador: $g('ga-pag').value,
         frecuencia: $g('ga-frec').value, prorratear: $g('ga-pro').value === 'si', contratacion: $g('ga-con').value } });
