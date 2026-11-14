@@ -14,7 +14,7 @@
   var PAG = 100;
   // Columnas para comparar duplicados, por tabla (se pueden cambiar al buscar)
   var DUP = { empresas: 'nombre', contactos: 'nombre,apellido,empresa_id', proyectos: 'nombre,empresa_id', desarrollos: 'proyecto_id,titulo',
-              cobros: 'proyecto_id,monto_ars,concepto_fc', razones_sociales: 'cuit', tareas: 'titulo,desarrollo_id' };
+              cobros: 'proyecto_id,monto_ars,concepto_fc', razones_sociales: 'cuit', tareas: 'titulo,desarrollo_id', proveedores: 'razon_social' };
 
   async function rpc(fn, args) { var r = await db().rpc(fn, args || {}); if (r.error) throw new Error(r.error.message); return r.data; }
   async function cargar() {

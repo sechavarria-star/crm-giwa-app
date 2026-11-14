@@ -1,6 +1,7 @@
 // Lee una factura (PDF o imagen) y devuelve sus datos para revisar antes de guardar (14/11/2026).
 // No inventa: lo que no se lee vuelve vacío y queda en «revisar». No guarda nada.
-// La clave de Gemini es un secreto de Supabase (GEMINI_API_KEY): nunca va al navegador.
+// La clave de Gemini la carga Victoria en Configuración (crm_giwa.secretos) y se lee acá con
+// service_role (crm_giwa._clave_gemini); si no está, el secreto GEMINI_API_KEY. Nunca va al navegador.
 // Sólo para el equipo: se pregunta a crm_giwa.es_equipo() con la sesión de quien llama.
 const ORIGENES = ['https://crm.giwa-ia.com', 'http://localhost:5173'];
 const cors = (o: string | null) => ({
@@ -22,6 +23,15 @@ function cuitOk(c: string) {
   const v = 11 - (s % 11);
   return (v === 11 ? 0 : v === 10 ? 9 : v) === Number(c[10]);
 }
+async function claveGemini() {
+  const sr = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const r = await fetch(Deno.env.get('SUPABASE_URL') + '/rest/v1/rpc/_clave_gemini', {
+    method: 'POST', body: '{}',
+    headers: { Authorization: 'Bearer ' + sr, apikey: sr, 'Content-Type': 'application/json', 'Content-Profile': 'crm_giwa', 'Accept-Profile': 'crm_giwa' },
+  }).catch(() => null);
+  const k = r && r.ok ? await r.json() : '';
+  return (typeof k === 'string' && k) || Deno.env.get('GEMINI_API_KEY') || '';
+}
 const num = (x: unknown) => (x === null || x === undefined || x === '' || isNaN(Number(x)) ? null : Math.round(Number(x) * 100) / 100);
 const txt = (x: unknown) => (x === null || x === undefined ? '' : String(x).trim());
 
@@ -30,9 +40,9 @@ Deno.serve(async (req: Request) => {
   const res = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: H });
   if (req.method === 'OPTIONS') return new Response('ok', { headers: H });
   try {
-    const key = Deno.env.get('GEMINI_API_KEY');
-    if (!key) return res({ ok: false, msg: 'Falta cargar el secreto GEMINI_API_KEY en Supabase.' });
-    const eq = await fetch(Deno.env.get('SUPABASE_URL') + '/rest/v1/rpc/es_equipo', {
+    const key = await claveGemini();
+    if (!key) return res({ ok: false, msg: 'Falta cargar la clave de Gemini (Configuración › Telegram).' });
+    const eq =await fetch(Deno.env.get('SUPABASE_URL') + '/rest/v1/rpc/es_equipo', {
       method: 'POST', body: '{}',
       headers: { Authorization: req.headers.get('Authorization') || '', apikey: Deno.env.get('SUPABASE_ANON_KEY') || '',
         'Content-Type': 'application/json', 'Content-Profile': 'crm_giwa', 'Accept-Profile': 'crm_giwa' },

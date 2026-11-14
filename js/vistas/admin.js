@@ -579,10 +579,13 @@
       }
       this.disabled = true; var b = this;
       try {
-        // Primero el archivo: si no sube, no queda un gasto sin su factura (va a la carpeta de facturas de quien carga)
+        // Primero el archivo: si no sube, no queda un gasto sin su factura. Va a GIWA IA / 7. Gastos;
+        // mientras el Apps Script no tenga subirGasto, a la carpeta de facturas de quien carga.
         if (A.gl.archivo) {
           toast('Subiendo la factura…', 'inf');
-          var f = A.gl.archivo, up = await puente('subirFactura', { archivo: new File([f], 'Gasto - ' + f.name, { type: f.type }), owner: (CRM_USUARIO && CRM_USUARIO.mail) || '' });
+          var f = A.gl.archivo, arch = new File([f], 'Gasto - ' + f.name, { type: f.type }), up;
+          try { up = await puente('subirGasto', { archivo: arch }); }
+          catch (e) { if (!/desconocida/i.test(e.message)) throw e; up = await puente('subirFactura', { archivo: arch, owner: (CRM_USUARIO && CRM_USUARIO.mail) || '' }); }
           link = up.url;
         }
         var r = await db().rpc('guardar_gasto', { p: { id: id && !dup ? id : null, fecha: $g('ga-fecha').value, categoria: $g('ga-cat').value,

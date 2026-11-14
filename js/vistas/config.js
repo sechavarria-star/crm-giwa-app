@@ -155,7 +155,26 @@
   function vhTexto(t) { return C.vhl[t].map(function (x) { return x.k + ':' + x.v; }).join(', '); }
 
   // ── Tipos de gastos ──────────────────────────────────────────
+  // Dos pestañas (14/11/2026): Contrataciones (lo de siempre) y Proveedores (v_proveedores; se corrigen en Datos)
   function htmlGastos() {
+    var tabs = [['cont', 'Contrataciones'], ['prov', 'Proveedores']], on = C.gtab === 'prov' ? 'prov' : 'cont';
+    var h = '<div class="ui-tabs u-mb10" role="group" aria-label="Tipos de gastos">' + tabs.map(function (x) {
+      return '<button class="ui-tab' + (x[0] === on ? ' on' : '') + '" data-cfg="gtab" data-t="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    return h + (on === 'prov' ? '<div id="prov-c"><div class="loading"><div class="spin"></div></div></div>' : htmlContrataciones());
+  }
+  async function provPintar() {
+    var c = document.getElementById('prov-c'); if (!c) return;
+    var r = await db().from('v_proveedores').select('*').order('razon_social');
+    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
+    var nota = '<div class="ui-nota-t u-mb10">Se dan de alta solos al cargar un gasto con su factura. Para corregirlos: Configuración › Datos.</div>';
+    if (!r.data.length) { c.innerHTML = nota + '<div class="empty">Todavía no hay proveedores.</div>'; return; }
+    c.innerHTML = nota + '<div class="u-ovx"><table class="tbl"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Condición IVA</th><th>Contratación</th>' +
+      '<th class="u-tr">Facturas</th><th class="u-tr">Total ARS</th><th class="u-tr">Última</th></tr></thead><tbody>' + r.data.map(function (p) {
+        return '<tr><td>' + esc(p.razon_social) + '</td><td class="m">' + esc(p.cuit) + '</td><td>' + esc(p.condicion_iva || '—') + '</td><td>' + esc(p.contratacion || '—') + '</td>' +
+          '<td class="m u-tr">' + (Number(p.facturas) || 0) + '</td><td class="m u-tr">' + fmt(Number(p.total_ars) || 0) + '</td><td class="m u-tr u-nw">' + (p.ultima ? esc(ff(p.ultima)) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  function htmlContrataciones() {
     var q = norm(C.q), by = {}, ord = [];
     C.cont.filter(function (r) { return !q || norm([r.categoria, r.producto, r.nivel].join(' ')).indexOf(q) >= 0; }).forEach(function (r) {
       var c = r.categoria || 'General'; if (!by[c]) { by[c] = []; ord.push(c); } by[c].push(r);
@@ -349,7 +368,25 @@
   // ── Telegram (telegram_estado · guardar_token_telegram · probar_telegram) ──
   // El token se guarda en la base y no vuelve nunca al navegador. El resumen
   // diario de las 8 lo manda la base (pg_cron), no el navegador.
-  function htmlTelegram() { return '<div class="ui-tarjeta" id="tg-c"><div class="loading"><div class="spin"></div></div></div>'; }
+  function htmlTelegram() {
+    return '<div class="ui-tarjeta" id="tg-c"><div class="loading"><div class="spin"></div></div></div>' +
+      (esDuena() ? '<div class="ui-tarjeta u-mt10" id="gm-c"></div>' : '');
+  }
+  // ── Clave de Gemini (14/11/2026): sólo Victoria; como el token, no vuelve nunca al navegador.
+  //    La usa la función factura-leer (lectura de facturas adjuntas). ──
+  function esDuena() { return String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase() === 'v.gagey@giwa-ia.com'; }
+  async function gmPintar() {
+    var c = document.getElementById('gm-c'); if (!c) return;
+    var r = await db().rpc('gemini_estado');
+    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
+    c.innerHTML = '<div class="fg"><span class="fl">Gemini</span><div>' + (r.data.configurado
+        ? '<span class="u-c-ok">' + ico('check') + ' Clave cargada</span> <span class="u-s11-mt">· <span class="m">' + esc(ff(new Date(r.data.actualizado))) + '</span></span>'
+        : '<span class="u-c-wa">Falta la clave: sin ella no se leen las facturas adjuntas</span>') + '</div></div>' +
+      '<div class="fg"><label class="fl" for="gm-k">' + (r.data.configurado ? 'Cambiar la clave' : 'Clave de Gemini') + '</label>' +
+        '<div class="u-row6"><input class="fc u-f1" id="gm-k" type="password" autocomplete="off" placeholder="AIza…">' +
+        '<button class="ui-btn ui-p" data-cfg="gm-clave">Guardar</button></div>' +
+        '<div class="ft-info">Sólo vos. Se guarda en la base y no se vuelve a mostrar.</div></div>';
+  }
   async function tgPintar() {
     var c = document.getElementById('tg-c'); if (!c) return;
     var r = await db().rpc('telegram_estado');
@@ -391,7 +428,8 @@
       otros: 'Otros ajustes del CRM.'
     }[C.sub]);
     el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, targets: htmlTargets, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
-    if (C.sub === 'telegram') tgPintar();
+    if (C.sub === 'telegram') { tgPintar(); gmPintar(); }
+    if (C.sub === 'gastos' && C.gtab === 'prov') provPintar();
     if (C.sub === 'diag') { diagPintar(); recCargar(); }
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
   }
@@ -481,6 +519,13 @@
         toast(rt.data.msg, 'ok'); document.getElementById('tg-tk').value = '';
         return setTimeout(tgPintar, 3000);       // getMe va por pg_net: la respuesta tarda un momento
       }
+      if (a === 'gm-clave') {
+        var gk = document.getElementById('gm-k').value.trim(); if (!gk) return toast('Pegá la clave de Gemini', 'err');
+        var rg = await db().rpc('guardar_clave_gemini', { clave: gk });
+        if (rg.error) return toast(rg.error.message, 'err');
+        toast('Clave guardada', 'ok'); return gmPintar();
+      }
+      if (a === 'gtab') { C.gtab = t; return pintar(el); }
       if (a === 'tg-probar') {
         var rp = await db().rpc('probar_telegram');
         if (rp.error) return toast(rp.error.message, 'err');
