@@ -15,8 +15,42 @@
    El PDF va a la carpeta de quien factura y el mail queda como borrador en
    Gmail, por el Apps Script (puente.js). 03/11/2026.
    ══════════════════════════════════════════════════════════════════════ */
+/* ── Leer la factura adjunta (14/11/2026) · lo usan Nueva factura y Nuevo gasto ──
+   leerFactura(archivo, cuitEmisor) → { datos, revisar[], cargada }
+     La función factura-leer (Gemini) lee y valida (CUIT, totales, CAE); lo que no
+     se lee vuelve vacío y queda en «revisar». cargada = el comprobante ya existe.
+   htmlLeido(L, extra) → la línea compacta de revisión. */
+var FC_ACEPTA = '.pdf,application/pdf,image/png,image/jpeg,image/webp';
+var FC_TXT = 'Arrastrá el PDF o la imagen de la factura acá o ';
+function fcArchivoOk(f) { return !!f && (/\.(pdf|png|jpe?g|webp)$/i.test(f.name) || /^(application\/pdf|image\/(png|jpeg|webp))$/.test(f.type)); }
+async function leerFactura(archivo, conEmisor) {
+  if (archivo.size > 10 * 1024 * 1024) throw new Error('El archivo es muy grande (máximo 10 MB)');
+  var mime = archivo.type || (/\.pdf$/i.test(archivo.name) ? 'application/pdf' : /\.png$/i.test(archivo.name) ? 'image/png' : 'image/jpeg');
+  var r = await sb().functions.invoke('factura-leer', { body: { base64: await _base64(archivo), mime: mime } });
+  if (r.error || !r.data || !r.data.ok) throw new Error((r.data && r.data.msg) || 'La lectura todavía no está activa: falta cargar la función en Supabase.');
+  var d = r.data.datos, cargada = false;
+  if (d.tipo && d.numero) {
+    var c = await db().rpc('comprobante_cargado', { tipo: d.tipo, nro: d.numero, cuit_emisor: conEmisor ? d.emisor_cuit || null : null });
+    cargada = !c.error && c.data === true;
+  }
+  return { datos: d, revisar: r.data.revisar || [], cargada: cargada };
+}
+function htmlLeido(L, extra) {
+  var d = L.datos, M = d.moneda || 'ARS', n = function (x) { return '<span class="ui-num">' + esc(x) + '</span>'; };
+  var partes = [esc(d.tipo || 'Comprobante') + (d.numero ? ' ' + n(d.numero) : ''), d.fecha ? n(ff(d.fecha)) : '',
+    d.neto_gravado ? 'Neto ' + n(fmt(d.neto_gravado, M)) : '',
+    (d.iva || []).map(function (i) { return 'IVA ' + n(String(i.alicuota).replace('.', ',') + ' %') + ' ' + n(fmt(i.monto, M)); }).join(' · '),
+    (d.otros || []).length ? 'Otros ' + n(fmt(d.otros.reduce(function (a, o) { return a + o.monto; }, 0), M)) : '',
+    d.total ? 'Total ' + n(fmt(d.total, M)) : '', d.cae ? 'CAE ' + n(d.cae) + (d.cae_vto ? ' vence ' + n(ff(d.cae_vto)) : '') : ''].filter(Boolean);
+  var rev = L.revisar.concat(extra || []);
+  return '<div class="u-s11">Leído: ' + partes.join(' · ') + '</div>' +
+    (L.cargada ? '<div class="u-s11 ui-p-error">Este comprobante ya está cargado: no se puede guardar de nuevo.</div>' : '') +
+    (rev.length ? '<div class="u-s11 ui-p-pendiente">Revisar: ' + rev.map(esc).join(' · ') + '</div>' : '');
+}
+window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
+
 (function () {
-  var C = { modo: 'factura', lin: [], devs: {}, proys: [], mens: {}, cob: {}, ipc: {}, onSave: null, rs: [], archivo: null, emp: {}, tc: 0 };
+  var C = { modo: 'factura', lin: [], devs: {}, proys: [], mens: {}, cob: {}, ipc: {}, onSave: null, rs: [], archivo: null, emp: {}, tc: 0, leido: null };
   function $(id) { return document.getElementById(id); }
   function v(id) { return String(($(id) || {}).value || '').trim(); }
 
@@ -36,8 +70,9 @@
           '<div class="fg" id="cb-dep-w"><label class="fl ft-lbl" for="cb-dep" id="cb-dep-l">Fecha del pago</label><input class="fc" type="date" id="cb-dep"></div>' +
           '<div class="fg"><span class="fl ft-lbl">Total</span><div class="m cb-total" id="cb-total">—</div><div class="ui-num ui-p-usd u-s11" id="cb-usd"></div></div></div>' +
         '<div class="fg" id="cb-forma-w" hidden><label class="fl ft-lbl" for="cb-forma">Forma de pago</label><select class="fc" id="cb-forma"><option>Transferencia</option><option>Efectivo</option></select></div>' +
-        '<div class="cb-adj" id="cb-adj"><input type="file" id="cb-file" accept=".pdf,application/pdf" hidden><span id="cb-adj-t">Arrastrá el PDF de la factura acá o </span>' +
+        '<div class="cb-adj" id="cb-adj"><input type="file" id="cb-file" accept="' + FC_ACEPTA + '" hidden><span id="cb-adj-t">' + FC_TXT + '</span>' +
           '<button type="button" class="ui-lnk ui-azul" id="cb-adj-b">elegí el archivo</button></div>' +
+        '<div class="u-mb12" id="cb-leido" hidden></div>' +
         '<div class="ft-info" id="cb-info"></div>' +
       '</div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-cobro">Cancelar</button><button class="btn bg" id="cb-otra">Guardar y cargar otra</button><button class="btn bp" id="cb-ok">Guardar</button></div>' +
@@ -100,6 +135,7 @@
     l.cuota = cob.max + 1;
     l.monto = m ? Number(m.monto) || 0 : cuota > 0 ? cuota : saldo > 0 ? saldo : cob.ultimo;   // la cuota, si no el saldo, si no lo último
     l.concepto = (d.es_mantenimiento ? 'Mantenimiento mensual — ' + d.titulo + (m && m.periodo ? ' — ' + m.periodo : '') : 'Desarrollo — ' + d.titulo) + (cuotas > 1 ? ' · cuota ' + l.cuota + ' de ' + cuotas : '');
+    if (C.leido && C.leido.datos.total > 0 && C.lin.length === 1) l.monto = C.leido.datos.total;   // una sola línea: el total leído
   }
   function opcion(val, txt, sel) { return '<option value="' + esc(val) + '"' + (val === sel ? ' selected' : '') + '>' + esc(txt) + '</option>'; }
   function pintarFilas() {
@@ -165,10 +201,42 @@
       L.length === 1 ? '<div class="u-s11">Se factura a <b>' + esc(L[0].nombre) + '</b> · CUIT <span class="ui-num">' + esc(L[0].cuit || '—') + '</span></div>' :
       '<label class="fl ft-lbl" for="cb-razon">Se factura a</label><select class="fc" id="cb-razon">' + L.map(function (x, i) { return '<option value="' + i + '">' + esc(x.nombre) + ' · CUIT ' + esc(x.cuit || '—') + '</option>'; }).join('') + '</select>';
   }
-  function elegirPdf(f) {
+  async function elegirPdf(f) {
     if (!f) return;
-    if (!/pdf$/i.test(f.name) && f.type !== 'application/pdf') return toast('Tiene que ser un PDF', 'err');
+    if (!fcArchivoOk(f)) return toast('Tiene que ser un PDF o una imagen (JPG, PNG)', 'err');
     C.archivo = f; $('cb-adj-t').textContent = f.name + ' · '; $('cb-adj-b').textContent = 'cambiar';
+    C.leido = null; $('cb-leido').hidden = false; $('cb-leido').innerHTML = '<div class="u-s11-mt">Leyendo la factura…</div>';
+    try { aplicarLeido(await leerFactura(f, false)); }
+    catch (e) { $('cb-leido').innerHTML = '<div class="u-s11 ui-p-pendiente">' + esc(e.message) + ' · completá los datos a mano.</div>'; }
+  }
+  // Lo leído completa el modal; el cliente sale del CUIT del receptor (razones_sociales)
+  function aplicarLeido(L) {
+    var d = L.datos, extra = [];
+    C.leido = L;
+    if (d.tipo) {
+      if (![].some.call($('cb-tipo').options, function (o) { return o.value === d.tipo; })) $('cb-tipo').insertAdjacentHTML('beforeend', '<option>' + esc(d.tipo) + '</option>');
+      $('cb-tipo').value = d.tipo;
+    }
+    if (d.numero) $('cb-nro').value = d.numero;
+    if (d.fecha) $('cb-fecha').value = d.fecha;
+    if (d.moneda) $('cb-mon').value = d.moneda;
+    var rz = d.receptor_cuit ? C.rs.filter(function (x) { return String(x.cuit || '').replace(/\D/g, '') === d.receptor_cuit; })[0] : null;
+    var emp = rz && Object.keys(C.emp).find(function (e) { return C.emp[e] === rz.empresa_id; });
+    if (emp) {
+      $('cb-emp').value = emp; C.lin = [nueva()]; pintarRs();
+      var i = razones().indexOf(rz); if ($('cb-razon') && i >= 0) $('cb-razon').value = String(i);
+    } else if (d.receptor_cuit) extra.push('El receptor (CUIT ' + d.receptor_cuit + ') no es un cliente cargado: si es de un proveedor, va en Gastos');
+    C.leido.extra = extra;
+    pintarFilas();
+    $('cb-leido').innerHTML = htmlLeido(L, extra);
+  }
+  // Lo que no cierra entre lo leído y lo que se va a guardar
+  function inconsistencias() {
+    var L = C.leido; if (!L) return [];
+    var d = L.datos, t = partes().reduce(function (a, p) { return a + p.monto; }, 0), out = L.revisar.concat(L.extra || []);
+    if (d.total > 0 && Math.abs(t - d.total) > 1) out.push('Las líneas suman ' + fmt(t, v('cb-mon')) + ' y la factura dice ' + fmt(d.total, d.moneda || v('cb-mon')));
+    if (d.moneda && d.moneda !== v('cb-mon')) out.push('La factura está en ' + d.moneda + ' y se guarda en ' + v('cb-mon'));
+    return out;
   }
   function partes() {
     return C.lin.filter(function (l) { return l.monto > 0 && l.item; }).map(function (l) {
@@ -193,7 +261,8 @@
       var pago = modo === 'pago';
       $('cb-tit').textContent = pago ? 'Registrar pago' : 'Nueva factura';
       $('cb-fc').hidden = pago; $('cb-adj').hidden = pago; $('cb-forma-w').hidden = !pago; $('cb-otra').hidden = pago;
-      C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = 'Arrastrá el PDF de la factura acá o '; $('cb-adj-b').textContent = 'elegí el archivo';
+      C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = FC_TXT; $('cb-adj-b').textContent = 'elegí el archivo';
+      C.leido = null; $('cb-leido').hidden = true; $('cb-leido').innerHTML = '';
       // Nueva factura sin fecha de depósito: el pago se registra después, con Registrar pago (12/11/2026)
       $('cb-dep-w').hidden = !pago; $('cb-dep-l').innerHTML = 'Fecha del pago <span class="req">*</span>';
       $('cb-nro').value = ''; $('cb-tipo').value = 'Factura C'; $('cb-mon').value = 'ARS';
@@ -215,6 +284,9 @@
     if (pago && !v('cb-dep')) return toast('Falta la fecha del pago', 'err');
     if (!pago && !v('cb-nro')) return toast('Falta el número de la factura', 'err');
     var total = P.reduce(function (a, p) { return a + p.monto; }, 0), rs = razonSel();
+    if (!pago && C.leido && C.leido.cargada) return toast('Este comprobante ya está cargado', 'err');
+    var inc = pago ? [] : inconsistencias();
+    if (inc.length && !(await ask('Revisá antes de guardar:\n\n• ' + inc.join('\n• '), 'La factura tiene diferencias', { ok: 'Guardar igual' }))) return;
     if (!(await ask((pago ? 'Se registra un pago de ' : 'Se guarda ' + v('cb-tipo') + ' ' + v('cb-nro') + ' por ') + fmt(total, v('cb-mon')) + ' de ' + v('cb-emp') + '.' + (C.archivo ? '\n\nEl PDF va a la carpeta de Drive de quien factura.' : ''), pago ? 'Registrar pago' : 'Guardar factura', { ok: 'Guardar' }))) return;
     var b = $('cb-ok'), b2 = $('cb-otra'), fin = function () { b.disabled = false; b2.disabled = false; }; b.disabled = true; b2.disabled = true;   // un clic = un registro
     try {
@@ -223,7 +295,7 @@
       if (C.archivo) { toast('Subiendo el PDF…', 'inf'); var up = await puente('subirFactura', { archivo: C.archivo, owner: (CRM_USUARIO && CRM_USUARIO.mail) || '' }); link = up.url; pdfId = up.id; }
       var r = await db().rpc('registrar_cobro', { p: pago
         ? { tipo_comp: 'Sin comprobante', fecha: v('cb-dep'), fecha_deposito: v('cb-dep'), moneda: v('cb-mon'), forma_pago: v('cb-forma'), partes: P }
-        : { tipo_comp: v('cb-tipo'), nro_fact: v('cb-nro'), fecha: v('cb-fecha'), fecha_deposito: null, moneda: v('cb-mon'), forma_pago: nc ? 'Nota de crédito' : 'Factura emitida', partes: P } });
+        : { tipo_comp: v('cb-tipo'), nro_fact: v('cb-nro'), fecha: v('cb-fecha'), fecha_deposito: null, moneda: v('cb-mon'), forma_pago: nc ? 'Nota de crédito' : 'Factura emitida', partes: P, datos_fc: C.leido ? C.leido.datos : null } });
       if (r.error) throw new Error(r.error.message);
       var ids = r.data.ids || [];
       if (pago) deshacerCreados('Registrar pago', 'cobros', ids);
@@ -232,7 +304,7 @@
       toast(pago ? 'Pago registrado' : 'Factura guardada · ' + r.data.filas + ' fila(s)', 'ok');
       if (C.onSave) C.onSave();
       if (!pago && !nc) await ofrecerMail(P, total, rs, pdfId);
-      if (otra) { $('cb-nro').value = ''; C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = 'Arrastrá el PDF de la factura acá o '; $('cb-adj-b').textContent = 'elegí el archivo'; await cargar(); C.lin = [nueva()]; pintarFilas(); }
+      if (otra) { $('cb-nro').value = ''; C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = FC_TXT; $('cb-adj-b').textContent = 'elegí el archivo'; C.leido = null; $('cb-leido').hidden = true; await cargar(); C.lin = [nueva()]; pintarFilas(); }
       else closeM('m-cobro');
     } catch (e) { toast(e.message, 'err'); }
     fin();

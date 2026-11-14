@@ -522,6 +522,10 @@
       m = document.createElement('div'); m.className = 'mo'; m.id = 'm-gasto';
       m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2" id="ga-t">Nuevo gasto</span>' +
         '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-gasto">' + ico('cerrar') + '</button></div><div class="mb2">' +
+        // Factura del proveedor: se adjunta, se lee y completa el gasto (14/11/2026)
+        '<div class="cb-adj" id="ga-adj"><input type="file" id="ga-file" accept="' + FC_ACEPTA + '" hidden><span id="ga-adj-t">' + FC_TXT + '</span>' +
+          '<button type="button" class="ui-lnk ui-azul" id="ga-adj-b">elegí el archivo</button></div>' +
+        '<div class="u-mb12" id="ga-leido" hidden></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ga-fecha">Fecha</label><input class="fc" type="date" id="ga-fecha"></div>' +
           '<div class="fg"><label class="fl" for="ga-cat">Categoría</label><select class="fc" id="ga-cat"></select></div></div>' +
         '<div class="fg"><label class="fl" for="ga-desc">Descripción <span class="req">*</span></label><input class="fc" id="ga-desc"></div>' +
@@ -535,8 +539,16 @@
         '</div><div class="mf"><button class="btn bg u-c-rd" id="ga-del">' + ico('borrar') + ' Eliminar</button><span class="u-f1"></span>' +
         '<button class="btn bg" data-cerrar="m-gasto">Cancelar</button><button class="btn bp" id="ga-ok">Guardar</button></div></div>';
       document.body.appendChild(m);
+      var z = document.getElementById('ga-adj');
+      document.getElementById('ga-adj-b').onclick = function () { document.getElementById('ga-file').click(); };
+      document.getElementById('ga-file').onchange = function () { gastoAdjunto(this.files[0]); };
+      z.addEventListener('dragover', function (e) { e.preventDefault(); z.classList.add('on'); });
+      z.addEventListener('dragleave', function () { z.classList.remove('on'); });
+      z.addEventListener('drop', function (e) { e.preventDefault(); z.classList.remove('on'); gastoAdjunto(e.dataTransfer.files[0]); });
     }
     var $g = function (x) { return document.getElementById(x); };
+    A.gl = { archivo: null, leido: null }; $g('ga-file').value = ''; $g('ga-adj-t').textContent = FC_TXT; $g('ga-adj-b').textContent = 'elegí el archivo';
+    $g('ga-leido').hidden = true; $g('ga-leido').innerHTML = '';
     var cfg = await db().from('cot_config').select('valor').eq('clave', 'categorias_gasto').maybeSingle();
     var cats = String((cfg.data && cfg.data.valor) || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
     if (!cats.length) cats = ['Infraestructura', 'Suscripción', 'Socios', 'Sueldos', 'Servicios', 'Impuestos', 'Otro'];
@@ -557,9 +569,29 @@
     $g('ga-ok').onclick = async function () {
       if (!$g('ga-desc').value.trim()) return toast('Descripción obligatoria', 'err');
       if (!$g('ga-con').value) return toast('Elegí la contratación del gasto', 'err');   // obligatoria (12/11/2026)
-      var r = await db().rpc('guardar_gasto', { p: { id: id && !dup ? id : null, fecha: $g('ga-fecha').value, categoria: $g('ga-cat').value,
-        descripcion: $g('ga-desc').value.trim(), moneda: $g('ga-mon').value, monto: Number($g('ga-monto').value) || 0, pagador: $g('ga-pag').value,
-        frecuencia: $g('ga-frec').value, prorratear: $g('ga-pro').value === 'si', contratacion: $g('ga-con').value } });
+      var L = A.gl.leido, d = L && L.datos, link = '';
+      if (L && L.cargada) return toast('Este comprobante ya está cargado', 'err');
+      if (L) {
+        var inc = L.revisar.slice(), mt = Number($g('ga-monto').value) || 0;
+        if (d.total > 0 && Math.abs(mt - d.total) > 1) inc.push('El monto (' + fmt(mt, $g('ga-mon').value) + ') no es el total de la factura (' + fmt(d.total, d.moneda || $g('ga-mon').value) + ')');
+        if (d.moneda && d.moneda !== $g('ga-mon').value) inc.push('La factura está en ' + d.moneda + ' y se guarda en ' + $g('ga-mon').value);
+        if (inc.length && !(await ask('Revisá antes de guardar:\n\n• ' + inc.join('\n• '), 'La factura tiene diferencias', { ok: 'Guardar igual' }))) return;
+      }
+      this.disabled = true; var b = this;
+      try {
+        // Primero el archivo: si no sube, no queda un gasto sin su factura (va a la carpeta de facturas de quien carga)
+        if (A.gl.archivo) {
+          toast('Subiendo la factura…', 'inf');
+          var f = A.gl.archivo, up = await puente('subirFactura', { archivo: new File([f], 'Gasto - ' + f.name, { type: f.type }), owner: (CRM_USUARIO && CRM_USUARIO.mail) || '' });
+          link = up.url;
+        }
+        var r = await db().rpc('guardar_gasto', { p: { id: id && !dup ? id : null, fecha: $g('ga-fecha').value, categoria: $g('ga-cat').value,
+          descripcion: $g('ga-desc').value.trim(), moneda: $g('ga-mon').value, monto: Number($g('ga-monto').value) || 0, pagador: $g('ga-pag').value,
+          frecuencia: $g('ga-frec').value, prorratear: $g('ga-pro').value === 'si', contratacion: $g('ga-con').value,
+          proveedor: d && /^\d{11}$/.test(d.emisor_cuit || '') ? { cuit: d.emisor_cuit, razon_social: d.emisor_razon_social, condicion_iva: d.emisor_condicion_iva } : null,
+          datos_fc: d || null, link_fc: link || null } });
+      } catch (e) { b.disabled = false; return toast(e.message, 'err'); }
+      b.disabled = false;
       if (r.error) return toast(r.error.message, 'err');
       closeM('m-gasto'); toast('Guardado', 'ok'); alGuardar();
     };
@@ -570,6 +602,29 @@
       closeM('m-gasto'); toast('Eliminado', 'ok'); alGuardar();
     };
     openM('m-gasto');
+  }
+  // La factura del proveedor completa fecha, descripción, moneda y monto (el total: GIWA no descuenta IVA)
+  // y propone la contratación que se usó la última vez con ese CUIT.
+  async function gastoAdjunto(f) {
+    var $g = function (x) { return document.getElementById(x); }, box = $g('ga-leido');
+    if (!f) return;
+    if (!fcArchivoOk(f)) return toast('Tiene que ser un PDF o una imagen (JPG, PNG)', 'err');
+    A.gl.archivo = f; A.gl.leido = null; $g('ga-adj-t').textContent = f.name + ' · '; $g('ga-adj-b').textContent = 'cambiar';
+    box.hidden = false; box.innerHTML = '<div class="u-s11-mt">Leyendo la factura…</div>';
+    try {
+      var L = await leerFactura(f, true), d = L.datos, prov = '';
+      A.gl.leido = L;
+      if (d.fecha) $g('ga-fecha').value = d.fecha;
+      if (d.moneda) $g('ga-mon').value = d.moneda;
+      if (d.total > 0) $g('ga-monto').value = d.total;
+      if (!$g('ga-desc').value.trim()) $g('ga-desc').value = [d.emisor_razon_social, [d.tipo, d.numero].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+      if (d.emisor_cuit) {
+        var pv = await db().from('proveedores').select('razon_social,contratacion_id').eq('cuit', d.emisor_cuit).maybeSingle();
+        if (pv.data && pv.data.contratacion_id) $g('ga-con').value = pv.data.contratacion_id;
+        prov = pv.data ? 'Proveedor: ' + pv.data.razon_social : 'Proveedor nuevo: se da de alta al guardar';
+      }
+      box.innerHTML = (prov ? '<div class="u-s11-mt">' + esc(prov) + '</div>' : '') + htmlLeido(L);
+    } catch (e) { box.innerHTML = '<div class="u-s11 ui-p-pendiente">' + esc(e.message) + ' · completá los datos a mano.</div>'; }
   }
 
   // ── IPC y TC (indices_ipc · actualizar_indices = bcra_ciclo) e Impuestos (v_monotributo) ──
