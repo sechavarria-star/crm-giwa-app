@@ -11,7 +11,7 @@ const cors = (o: string | null) => ({
 });
 
 const TIPOS = ['Factura A', 'Factura B', 'Factura C', 'Nota de crédito A', 'Nota de crédito B', 'Nota de crédito C',
-  'Nota de débito A', 'Nota de débito B', 'Nota de débito C', 'Recibo'];
+  'Nota de débito A', 'Nota de débito B', 'Nota de débito C', 'Factura E', 'Recibo', 'Factura del exterior'];
 const CAMPOS = ['tipo', 'numero', 'fecha', 'emisor_cuit', 'emisor_razon_social', 'receptor_cuit', 'receptor_razon_social',
   'moneda', 'total', 'cae', 'cae_vto'];
 
@@ -56,12 +56,13 @@ Deno.serve(async (req: Request) => {
     const prompt = 'Sos un lector de comprobantes fiscales argentinos (AFIP/ARCA). Leé el documento y devolvé SOLO lo que figura escrito en él. ' +
       'Si un dato no se ve o no se puede leer con certeza, devolvé null: nunca lo deduzcas ni lo inventes. ' +
       'tipo: uno de ' + TIPOS.join(', ') + ' (la letra sale del recuadro grande A/B/C; el código 01/06/11 es factura, 03/08/13 nota de crédito, 02/07/12 nota de débito). ' +
-      'numero: «punto de venta-número», ej. 00005-00000048. fecha y cae_vto: AAAA-MM-DD. CUIT: sólo los 11 dígitos. ' +
+      'Si la emite una empresa del exterior (sin CUIT argentino ni CAE, ej. un invoice de Supabase o Google), tipo = «Factura del exterior» y numero = el número del invoice. ' +
+      'numero: «punto de venta-número», ej. 00005-00000048. fecha, cae_vto y vence_pago (vencimiento para el pago, «Due date»): AAAA-MM-DD. CUIT: sólo los 11 dígitos. ' +
       'moneda: ARS o USD. Importes como número con punto decimal, sin separador de miles. ' +
       'iva: una línea por alícuota discriminada (alicuota en %, base y monto); vacío si no discrimina IVA. otros: percepciones u otros impuestos.\n' +
       'JSON: {"tipo":"","numero":"","fecha":"","emisor_cuit":"","emisor_razon_social":"","emisor_condicion_iva":"",' +
       '"receptor_cuit":"","receptor_razon_social":"","receptor_condicion_iva":"","moneda":"","neto_gravado":0,"no_gravado":0,' +
-      '"iva":[{"alicuota":21,"base":0,"monto":0}],"otros":[{"concepto":"","monto":0}],"total":0,"cae":"","cae_vto":"","detalle":""}';
+      '"iva":[{"alicuota":21,"base":0,"monto":0}],"otros":[{"concepto":"","monto":0}],"total":0,"cae":"","cae_vto":"","vence_pago":"","detalle":""}';
     const g = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({
@@ -83,14 +84,20 @@ Deno.serve(async (req: Request) => {
       iva: (Array.isArray(r.iva) ? r.iva : []).map((x: Record<string, unknown>) => ({ alicuota: num(x.alicuota), base: num(x.base), monto: num(x.monto) })).filter((x: { monto: number | null }) => x.monto !== null),
       otros: (Array.isArray(r.otros) ? r.otros : []).map((x: Record<string, unknown>) => ({ concepto: txt(x.concepto), monto: num(x.monto) })).filter((x: { monto: number | null }) => x.monto !== null && x.monto !== 0),
       total: num(r.total), cae: txt(r.cae).replace(/\D/g, ''), cae_vto: /^\d{4}-\d{2}-\d{2}$/.test(txt(r.cae_vto)) ? txt(r.cae_vto) : '',
+      vence_pago: /^\d{4}-\d{2}-\d{2}$/.test(txt(r.vence_pago)) ? txt(r.vence_pago) : '',
       detalle: txt(r.detalle).slice(0, 300),
+      exterior: false,
     };
+    // Del exterior: sin CUIT argentino del emisor; no se le piden CUIT, CAE ni receptor
+    d.exterior = d.tipo === 'Factura del exterior' || d.tipo === 'Factura E' || (!d.emisor_cuit && !d.cae && !!d.emisor_razon_social);
+    if (d.exterior && !d.tipo) d.tipo = 'Factura del exterior';
 
     // Para revisar: lo que falta y lo que no cierra
     const revisar: string[] = [];
     const nombres: Record<string, string> = { tipo: 'tipo', numero: 'número', fecha: 'fecha', emisor_cuit: 'CUIT del emisor', emisor_razon_social: 'razón social del emisor',
       receptor_cuit: 'CUIT del receptor', receptor_razon_social: 'razón social del receptor', moneda: 'moneda', total: 'total', cae: 'CAE', cae_vto: 'vencimiento del CAE' };
-    const faltan = CAMPOS.filter((k) => !/^recibo$/i.test(d.tipo) || !/^cae/.test(k)).filter((k) => d[k as keyof typeof d] === '' || d[k as keyof typeof d] === null);
+    const faltan = CAMPOS.filter((k) => !/^recibo$/i.test(d.tipo) || !/^cae/.test(k))
+      .filter((k) => !d.exterior || !/^(cae|emisor_cuit|receptor_)/.test(k)).filter((k) => d[k as keyof typeof d] === '' || d[k as keyof typeof d] === null);
     if (faltan.length) revisar.push('No se pudo leer: ' + faltan.map((k) => nombres[k]).join(', '));
     if (d.emisor_cuit && !cuitOk(d.emisor_cuit)) revisar.push('El CUIT del emisor no es válido');
     if (d.receptor_cuit && !cuitOk(d.receptor_cuit)) revisar.push('El CUIT del receptor no es válido');

@@ -508,10 +508,15 @@
     if (!L.length) return h + '<div class="empty">' + (G.length ? 'Nada coincide con el filtro.' : 'Sin gastos cargados. Agregá el primero.') + '</div>';
     return h + '<div class="card u-p0 u-ov"><table class="tbl"><thead><tr><th class="u-tr">Fecha</th><th>Categoría</th><th>Descripción</th><th class="u-tr">ARS</th><th class="u-tr">USD</th>' +
       '<th>Frecuencia</th><th>Pagador</th><th>Prorratea</th><th></th></tr></thead><tbody>' + L.map(function (g) {
-        return '<tr><td class="m u-tr">' + esc(ff(g.fecha)) + '</td><td>' + esc(g.categoria || '—') + '</td><td>' + esc(g.descripcion || '') + '</td>' +
+        // A pagar (14/11/2026): ámbar hasta el vencimiento, rojo vencido; el botón registra el pago
+        var vencido = g.a_pagar && g.vence < isoMas(0);
+        var pago = g.a_pagar ? ' <span class="u-s11 ' + (vencido ? 'ui-p-error' : 'ui-p-pendiente') + '">· a pagar, vence <span class="m">' + esc(ff(g.vence)) + '</span></span>' : '';
+        return '<tr><td class="m u-tr">' + esc(ff(g.fecha)) + '</td><td>' + esc(g.categoria || '—') + '</td><td>' + esc(g.descripcion || '') + pago +
+          (g.link_fc ? ' <a class="ui-lnk ui-azul u-s11" href="' + esc(g.link_fc) + '" target="_blank" rel="noopener">factura</a>' : '') + '</td>' +
           '<td class="u-tr">' + fmt(g.monto_ars || 0) + '</td><td class="u-tr m m-usd">' + (Number(g.monto_usd) ? fmt(g.monto_usd, 'USD') : '') + '</td>' +
           '<td>' + esc(g.recurrencia || '') + '</td><td>' + esc(nomUsr(g.pagador)) + '</td><td>' + (g.prorratear ? 'Sí' : 'No') + '</td>' +
-          '<td class="u-nw"><button class="btn bg xs btn-ico" data-tip="Editar" aria-label="Editar" data-adm="gas-edit" data-id="' + esc(g.id) + '">' + ico('editar') + '</button>' +
+          '<td class="u-nw">' + (g.a_pagar ? '<button class="btn bg xs btn-ico" data-tip="Registrar pago" aria-label="Registrar pago" data-adm="gas-pago" data-id="' + esc(g.id) + '">' + ico('cobro') + '</button>' : '') +
+          '<button class="btn bg xs btn-ico" data-tip="Editar" aria-label="Editar" data-adm="gas-edit" data-id="' + esc(g.id) + '">' + ico('editar') + '</button>' +
           '<button class="btn bg xs btn-ico" data-tip="Duplicar" aria-label="Duplicar" data-adm="gas-dup" data-id="' + esc(g.id) + '">' + ico('repetir') + '</button></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
@@ -526,6 +531,10 @@
         '<div class="cb-adj" id="ga-adj"><input type="file" id="ga-file" accept="' + FC_ACEPTA + '" hidden><span id="ga-adj-t">' + FC_TXT + '</span>' +
           '<button type="button" class="ui-lnk ui-azul" id="ga-adj-b">elegí el archivo</button></div>' +
         '<div class="u-mb12" id="ga-leido" hidden></div>' +
+        // Pago al proveedor (14/11/2026): con transferencia queda a pagar, con vencimiento y alerta
+        '<div class="g2" id="ga-pago" hidden><div class="fg"><label class="fl" for="ga-medio">Se paga con</label><select class="fc" id="ga-medio">' +
+            '<option>Transferencia</option><option>Tarjeta</option><option>Débito automático</option></select></div>' +
+          '<div class="fg" id="ga-vence-w"><label class="fl" for="ga-vence">Vence el pago</label><input class="fc" type="date" id="ga-vence"></div></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="ga-fecha">Fecha</label><input class="fc" type="date" id="ga-fecha"></div>' +
           '<div class="fg"><label class="fl" for="ga-cat">Categoría</label><select class="fc" id="ga-cat"></select></div></div>' +
         '<div class="fg"><label class="fl" for="ga-desc">Descripción <span class="req">*</span></label><input class="fc" id="ga-desc"></div>' +
@@ -542,13 +551,14 @@
       var z = document.getElementById('ga-adj');
       document.getElementById('ga-adj-b').onclick = function () { document.getElementById('ga-file').click(); };
       document.getElementById('ga-file').onchange = function () { gastoAdjunto(this.files[0]); };
+      document.getElementById('ga-medio').onchange = function () { document.getElementById('ga-vence-w').hidden = this.value !== 'Transferencia'; };
       z.addEventListener('dragover', function (e) { e.preventDefault(); z.classList.add('on'); });
       z.addEventListener('dragleave', function () { z.classList.remove('on'); });
       z.addEventListener('drop', function (e) { e.preventDefault(); z.classList.remove('on'); gastoAdjunto(e.dataTransfer.files[0]); });
     }
     var $g = function (x) { return document.getElementById(x); };
     A.gl = { archivo: null, leido: null }; $g('ga-file').value = ''; $g('ga-adj-t').textContent = FC_TXT; $g('ga-adj-b').textContent = 'elegí el archivo';
-    $g('ga-leido').hidden = true; $g('ga-leido').innerHTML = '';
+    $g('ga-leido').hidden = true; $g('ga-leido').innerHTML = ''; $g('ga-pago').hidden = true;
     var cfg = await db().from('cot_config').select('valor').eq('clave', 'categorias_gasto').maybeSingle();
     var cats = String((cfg.data && cfg.data.valor) || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
     if (!cats.length) cats = ['Infraestructura', 'Suscripción', 'Socios', 'Sueldos', 'Servicios', 'Impuestos', 'Otro'];
@@ -591,7 +601,9 @@
         var r = await db().rpc('guardar_gasto', { p: { id: id && !dup ? id : null, fecha: $g('ga-fecha').value, categoria: $g('ga-cat').value,
           descripcion: $g('ga-desc').value.trim(), moneda: $g('ga-mon').value, monto: Number($g('ga-monto').value) || 0, pagador: $g('ga-pag').value,
           frecuencia: $g('ga-frec').value, prorratear: $g('ga-pro').value === 'si', contratacion: $g('ga-con').value,
-          proveedor: d && /^\d{11}$/.test(d.emisor_cuit || '') ? { cuit: d.emisor_cuit, razon_social: d.emisor_razon_social, condicion_iva: d.emisor_condicion_iva } : null,
+          proveedor: !d ? null : /^\d{11}$/.test(d.emisor_cuit || '') ? { cuit: d.emisor_cuit, razon_social: d.emisor_razon_social, condicion_iva: d.emisor_condicion_iva }
+            : d.exterior && d.emisor_razon_social ? { razon_social: d.emisor_razon_social } : null,
+          medio_pago: d ? $g('ga-medio').value : null, vence: d && $g('ga-medio').value === 'Transferencia' ? $g('ga-vence').value || null : null,
           datos_fc: d || null, link_fc: link || null } });
       } catch (e) { b.disabled = false; return toast(e.message, 'err'); }
       b.disabled = false;
@@ -605,6 +617,20 @@
       closeM('m-gasto'); toast('Eliminado', 'ok'); alGuardar();
     };
     openM('m-gasto');
+  }
+  // Registrar el pago de un gasto a pagar: cierra su alerta; se deshace en 5 minutos (gasto y alerta)
+  async function pagarGasto(id, alGuardar) {
+    var g = A.d.gastos.find(function (x) { return x.id === id; }); if (!g) return;
+    var t = await pedir('Fecha del pago de «' + g.descripcion + '» (' + fmt(g.monto_ars) + '):', ff(isoMas(0)), 'Registrar pago');
+    if (t === null || t === undefined || t === false) return;
+    var m = String(t).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return toast('Escribí la fecha como dd/mm/aaaa', 'err');
+    var f = m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+    var al = await db().from('tareas').select('id').eq('origen', id).eq('alerta_tipo', 'Pago a proveedor');
+    var r; await conDeshacer('Registrar pago', 'gastos_internos', [id], async function () { r = await db().rpc('registrar_pago_gasto', { ids: [id], fecha: f }); return !r.error; },
+      al.data && al.data.length ? { tabla: 'tareas', ids: al.data.map(function (x) { return x.id; }) } : null);
+    if (r.error) return toast(r.error.message, 'err');
+    toast('Pago registrado', 'ok'); alGuardar();
   }
   // La factura del proveedor completa fecha, descripción, moneda y monto (el total: GIWA no descuenta IVA)
   // y propone la contratación que se usó la última vez con ese CUIT.
@@ -621,11 +647,16 @@
       if (d.moneda) $g('ga-mon').value = d.moneda;
       if (d.total > 0) $g('ga-monto').value = d.total;
       if (!$g('ga-desc').value.trim()) $g('ga-desc').value = [d.emisor_razon_social, [d.tipo, d.numero].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
-      if (d.emisor_cuit) {
-        var pv = await db().from('proveedores').select('razon_social,contratacion_id').eq('cuit', d.emisor_cuit).maybeSingle();
-        if (pv.data && pv.data.contratacion_id) $g('ga-con').value = pv.data.contratacion_id;
-        prov = pv.data ? 'Proveedor: ' + pv.data.razon_social : 'Proveedor nuevo: se da de alta al guardar';
-      }
+      // El proveedor: por CUIT o, del exterior, por razón social («Supabase, Inc.» es «Supabase»)
+      var pv = null, nom = String(d.emisor_razon_social || '').trim().toLowerCase();
+      if (d.emisor_cuit) pv = (await db().from('proveedores').select('razon_social,contratacion_id,medio_pago').eq('cuit', d.emisor_cuit).maybeSingle()).data;
+      else if (d.exterior && nom) pv = ((await db().from('proveedores').select('razon_social,contratacion_id,medio_pago').is('cuit', null)).data || [])
+        .filter(function (x) { return nom.indexOf(String(x.razon_social).trim().toLowerCase()) === 0; })
+        .sort(function (a, b) { return b.razon_social.length - a.razon_social.length; })[0] || null;
+      if (pv && pv.contratacion_id) $g('ga-con').value = pv.contratacion_id;
+      if (d.emisor_cuit || (d.exterior && nom)) prov = pv ? 'Proveedor: ' + pv.razon_social : 'Proveedor nuevo' + (d.exterior ? ' del exterior' : '') + ': se da de alta al guardar';
+      $g('ga-medio').value = (pv && pv.medio_pago) || 'Transferencia'; $g('ga-vence').value = d.vence_pago || '';
+      $g('ga-vence-w').hidden = $g('ga-medio').value !== 'Transferencia'; $g('ga-pago').hidden = false;
       box.innerHTML = (prov ? '<div class="u-s11-mt">' + esc(prov) + '</div>' : '') + htmlLeido(L);
     } catch (e) { box.innerHTML = '<div class="u-s11 ui-p-pendiente">' + esc(e.message) + ' · completá los datos a mano.</div>'; }
   }
@@ -753,6 +784,7 @@
         var rb =await db().rpc('actualizar_indices'); if (rb.error) return toast(rb.error.message, 'err');
         toast(rb.data && rb.data.pedido ? 'Pedido al BCRA: los meses nuevos aparecen en unos minutos' : 'Índices al día', 'ok'); await cargarExtra('idx'); return pintar(el);
       }
+      if (a === 'gas-pago') return pagarGasto(id, refrescar);
       if (a === 'gas-nuevo' || a === 'gas-edit' || a === 'gas-dup') return abrirGasto(a === 'gas-nuevo' ? null : id, a === 'gas-dup', refrescar);
       if (a === 'regla-nueva') return nuevaRegla({}, { onSave: refrescar });
       if (a === 'rec-ver') { A.recAbierto = !A.recAbierto; return pintar(el); }

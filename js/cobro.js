@@ -41,7 +41,7 @@ function htmlLeido(L, extra) {
     d.neto_gravado ? 'Neto ' + n(fmt(d.neto_gravado, M)) : '',
     (d.iva || []).map(function (i) { return 'IVA ' + n(String(i.alicuota).replace('.', ',') + ' %') + ' ' + n(fmt(i.monto, M)); }).join(' · '),
     (d.otros || []).length ? 'Otros ' + n(fmt(d.otros.reduce(function (a, o) { return a + o.monto; }, 0), M)) : '',
-    d.total ? 'Total ' + n(fmt(d.total, M)) : '', d.cae ? 'CAE ' + n(d.cae) + (d.cae_vto ? ' vence ' + n(ff(d.cae_vto)) : '') : ''].filter(Boolean);
+    d.total ? 'Total ' + n(fmt(d.total, M)) : '', d.vence_pago ? 'Vence el pago ' + n(ff(d.vence_pago)) : '', d.cae ? 'CAE ' + n(d.cae) + (d.cae_vto ? ' vence ' + n(ff(d.cae_vto)) : '') : ''].filter(Boolean);
   var rev = L.revisar.concat(extra || []);
   return '<div class="u-s11">Leído: ' + partes.join(' · ') + '</div>' +
     (L.cargada ? '<div class="u-s11 ui-p-error">Este comprobante ya está cargado: no se puede guardar de nuevo.</div>' : '') +

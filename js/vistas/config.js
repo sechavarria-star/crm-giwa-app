@@ -38,7 +38,7 @@
     ['Etapas (Diseño, Configuración, Pruebas, Producción)', ['Modulos_crono']],
     ['Categorías de Gasto', ['Gasto_Categoria', 'categorias_gasto']]
   ];
-  var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %']];
+  var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %'], ['dias_pago_proveedor', 'Días para pagar a un proveedor (si la factura no dice)']];
   var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo', 'AFIP'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
   var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
@@ -168,10 +168,15 @@
     if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
     var nota = '<div class="ui-nota-t u-mb10">Se dan de alta solos al cargar un gasto con su factura. Para corregirlos: Configuración › Datos.</div>';
     if (!r.data.length) { c.innerHTML = nota + '<div class="empty">Todavía no hay proveedores.</div>'; return; }
-    c.innerHTML = nota + '<div class="u-ovx"><table class="tbl"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Condición IVA</th><th>Contratación</th>' +
-      '<th class="u-tr">Facturas</th><th class="u-tr">Total ARS</th><th class="u-tr">Última</th></tr></thead><tbody>' + r.data.map(function (p) {
-        return '<tr><td>' + esc(p.razon_social) + '</td><td class="m">' + esc(p.cuit) + '</td><td>' + esc(p.condicion_iva || '—') + '</td><td>' + esc(p.contratacion || '—') + '</td>' +
-          '<td class="m u-tr">' + (Number(p.facturas) || 0) + '</td><td class="m u-tr">' + fmt(Number(p.total_ars) || 0) + '</td><td class="m u-tr u-nw">' + (p.ultima ? esc(ff(p.ultima)) : '—') + '</td></tr>';
+    var hoy = isoMas(0);
+    c.innerHTML = nota + '<div class="u-ovx"><table class="tbl"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Condición IVA</th><th>Contratación</th><th>Se paga con</th>' +
+      '<th class="u-tr">Facturas</th><th class="u-tr">Total ARS</th><th class="u-tr">A pagar</th><th class="u-tr">Próximo vencimiento</th><th class="u-tr">Última</th></tr></thead><tbody>' + r.data.map(function (p) {
+        var ap = Number(p.a_pagar_ars) || 0, venc = p.proximo_vence && p.proximo_vence < hoy;
+        return '<tr><td>' + esc(p.razon_social) + '</td><td class="' + (p.cuit ? 'm' : 'u-s11-mt') + '">' + (p.cuit ? esc(p.cuit) : 'Exterior') + '</td><td>' + esc(p.condicion_iva || '—') + '</td><td>' + esc(p.contratacion || '—') + '</td>' +
+          '<td>' + esc(p.medio_pago || '—') + '</td><td class="m u-tr">' + (Number(p.facturas) || 0) + '</td><td class="m u-tr">' + fmt(Number(p.total_ars) || 0) + '</td>' +
+          '<td class="m u-tr ' + (ap ? 'ui-p-pendiente' : '') + '">' + (ap ? fmt(ap) : '—') + '</td>' +
+          '<td class="m u-tr u-nw ' + (venc ? 'ui-p-error' : '') + '">' + (p.proximo_vence ? esc(ff(p.proximo_vence)) : '—') + '</td>' +
+          '<td class="m u-tr u-nw">' + (p.ultima ? esc(ff(p.ultima)) : '—') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
   }
   function htmlContrataciones() {
