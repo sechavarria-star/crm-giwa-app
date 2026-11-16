@@ -41,7 +41,7 @@
   var NUMS = [['tc_default', 'TC Default ARS/USD'], ['ganancia_default', 'Ganancia default %'], ['dias_pago_proveedor', 'Días para pagar a un proveedor (si la factura no dice)']];
   var CATS = ['Talento', 'Infraestructura', 'Consumo (IA)', 'Canales', 'Externo', 'AFIP'];
   var UNIS = ['Hora', 'Mensual', 'Total', '1M tokens'];
-  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y márgenes'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['targets', 'Targets'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
+  var SUBS = [['listas', 'Listas'], ['vh', 'Valor hora y targets'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más']];
   var C = { usu: [], admin: false, sub: 'listas', cfg: {}, desc: {}, clave: {}, vh: null, vhl: {}, cont: [], tc: 0, q: '', tab: 'clientes', num: {} };
 
   async function cargar() {
@@ -105,43 +105,39 @@
   }
 
   // ── Valor hora y márgenes ────────────────────────────────────
-  var VH_T = { mercado: ['Valor hora de mercado ($)', 'En pesos, por dificultad. De acá arranca todo: sobre este número se calcula tu venta y tu costo. Vienen de los Honorarios Recomendados del CPCIPC (Córdoba), columna «Hora a Demanda».', 500],
+  var VH_T = { mercado: ['Valor hora de mercado ($)', 'En pesos, por dificultad. Vienen de los Honorarios Recomendados del CPCIPC (Córdoba), columna «Hora a Demanda».', 500],
                dificultad: ['Multiplicador por dificultad', 'Ajusta las horas. Las del catálogo ya son el caso típico, por eso el ajuste es suave.', 0.05],
                especialidad: ['Multiplicador por especialidad', 'Ajusta el valor hora, no las horas. La hora especializada en datos e IA se paga más que la de desarrollo general.', 0.05] };
+  // Valor hora y targets (16/11/2026): sólo lo que usa el Cotizador y Estado financiero. Sin márgenes,
+  // dificultad ni especialidad: no cambiaban ningún precio.
   function htmlVh() {
-    var p = C.vh, h = '<div class="gauto">';
-    h += '<div class="ui-tarjeta"><div class="ui-lat-h">Valor hora de soporte</div><div class="ui-nota-t">Lo que se cobra cada hora de soporte.</div>' +
-      '<label class="fl" for="cf-hs-ars">ARS por hora</label><input class="fc" type="number" id="cf-hs-ars" data-monto value="' + esc(C.cfg.valor_hora_soporte_ars || '') + '">' +
-      '<label class="fl u-mt10" for="cf-hs-usd">USD por hora</label><input class="fc" type="number" id="cf-hs-usd" data-monto value="' + esc(C.cfg.valor_hora_soporte_usd || '') + '">' +
-      '<div class="ui-nota-t u-mt10" id="cf-hs-hint">' + hsHint() + '</div>' +
-      '<button class="ui-btn ui-s u-mt10" data-cfg="hs">' + ico('guardar') + ' Guardar valor de soporte</button></div>';
-    h += '<div class="ui-tarjeta"><div class="ui-lat-h">Márgenes</div><div class="ui-nota-t">El valor de mercado sale del catálogo. Sobre ese se calcula el resto.</div>' +
-      '<label class="fl">Margen de venta (% sobre el valor de mercado)</label><input class="fc" id="vh-mv" type="number" step="1" min="1" value="' + p.margen_venta + '">' +
-      '<label class="fl u-mt10">Margen de horas (cuánto baja tu costo interno respecto de la venta, %)</label><input class="fc" id="vh-mh" type="number" step="1" min="1" max="99" value="' + p.margen_horas + '">' +
-      '<label class="fl u-mt10">Horas por mes (con cuánta dedicación se calcula el plazo)</label><input class="fc" id="vh-hm" type="number" step="1" min="1" value="' + p.horas_mes + '">' +
-      '<div id="vh-ej" class="ui-nota-t u-mt10">' + vhEjemplo() + '</div></div>';
-    ['mercado', 'dificultad', 'especialidad'].forEach(function (t) {
-      h += '<div class="ui-tarjeta"><div class="ui-lat-h">' + VH_T[t][0] + '</div><div class="ui-nota-t">' + VH_T[t][1] + '</div><div id="vh-l-' + t + '">' + vhLista(t) + '</div>' +
-        '<div class="tag-add u-mt6"><input class="fc u-f1" id="vh-k-' + t + '" placeholder="Nombre" aria-label="Nombre">' +
-        '<input class="fc" id="vh-v-' + t + '" type="number" step="' + VH_T[t][2] + '" min="0" placeholder="' + (t === 'mercado' ? '66617' : '1') + '" aria-label="Valor" style="width:90px">' +
-        '<button class="ui-btn ui-p" data-cfg="vh-add" data-t="' + t + '">+</button></div></div>';
-    });
-    h += '</div><div class="u-row8 u-mt10"><button class="ui-btn ui-p" data-cfg="vh">' + ico('guardar') + ' Guardar</button>' +
-      '<span class="ui-nota-t">Cambia lo que se cotiza de acá en adelante. Las cotizaciones ya hechas no se tocan.</span></div>';
-    if (p.seed_fecha) {
-      var viejo = C.tc && p.seed_tc && C.tc > p.seed_tc * 1.15;
-      h += '<div class="ui-nota-t u-mt10">Catálogo sembrado el <b>' + esc(p.seed_fecha) + '</b> con TC ' + fmt(p.seed_tc || 0) + '. Hoy el TC es ' + fmt(C.tc) + '.' +
-        (viejo ? ' <b class="u-c-wa">El catálogo quedó viejo: conviene resembrar.</b>' : '') + '</div>';
-    }
-    return h;
+    var num = function (id, lbl, ayuda, val, monto) { return '<label class="fl u-mt10" for="' + id + '">' + lbl + '</label><div class="ui-nota-t">' + ayuda + '</div>' +
+      '<input class="fc ui-num" type="number" min="0" id="' + id + '"' + (monto ? ' data-monto' : '') + ' value="' + esc(val || '') + '">'; };
+    var h = '<div class="gauto">';
+    h += '<div class="ui-tarjeta"><div class="ui-lat-h">Valor hora</div>' +
+      num('vh-giwa', 'Venta GIWA (ARS)', 'Lo que cobramos cada hora de desarrollo. Se multiplica por el Tier del cliente.', C.cfg.vh_giwa_ars, true) +
+      num('vh-costo', 'Costo interno (ARS)', 'Lo que nos cuesta cada hora. Sirve para ver el margen en el Cotizador.', C.cfg.vh_costo_ars, true) +
+      num('cf-hs-ars', 'Soporte (ARS)', 'Lo que se cobra cada hora de soporte. Arma el abono mensual.', C.cfg.valor_hora_soporte_ars, true) +
+      num('cf-hs-usd', 'Soporte (USD)', 'Si lo dejás vacío se calcula solo al TC del día.', C.cfg.valor_hora_soporte_usd, false) +
+      num('vh-hm', 'Horas por mes', 'Con cuántas horas por mes se calcula el plazo de un desarrollo.', C.vh.horas_mes, false) +
+      '<button class="ui-btn ui-p u-mt10" data-cfg="vh">' + ico('guardar') + ' Guardar valor hora</button></div>';
+    h += '<div class="ui-tarjeta"><div class="ui-lat-h">Targets</div>' +
+      num('cf-tg-fee', 'Facturación por mes (ARS)', 'Es la línea punteada del gráfico de Estado financiero.', C.cfg.target_fee_mensual, true) +
+      num('cf-tg-proy', 'Proyectos nuevos por año', 'Cuántos proyectos nuevos queremos cerrar en el año.', C.cfg.target_proyectos_anio, false) +
+      '<button class="ui-btn ui-p u-mt10" data-cfg="targets">' + ico('guardar') + ' Guardar targets</button></div>';
+    h += '<div class="ui-tarjeta"><div class="ui-lat-h">' + VH_T.mercado[0] + '</div><div class="ui-nota-t">' + VH_T.mercado[1] + '</div><div id="vh-l-mercado">' + vhLista('mercado') + '</div>' +
+      '<div class="tag-add u-mt6"><input class="fc u-f1" id="vh-k-mercado" placeholder="Nombre" aria-label="Nombre">' +
+      '<input class="fc ui-num" id="vh-v-mercado" type="number" step="500" min="0" placeholder="66617" aria-label="Valor" style="width:96px">' +
+      '<button class="ui-btn ui-p" data-cfg="vh-add" data-t="mercado">+</button></div>' +
+      '<button class="ui-btn ui-s u-mt10" data-cfg="vh-merc">' + ico('guardar') + ' Guardar valores de mercado</button></div>';
+    return h + '</div><div class="ui-nota-t u-mt10">Cambia lo que se cotiza de acá en adelante. Las cotizaciones ya hechas no se tocan.</div>';
   }
   function vhLista(t) {
-    var arr = C.vhl[t], mer = t === 'mercado', mv = Number((document.getElementById('vh-mv') || {}).value || C.vh.margen_venta) / 100;
+    var arr = C.vhl[t];
     if (!arr.length) return '<div class="ui-nota-t">Sin valores. Agregá al menos uno.</div>';
     return arr.map(function (x, i) {
       return '<div class="u-row6 u-mb6"><span class="u-f1m u-s12">' + esc(x.k) + '</span>' +
-        (mer ? '<span class="u-s10-mt">vende ' + fmt(x.v * (1 + mv)) + '</span>' : '') +
-        '<input class="fc" type="number" step="' + VH_T[t][2] + '" min="0" value="' + x.v + '" data-vhset="' + t + '" data-i="' + i + '" aria-label="' + esc(x.k) + '" style="width:96px">' +
+        '<input class="fc ui-num" type="number" step="' + VH_T[t][2] + '" min="0" value="' + x.v + '" data-vhset="' + t + '" data-i="' + i + '" aria-label="' + esc(x.k) + '" style="width:96px">' +
         '<button class="ui-btn ui-s" data-cfg="vh-del" data-t="' + t + '" data-i="' + i + '" title="Quitar" aria-label="Quitar">×</button></div>';
     }).join('');
   }
@@ -156,29 +152,8 @@
 
   // ── Tipos de gastos ──────────────────────────────────────────
   // Dos pestañas (14/11/2026): Contrataciones (lo de siempre) y Proveedores (v_proveedores; se corrigen en Datos)
-  function htmlGastos() {
-    var tabs = [['cont', 'Contrataciones'], ['prov', 'Proveedores']], on = C.gtab === 'prov' ? 'prov' : 'cont';
-    var h = '<div class="ui-tabs u-mb10" role="group" aria-label="Tipos de gastos">' + tabs.map(function (x) {
-      return '<button class="ui-tab' + (x[0] === on ? ' on' : '') + '" data-cfg="gtab" data-t="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
-    return h + (on === 'prov' ? '<div id="prov-c"><div class="loading"><div class="spin"></div></div></div>' : htmlContrataciones());
-  }
-  async function provPintar() {
-    var c = document.getElementById('prov-c'); if (!c) return;
-    var r = await db().from('v_proveedores').select('*').order('razon_social');
-    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
-    var nota = '<div class="ui-nota-t u-mb10">Se dan de alta solos al cargar un gasto con su factura. Para corregirlos: Configuración › Datos.</div>';
-    if (!r.data.length) { c.innerHTML = nota + '<div class="empty">Todavía no hay proveedores.</div>'; return; }
-    var hoy = isoMas(0);
-    c.innerHTML = nota + '<div class="u-ovx"><table class="tbl"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Condición IVA</th><th>Contratación</th><th>Se paga con</th>' +
-      '<th class="u-tr">Facturas</th><th class="u-tr">Total ARS</th><th class="u-tr">A pagar</th><th class="u-tr">Próximo vencimiento</th><th class="u-tr">Última</th></tr></thead><tbody>' + r.data.map(function (p) {
-        var ap = Number(p.a_pagar_ars) || 0, venc = p.proximo_vence && p.proximo_vence < hoy;
-        return '<tr><td>' + esc(p.razon_social) + '</td><td class="' + (p.cuit ? 'm' : 'u-s11-mt') + '">' + (p.cuit ? esc(p.cuit) : 'Exterior') + '</td><td>' + esc(p.condicion_iva || '—') + '</td><td>' + esc(p.contratacion || '—') + '</td>' +
-          '<td>' + esc(p.medio_pago || '—') + '</td><td class="m u-tr">' + (Number(p.facturas) || 0) + '</td><td class="m u-tr">' + fmt(Number(p.total_ars) || 0) + '</td>' +
-          '<td class="m u-tr ' + (ap ? 'ui-p-pendiente' : '') + '">' + (ap ? fmt(ap) : '—') + '</td>' +
-          '<td class="m u-tr u-nw ' + (venc ? 'ui-p-error' : '') + '">' + (p.proximo_vence ? esc(ff(p.proximo_vence)) : '—') + '</td>' +
-          '<td class="m u-tr u-nw">' + (p.ultima ? esc(ff(p.ultima)) : '—') + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
-  }
+  // Proveedores pasó a Administración › Proveedores (16/11/2026)
+  function htmlGastos() { return htmlContrataciones(); }
   function htmlContrataciones() {
     var q = norm(C.q), by = {}, ord = [];
     C.cont.filter(function (r) { return !q || norm([r.categoria, r.producto, r.nivel].join(' ')).indexOf(q) >= 0; }).forEach(function (r) {
@@ -357,13 +332,6 @@
         '<button class="ui-btn ui-s" data-cfg="tg-resumen">' + ico('campana') + ' Mandarme el resumen diario ahora</button></div></div>';
   }
 
-  // ── Targets (05/11/2026): los lee Estado financiero › ¿Dónde podríamos estar? (la línea punteada) ──
-  function htmlTargets() {
-    return '<div class="gauto"><div class="ui-tarjeta"><div class="ui-lat-h">Target de facturación mensual</div>' +
-      '<div class="ui-nota-t">Cuánto se quiere facturar por mes, en pesos. Es la línea punteada del gráfico de Estado financiero.</div>' +
-      '<label class="fl" for="cf-tg-fee">Pesos por mes</label><input class="fc" type="number" min="0" id="cf-tg-fee" data-monto value="' + esc(C.cfg.target_fee_mensual || '') + '">' +
-      '<button class="ui-btn ui-p u-mt10" data-cfg="targets">' + ico('guardar') + ' Guardar target</button></div></div>';
-  }
   function htmlOtros() {
     return '<div class="ui-tarjeta"><p>Estas herramientas siguen en el CRM actual: ' +
       '<b>Plantilla Doc</b> (la usa el documento de propuesta del Cotizador), <b>Mantenimiento de datos</b> y <b>Diagnósticos</b> (reparan la planilla).</p>' +
@@ -424,17 +392,15 @@
     marcarSub(C.sub);
     var cab = uiHd(SUBS.find(function (s) { return s[0] === C.sub; })[1], {
       listas: 'Las opciones de cada lista desplegable.',
-      vh: 'Valor hora, tiers y márgenes que usa el Cotizador.',
+      vh: 'El valor hora que usa el Cotizador y las metas de Estado financiero.',
       gastos: 'Los tipos para clasificar los gastos.',
       usu: 'Quién entra al CRM y con qué permisos.',
-      targets: 'Las metas que usa Estado financiero.',
       telegram: 'Los avisos que llegan por Telegram.',
       diag: 'Revisión de datos y procesos automáticos.',
       otros: 'Otros ajustes del CRM.'
     }[C.sub]);
-    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, targets: htmlTargets, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
+    el.innerHTML = cab + ({ listas: htmlListas, vh: htmlVh, gastos: htmlGastos, usu: htmlUsu, telegram: htmlTelegram, diag: htmlDiag, otros: htmlOtros }[C.sub])();
     if (C.sub === 'telegram') { tgPintar(); gmPintar(); }
-    if (C.sub === 'gastos' && C.gtab === 'prov') provPintar();
     if (C.sub === 'diag') { diagPintar(); recCargar(); }
     if (C.sub === 'listas') LISTAS.forEach(function (li) { renderTags(C.clave[li[0]]); });
   }
@@ -452,7 +418,7 @@
     el.oninput = function (ev) {
       var t = ev.target;
       if (t.id && t.id.indexOf('cf-') === 0 && t.id.slice(3) in C.num) C.num[t.id.slice(3)] = t.value;
-      if (t.id === 'cf-hs-ars') document.getElementById('cf-hs-hint').innerHTML = hsHint();
+      if (t.id === 'cf-hs-ars' && document.getElementById('cf-hs-hint')) document.getElementById('cf-hs-hint').innerHTML = hsHint();
       if (t.id === 'vh-mv' || t.id === 'vh-mh') { document.getElementById('vh-ej').innerHTML = vhEjemplo(); document.getElementById('vh-l-mercado').innerHTML = vhLista('mercado'); }
       if (t.id === 'rec-q') { var p0 = t.selectionStart; REC.q = t.value; recPintar(); var nq = document.getElementById('rec-q'); nq.focus(); nq.setSelectionRange(p0, p0); return; }
       if (t.id === 'cf-q') { C.q = t.value; var pos = t.selectionStart; pintar(el); var q = document.getElementById('cf-q'); q.focus(); q.setSelectionRange(pos, pos); }
@@ -485,14 +451,10 @@
         if (!Object.keys(cambios).length) return toast('No hay cambios para guardar', 'inf');
         return guardar('guardar_config', { cambios: cambios }, 'Configuración guardada');
       }
-      if (a === 'hs') {
-        var ars = Number(document.getElementById('cf-hs-ars').value) || 0, usd = Number(document.getElementById('cf-hs-usd').value) || 0;
-        if (!usd && ars && C.tc > 0) usd = Math.round(ars / C.tc * 100) / 100;
-        return guardar('guardar_config', { cambios: { valor_hora_soporte_ars: ars ? String(ars) : '', valor_hora_soporte_usd: usd ? String(usd) : '' } }, 'Valores guardados');
-      }
       if (a === 'targets') {
-        var tg = document.getElementById('cf-tg-fee').value.trim();
-        return guardar('guardar_config', { cambios: { target_fee_mensual: tg } }, 'Target guardado');
+        var ct = { target_fee_mensual: document.getElementById('cf-tg-fee').value.trim() }, pa = document.getElementById('cf-tg-proy').value.trim();
+        if (pa !== String(C.cfg.target_proyectos_anio || '')) ct.target_proyectos_anio = pa;
+        return guardar('guardar_config', { cambios: ct }, 'Targets guardados');
       }
       if (a === 'vh-add') {
         var kk = document.getElementById('vh-k-' + t).value.trim(), vv = _nFront(document.getElementById('vh-v-' + t).value);
@@ -512,10 +474,17 @@
         return;
       }
       if (a === 'vh') {
-        var g = function (i) { return Number(document.getElementById(i).value) || 0; };
-        return guardar('guardar_params_cotizacion', { p: { margen_venta: g('vh-mv'), margen_horas: g('vh-mh'), horas_mes: g('vh-hm'),
-          dificultad_txt: vhTexto('dificultad'), especialidad_txt: vhTexto('especialidad'), mercado_txt: vhTexto('mercado') } });
+        var gv = function (i) { var x = document.getElementById(i).value.trim(); return x; };
+        var ars = Number(gv('cf-hs-ars')) || 0, usd = Number(gv('cf-hs-usd')) || 0;
+        if (!usd && ars && C.tc > 0) usd = Math.round(ars / C.tc * 100) / 100;
+        if (gv('vh-hm')) { var rh = await db().rpc('guardar_params_cotizacion', { p: { horas_mes: Number(gv('vh-hm')) } }); if (rh.error) return toast(rh.error.message, 'err'); }
+        var cv = { valor_hora_soporte_ars: ars ? String(ars) : '', valor_hora_soporte_usd: usd ? String(usd) : '' };
+        // sólo se mandan si cambiaron (venta y costo interno se habilitan con la migración 20261116120000)
+        if (gv('vh-giwa') !== String(C.cfg.vh_giwa_ars || '')) cv.vh_giwa_ars = gv('vh-giwa');
+        if (gv('vh-costo') !== String(C.cfg.vh_costo_ars || '')) cv.vh_costo_ars = gv('vh-costo');
+        return guardar('guardar_config', { cambios: cv }, 'Valor hora guardado');
       }
+      if (a === 'vh-merc') return guardar('guardar_params_cotizacion', { p: { mercado_txt: vhTexto('mercado') } });
       if (a === 'tg-ref') return tgPintar();
       if (a === 'tg-token') {
         var tk = document.getElementById('tg-tk').value.trim(); if (!tk) return toast('Pegá el token del bot', 'err');
@@ -530,7 +499,6 @@
         if (rg.error) return toast(rg.error.message, 'err');
         toast('Clave guardada', 'ok'); return gmPintar();
       }
-      if (a === 'gtab') { C.gtab = t; return pintar(el); }
       if (a === 'tg-probar') {
         var rp = await db().rpc('probar_telegram');
         if (rp.error) return toast(rp.error.message, 'err');

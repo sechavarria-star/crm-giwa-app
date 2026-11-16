@@ -21,11 +21,12 @@
 (function () {
   var A = { d: null, sub: 'dash', gastosMes: null, abiertos: {}, f: null, ff: { q: '', emp: '', dep: '', own: '' }, recAbierto: false,
             gf: { cat: '', pag: '', rec: '', q: '' } };
-  var SUBS = [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']];
+  var SUBS = [['dash', 'Dashboard'], ['fact', 'Facturación'], ['gastos', 'Gastos'], ['prov', 'Proveedores'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']];
   var NOTAS = {   // C2: una nota propia por pantalla
     dash: 'Lo que toca facturar, cobrar y revisar.',
     fact: 'Facturas emitidas y cobros, por empresa.',
     gastos: 'Gastos por tipo y por socio.',
+    prov: 'A quién le pagamos, cuánto y cuándo vence.',
     idx: 'Índice IPC y tipo de cambio que usan los ajustes.',
     imp: 'Lo facturado contra los topes del monotributo.',
     tip: 'Tipos de desarrollo y cómo se cotizan.'
@@ -478,6 +479,24 @@
   // ── Gastos (getGastos · getProrrateo · saveGasto · deleteGasto) ──
   // Un renglón por mes pagado: «por mes» = los renglones del último mes cargado, sin impuestos.
   function nomUsr(mail) { var u = (A.d.users || []).find(function (x) { return x.mail === mail; }); return u ? u.nombre : (mail || '—').split('@')[0]; }
+  // ── Proveedores (16/11/2026, antes en Configuración › Tipos de gastos): v_proveedores ──
+  async function provPintar() {
+    var c = document.getElementById('prov-c'); if (!c) return;
+    var r = await db().from('v_proveedores').select('*').order('razon_social');
+    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
+    var nota = '<div class="ui-nota-t u-mb10">Se dan de alta solos al cargar un gasto con su factura. Para corregirlos: Configuración › Datos.</div>';
+    if (!r.data.length) { c.innerHTML = nota + '<div class="empty">Todavía no hay proveedores.</div>'; return; }
+    var hoy = isoMas(0);
+    c.innerHTML = nota + '<div class="card card-tabla u-p0 u-ovx"><table class="tbl"><thead><tr><th>Proveedor</th><th>CUIT</th><th>Condición IVA</th><th>Contratación</th><th>Se paga con</th>' +
+      '<th class="u-tr">Facturas</th><th class="u-tr">Total ARS</th><th class="u-tr">A pagar</th><th class="u-tr">Próximo vencimiento</th><th class="u-tr">Última</th></tr></thead><tbody>' + r.data.map(function (p) {
+        var ap = Number(p.a_pagar_ars) || 0, venc = p.proximo_vence && p.proximo_vence < hoy;
+        return '<tr><td>' + esc(p.razon_social) + '</td><td class="' + (p.cuit ? 'm' : 'u-s11-mt') + '">' + (p.cuit ? esc(p.cuit) : 'Exterior') + '</td><td>' + esc(p.condicion_iva || '—') + '</td><td>' + esc(p.contratacion || '—') + '</td>' +
+          '<td>' + esc(p.medio_pago || '—') + '</td><td class="m u-tr">' + (Number(p.facturas) || 0) + '</td><td class="m u-tr">' + fmt(Number(p.total_ars) || 0) + '</td>' +
+          '<td class="m u-tr ' + (ap ? 'ui-p-pendiente' : '') + '">' + (ap ? fmt(ap) : '—') + '</td>' +
+          '<td class="m u-tr u-nw ' + (venc ? 'ui-p-error' : '') + '">' + (p.proximo_vence ? esc(ff(p.proximo_vence)) : '—') + '</td>' +
+          '<td class="m u-tr u-nw">' + (p.ultima ? esc(ff(p.ultima)) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
   function htmlGastos(D) {
     var G = D.gastos, P = D.pro || {}, mesTxt = String(P.mes || '').split('-').reverse().join('/');
     var kpi = function (cls, lbl, val) { return '<div class="kpi ' + cls + '"><div class="kpi-lbl">' + lbl + '</div><div class="kpi-val">' + val + '</div></div>'; };
@@ -737,6 +756,7 @@
     // Nueva factura arriba a la derecha, en el encabezado (14/11/2026)
     if (A.sub === 'fact') { el.innerHTML = uiHd('Facturación', NOTAS.fact, '<button class="btn bp sm" data-adm="cb-fact">' + ico('factura') + ' Nueva factura</button>') + htmlFact(); return; }
     if (A.sub === 'gastos') { el.innerHTML = cab + htmlGastos(A.d); return; }
+    if (A.sub === 'prov') { el.innerHTML = cab + '<div id="prov-c"><div class="loading"><div class="spin"></div></div></div>'; provPintar(); return; }
     if (A.sub === 'idx' && A.idx) { el.innerHTML = cab + htmlIdx(); return; }
     if (A.sub === 'imp' && A.imp) { el.innerHTML = cab + htmlImp(); return; }
     if (A.sub !== 'dash') {

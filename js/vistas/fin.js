@@ -9,7 +9,7 @@
      ¿Dónde podríamos estar?    la lista, sin detenidos: v_fin_escenarios (= getProyeccion) y v_fin_no_aceptados. El gráfico:
                                 barras = abonos (v_proyeccion_12m) + el fee de lo tildado; líneas = ventas de proyectos
                                 de v_fin_ventas_mes (forecast = venta × probabilidad; lo tildado, al 100%). La línea
-                                punteada es el target de facturación mensual, que se carga en Configuración › Targets.
+                                punteada es el target de facturación mensual, que se carga en Configuración › Valor hora y targets.
      Negocios a seguir          v_fin_negocios (= getNegociosASeguir)
    Acá no se calcula plata: se muestra lo que da la base. Lo único que se suma
    es lo tildado en «¿Dónde podríamos estar?», que es un «¿y si…?» (igual que el Portal).
@@ -148,7 +148,7 @@
   function simDerecha() {
     var S = simSeries(), T = F.d.target;
     var tot = S.ab.map(function (a, i) { return a + S.fee[i] + S.vta[i]; }), falta = T - (tot[1] || 0), llega = tot.filter(function (x) { return x >= T; }).length;
-    var resp = !T ? 'Cargá el target de facturación mensual en Configuración › Targets.' :
+    var resp = !T ? 'Cargá el target de facturación mensual en Configuración › Valor hora y targets.' :
       (S.n ? 'Con ' + S.n + (S.n === 1 ? ' negocio tildado' : ' negocios tildados') + ', ' : 'Con lo activo, ') +
       (falta > 0 ? 'al target del mes que viene le faltan <span class="ui-num">' + fmt(falta) + '</span>.' : 'el target del mes que viene está cubierto.') +
       ' Se llega al target en <b>' + llega + ' de ' + tot.length + '</b> meses.';
