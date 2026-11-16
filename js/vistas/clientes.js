@@ -82,8 +82,8 @@
       ? '<p class="u-s11-mt">Tier = tamaño del cliente; multiplica el valor hora al cotizar: ' +
         D.tiers.map(function (t) { return tierChip(t.id) + ' ' + esc(t.empresa || '—') + ' <span class="m">×' + String(t.multiplicador).replace('.', ',') + '</span>'; }).join(' · ') + '</p>'
       : '';
-    var fil = '<div class="filtros u-mb8" role="group" aria-label="Filtro">' + FILTROS.map(function (f) {
-      return '<button class="ptab' + (filtro === f[0] ? ' on' : '') + '" data-filtro="' + f[0] + '">' + f[1] + '</button>';
+    var fil = '<div class="ui-tabs" role="group" aria-label="Filtro">' + FILTROS.map(function (f) {
+      return '<button class="ui-tab' + (filtro === f[0] ? ' on' : '') + '" data-filtro="' + f[0] + '">' + f[1] + '</button>';
     }).join('') + '</div>';
     var filas = D.emps.filter(function (e) {
       var g = clienteDe(e);
@@ -183,8 +183,8 @@
   function pintar(el) {
     if (_montado !== 'clientes' || !el.querySelector('#cli-cuerpo')) return;
     marcarSub(pest);
-    var tabs = '<div class="filtros cli-tabs" role="group" aria-label="Vista">' + [['cli', 'Empresas'], ['con', 'Contactos']].map(function (t) {
-      return '<button class="ptab' + (pest === t[0] ? ' on' : '') + '" data-pest="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    var tabs = '<div class="ui-tabs" role="group" aria-label="Vista">' + [['cli', 'Empresas'], ['con', 'Contactos']].map(function (t) {
+      return '<button class="ui-tab' + (pest === t[0] ? ' on' : '') + '" data-pest="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
     el.querySelector('#cli-cuerpo').innerHTML = tabs + (pest === 'con' ? htmlContactos() : htmlClientes());
     el.querySelector('#cli-exportar').hidden = pest !== 'cli';
     el.querySelector('#cli-nuevo').innerHTML = (pest === 'con' ? ico('contacto') + ' Nuevo contacto' : ico('empresa') + ' Nueva empresa');

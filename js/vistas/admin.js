@@ -380,7 +380,7 @@
       '<select class="fc u-wauto" id="fa-emp" aria-label="Empresa">' + opt('', 'Todas las empresas', F.emp) + Object.keys(emps).sort().map(function (e) { return opt(e, e, F.emp); }).join('') + '</select>' +
       '<select class="fc u-wauto" id="fa-dep" aria-label="Depósito">' + opt('', 'Todos', F.dep) + opt('pendiente', 'Sin depósito', F.dep) + opt('vencida', 'Vencidas sin depósito', F.dep) +
         opt('sinfc', 'Cobros sin factura', F.dep) + opt('depositado', 'Depositados', F.dep) + '</select>' +
-      '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Quién facturó: todos', F.own) +
+      '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Todos', F.own) +
         Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select></div>';
     var list = filtrarFact(), pend = list.filter(sinDep);
     h += '<div class="g3 u-mb12">' +

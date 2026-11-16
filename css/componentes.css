@@ -538,3 +538,8 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .cot-ed .cot-sel-t > .ui-f1 { text-transform: uppercase; letter-spacing: var(--espaciado); }
 .cot-ed .cot-sel-i > span:first-child::before, .cot-bul > span:first-child::before, div.cot-bul:not(.ui-kv)::before { content: '•'; color: var(--texto2); margin-right: 8px; }
 .cot-ed-hd { margin-bottom: var(--e4); }
+/* Filtros (16/11/2026): título chico en mayúscula arriba; el filtro en uso, en celeste */
+.ui-flt { display: inline-flex; flex-direction: column; gap: 4px; }
+.ui-flt-t { font-size: 10px; letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); }
+:has(> .ui-flt) { align-items: flex-end; }
+.ui-flt select:has(option:checked:not([value=""])) { border-color: var(--brillo); color: var(--brillo); }

@@ -318,8 +318,18 @@ function _uiArchivo(inp) {
   inp.parentNode.insertBefore(caja, inp.nextSibling);
   pinta();
 }
+// Filtros (16/11/2026): un desplegable de filtro (primera opción vacía, «Todos…») lleva arriba su título
+// chico en mayúscula, sacado de su aria-label. Los de los formularios y ventanas no se tocan.
+function _uiFiltro(s) {
+  if (!s.options.length || s.options[0].value !== '' || !s.getAttribute('aria-label')) return;
+  if (s.closest('.mo, .ui-md, .md, .ui-flt, .fg, label') || (s.id && document.querySelector('label[for="' + s.id + '"]'))) return;
+  var w = document.createElement('label'); w.className = 'ui-flt';
+  w.innerHTML = '<span class="ui-flt-t">' + esc(s.getAttribute('aria-label')) + '</span>';
+  s.parentNode.insertBefore(w, s); w.appendChild(s);
+}
 function _uiCampos(raiz) {
   if (!raiz.querySelectorAll) return;
+  raiz.querySelectorAll('select[aria-label]').forEach(_uiFiltro);
   raiz.querySelectorAll('input[type="file"]:not(.ui-arch-inp)').forEach(_uiArchivo);
   raiz.querySelectorAll('input[type="date"]:not(.ui-fecha-nat)').forEach(_uiFecha);
   raiz.querySelectorAll('input[data-monto]').forEach(_uiMonto);

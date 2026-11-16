@@ -110,13 +110,16 @@
                especialidad: ['Multiplicador por especialidad', 'Ajusta el valor hora, no las horas. La hora especializada en datos e IA se paga más que la de desarrollo general.', 0.05] };
   // Valor hora y targets (16/11/2026): sólo lo que usa el Cotizador y Estado financiero. Sin márgenes,
   // dificultad ni especialidad: no cambiaban ningún precio.
+  // Los valores de la base pueden venir como «$ 62.246»: se muestran y se comparan como número
+  function nCfg(x) { var t = String(x == null ? '' : x).replace(/[^\d,.-]/g, ''); if (!t) return ''; var n = Number(t.replace(/\./g, '').replace(',', '.')); return n > 0 ? String(n) : ''; }
   function htmlVh() {
-    var num = function (id, lbl, ayuda, val, monto) { return '<label class="fl u-mt10" for="' + id + '">' + lbl + '</label><div class="ui-nota-t">' + ayuda + '</div>' +
+    var num = function (id, lbl, ayuda, val, monto) { val = nCfg(val); return '<label class="fl u-mt10" for="' + id + '">' + lbl + '</label><div class="ui-nota-t">' + ayuda + '</div>' +
       '<input class="fc ui-num" type="number" min="0" id="' + id + '"' + (monto ? ' data-monto' : '') + ' value="' + esc(val || '') + '">'; };
     var h = '<div class="gauto">';
     h += '<div class="ui-tarjeta"><div class="ui-lat-h">Valor hora</div>' +
       num('vh-giwa', 'Venta GIWA (ARS)', 'Lo que cobramos cada hora de desarrollo. Se multiplica por el Tier del cliente.', C.cfg.vh_giwa_ars, true) +
       num('vh-costo', 'Costo interno (ARS)', 'Lo que nos cuesta cada hora. Sirve para ver el margen en el Cotizador.', C.cfg.vh_costo_ars, true) +
+      num('vh-merc', 'Mercado (ARS)', 'Lo que cobra el mercado por una hora de desarrollo (Honorarios del CPCIPC, Córdoba). Es la referencia del análisis del Cotizador.', C.cfg.vh_mercado_ars, true) +
       num('cf-hs-ars', 'Soporte (ARS)', 'Lo que se cobra cada hora de soporte. Arma el abono mensual.', C.cfg.valor_hora_soporte_ars, true) +
       num('cf-hs-usd', 'Soporte (USD)', 'Si lo dejás vacío se calcula solo al TC del día.', C.cfg.valor_hora_soporte_usd, false) +
       num('vh-hm', 'Horas por mes', 'Con cuántas horas por mes se calcula el plazo de un desarrollo.', C.vh.horas_mes, false) +
@@ -125,11 +128,6 @@
       num('cf-tg-fee', 'Facturación por mes (ARS)', 'Es la línea punteada del gráfico de Estado financiero.', C.cfg.target_fee_mensual, true) +
       num('cf-tg-proy', 'Proyectos nuevos por año', 'Cuántos proyectos nuevos queremos cerrar en el año.', C.cfg.target_proyectos_anio, false) +
       '<button class="ui-btn ui-p u-mt10" data-cfg="targets">' + ico('guardar') + ' Guardar targets</button></div>';
-    h += '<div class="ui-tarjeta"><div class="ui-lat-h">' + VH_T.mercado[0] + '</div><div class="ui-nota-t">' + VH_T.mercado[1] + '</div><div id="vh-l-mercado">' + vhLista('mercado') + '</div>' +
-      '<div class="tag-add u-mt6"><input class="fc u-f1" id="vh-k-mercado" placeholder="Nombre" aria-label="Nombre">' +
-      '<input class="fc ui-num" id="vh-v-mercado" type="number" step="500" min="0" placeholder="66617" aria-label="Valor" style="width:96px">' +
-      '<button class="ui-btn ui-p" data-cfg="vh-add" data-t="mercado">+</button></div>' +
-      '<button class="ui-btn ui-s u-mt10" data-cfg="vh-merc">' + ico('guardar') + ' Guardar valores de mercado</button></div>';
     return h + '</div><div class="ui-nota-t u-mt10">Cambia lo que se cotiza de acá en adelante. Las cotizaciones ya hechas no se tocan.</div>';
   }
   function vhLista(t) {
@@ -453,7 +451,7 @@
       }
       if (a === 'targets') {
         var ct = { target_fee_mensual: document.getElementById('cf-tg-fee').value.trim() }, pa = document.getElementById('cf-tg-proy').value.trim();
-        if (pa !== String(C.cfg.target_proyectos_anio || '')) ct.target_proyectos_anio = pa;
+        if (nCfg(pa) && nCfg(pa) !== nCfg(C.cfg.target_proyectos_anio)) ct.target_proyectos_anio = nCfg(pa);
         return guardar('guardar_config', { cambios: ct }, 'Targets guardados');
       }
       if (a === 'vh-add') {
@@ -480,11 +478,10 @@
         if (gv('vh-hm')) { var rh = await db().rpc('guardar_params_cotizacion', { p: { horas_mes: Number(gv('vh-hm')) } }); if (rh.error) return toast(rh.error.message, 'err'); }
         var cv = { valor_hora_soporte_ars: ars ? String(ars) : '', valor_hora_soporte_usd: usd ? String(usd) : '' };
         // sólo se mandan si cambiaron (venta y costo interno se habilitan con la migración 20261116120000)
-        if (gv('vh-giwa') !== String(C.cfg.vh_giwa_ars || '')) cv.vh_giwa_ars = gv('vh-giwa');
-        if (gv('vh-costo') !== String(C.cfg.vh_costo_ars || '')) cv.vh_costo_ars = gv('vh-costo');
+        [['vh-giwa', 'vh_giwa_ars'], ['vh-costo', 'vh_costo_ars'], ['vh-merc', 'vh_mercado_ars']].forEach(function (x) {
+          var nv = nCfg(gv(x[0])); if (nv && nv !== nCfg(C.cfg[x[1]])) cv[x[1]] = nv; });   // vacío no borra
         return guardar('guardar_config', { cambios: cv }, 'Valor hora guardado');
       }
-      if (a === 'vh-merc') return guardar('guardar_params_cotizacion', { p: { mercado_txt: vhTexto('mercado') } });
       if (a === 'tg-ref') return tgPintar();
       if (a === 'tg-token') {
         var tk = document.getElementById('tg-tk').value.trim(); if (!tk) return toast('Pegá el token del bot', 'err');

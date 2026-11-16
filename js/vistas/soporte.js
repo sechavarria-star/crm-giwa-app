@@ -89,8 +89,8 @@
       uiKpi('Esperando cliente', String(A.filter(function (t) { return t.estado === 'Esperando cliente'; }).length), 'e-detenido', '', '', 'La pelota la tiene el cliente') +
       uiKpi('A cotizar', String(A.filter(function (t) { return t.clasificacion === 'A cotizar'; }).length), 'p-neutro', '', '', 'Pedidos de algo nuevo: tienen su tarea de cotización') +
       '</div>';
-    var fil = '<div class="filtros u-mb8" role="group" aria-label="Estado">' + FILTROS.map(function (f) {
-      return '<button class="ptab' + (S.filtro === f[0] ? ' on' : '') + '" data-sfil="' + esc(f[0]) + '">' + esc(f[1]) + '</button>'; }).join('') + '</div>' +
+    var fil = '<div class="ui-tabs" role="group" aria-label="Estado">' + FILTROS.map(function (f) {
+      return '<button class="ui-tab' + (S.filtro === f[0] ? ' on' : '') + '" data-sfil="' + esc(f[0]) + '">' + esc(f[1]) + '</button>'; }).join('') + '</div>' +
       '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="sop-emp" aria-label="Empresa">' + opts(S.d.emps.filter(function (e) { return S.d.tk.some(function (t) { return t.empresa_id === e.id; }); }).map(function (e) { return [e.id, e.nombre]; }), S.emp, 'Todas las empresas') + '</select>' +
       '<select class="fc u-wauto" id="sop-resp" aria-label="Responsable">' + opts(S.d.usu.map(function (u) { return [String(u.mail).toLowerCase(), u.nombre]; }), S.resp, 'Cualquier responsable') + '</select></div>';
     var L = filtrados();
