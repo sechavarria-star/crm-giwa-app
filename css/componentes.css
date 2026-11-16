@@ -399,6 +399,10 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 
 /* Facturación: una sola fila de títulos y las mismas columnas en cada proyecto (03/11/2026) */
 .fa-lista { min-width: 930px; }
+/* Facturación: los títulos de columna quedan fijos bajo la barra al bajar (14/11/2026); el desplazamiento lateral sólo en pantallas angostas */
+.fa-wrap { overflow-x: auto; }
+@media (min-width: 1100px) { .fa-wrap { overflow: visible; } }
+.fa-lista > .fa-tb:first-child { position: sticky; top: 36px; z-index: 3; background: var(--fondo); }
 .fa-lista .ui-cuerpo { padding: 0; }
 .fa-lista table.tbl.fa-tb { table-layout: fixed; width: 100%; max-width: none; }   /* sin esto, app.css limita a 960 px las tablas sin 5 títulos */
 .fa-tb th:nth-child(2), .fa-tb td:nth-child(2) { width: 70px; }
@@ -407,7 +411,7 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .fa-tb th:nth-child(5), .fa-tb td:nth-child(5) { width: 130px; }
 .fa-tb th:nth-child(6), .fa-tb td:nth-child(6) { width: 100px; }
 .fa-tb th:nth-child(7), .fa-tb td:nth-child(7) { width: 70px; }
-.fa-tb th:nth-child(8), .fa-tb td:nth-child(8) { width: 120px; }
+.fa-tb th:nth-child(8), .fa-tb td:nth-child(8) { width: 160px; }   /* entran las cinco acciones ahora que la lista no se desplaza de costado */
 
 /* Menciones con @ (04/11/2026) */
 .ment { color: var(--brillo); }
@@ -519,3 +523,10 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .pm-emp-n { font-size: var(--t-xl); }
 .pm-emp-b { padding: 0 0 var(--e3) var(--e5); }
 .cot-nt { text-transform: none; letter-spacing: 0; }
+
+/* Dashboard · Pendiente de cobrar: un desplegable por cliente; columnas iguales en todos (14/11/2026) */
+#pc-wrap .ui-cuerpo { padding: 0; }
+.pc-tb { table-layout: fixed; width: 100%; max-width: none !important; }
+.pc-tb td:nth-child(1) { width: 36px; } .pc-tb td:nth-child(2) { width: 150px; } .pc-tb td:nth-child(4) { width: 90px; } .pc-tb td:nth-child(5) { width: 130px; } .pc-tb td:nth-child(6) { width: 150px; }
+/* Dashboard: las tablas dentro de las secciones llegan hasta el borde, alineadas con los botones de abajo (14/11/2026) */
+.adm-desp .card-tabla .tbl { max-width: none; }

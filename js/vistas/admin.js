@@ -113,22 +113,28 @@
     D.cobros.forEach(function (c) { var k = c.empresa || '— sin empresa —'; if (!por[k]) { por[k] = []; orden.push(k); } por[k].push(c); });
     orden.sort();
     // Un cliente por depósito: se eligen varias facturas de la misma empresa (27/10/2026)
-    var h = '<div class="card u-p0 u-ovx" id="pc-wrap"><table class="tbl"><tbody>';
+    // Cada cliente es un desplegable (sin tilde de empresa); las FC se tildan de a una (14/11/2026)
+    document.querySelectorAll('.ui-d[data-pce]').forEach(function (d, i) { if (!i) A.pcOpen = {}; if (d.classList.contains('open')) A.pcOpen[d.getAttribute('data-pce')] = 1; });
+    var ab = A.pcOpen || {};
+    var h = '<div id="pc-wrap">';
     orden.forEach(function (emp, ei) {
-      var arr = por[emp];
-      h += '<tr class="pc-emp-f"><td colspan="3"><label class="u-fw6"><input type="checkbox" data-pc="emp" data-e="' + ei + '"> ' + esc(emp) + '</label> <span class="u-s10-mt">' + arr.length + ' FC</span></td>' +
-           '<td class="m m-pendiente u-tr" colspan="2">' + fmt(suma(arr, 'monto')) + '</td></tr>';
+      var arr = por[emp], filas = '';
       arr.forEach(function (c) {
         var v = c.dias !== null && c.dias >= D.diasVenc;
-        h += '<tr><td class="u-nw"><input type="checkbox" data-pc="fc" data-e="' + ei + '" data-id="' + esc(c.id) + '" data-m="' + (Number(c.monto) || 0) + '" aria-label="Elegir"></td>' +
-             '<td class="u-nw u-fw6">' + (c.nro ? 'FC ' + esc(c.nro) : '<span class="u-c-wa">Sin comprobante</span>') + '</td>' +
+        filas += '<tr><td><input type="checkbox" data-pc="fc" data-e="' + ei + '" data-id="' + esc(c.id) + '" data-m="' + (Number(c.monto) || 0) + '" aria-label="Elegir"></td>' +
+             '<td class="u-nw">' + (c.nro ? 'FC ' + esc(c.nro) : '<span class="u-c-wa">Sin comprobante</span>') + '</td>' +
              '<td class="u-c-mt pc-concepto">' + esc(c.concepto) + '</td>' +
+             // primero el tiempo y después el monto (14/11/2026)
+             '<td class="u-tr u-nw ' + (v ? 'u-c-rd' : 'u-c-mt') + '">' + (c.dias !== null ? 'hace ' + c.dias + ' d' : esc(ff(c.fecha))) + '</td>' +
              '<td class="m u-tr u-nw">' + fmt(c.monto) + '</td>' +
-             '<td class="u-tr u-nw ' + (v ? 'u-c-rd' : 'u-c-mt') + '">' + (c.dias !== null ? 'hace ' + c.dias + ' d' : esc(ff(c.fecha))) + '</td></tr>';
+             // Registrar pago al lado de cada FC emitida: el mismo depósito, de esa sola factura (14/11/2026)
+             '<td class="u-tr u-nw"><button class="btn bg xs" data-adm="pc-uno" data-id="' + esc(c.id) + '">' + ico('cobro') + ' Registrar pago</button></td></tr>';
       });
+      h += uiDesp({ t: emp, n2: true, n: arr.length, open: ab[emp], v: '<span class="m-pendiente">' + fmt(suma(arr, 'monto')) + '</span>', attrs: 'data-pce="' + esc(emp) + '"' },
+        '<table class="tbl pc-tb"><tbody>' + filas + '</tbody></table>');
     });
     var pct = D.rep.length ? Number(D.rep[0].pct) || 50 : 50;
-    h += '</tbody></table><div class="pc-barra u-row8">' +
+    h += '<div class="pc-barra u-row8">' +
       '<span class="u-s11" id="pc-n">Ninguna seleccionada</span>' +
       '<span class="u-s11">Total <b class="m m-pendiente" id="pc-tot">' + fmt(0) + '</b></span>' +
       '<span class="u-s11">' + pct + '% <b class="m m-neutro" id="pc-mitad" data-pct="' + pct + '">' + fmt(0) + '</b></span>' +
@@ -229,9 +235,10 @@
           '<td class="u-td-mt-r">' + esc(f.det || '') + '</td>' +
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
-          '<td class="u-tr u-nw"><button class="btn bp xs" data-adm="cb-fact" data-id="' + esc(f.item) + '">' + ico('documento') + ' Facturar</button> ' +
-            '<button class="btn bg xs" data-adm="cb-pago" data-id="' + esc(f.item) + '">' + ico('cobro') + ' Registrar pago</button>' +
-            (f.alerta ? ' <button class="btn bg xs btn-ico" data-adm="alt-posp" data-id="' + esc(f.alerta) + '" data-tip="Posponer" aria-label="Posponer">' + ico('calendario') + '</button>' : '') + '</td></tr>';
+          '<td class="u-tr u-nw"><button class="btn bp xs" data-adm="cb-fact" data-id="' + esc(f.item) + '">' + ico('documento') + ' Facturar</button>' +
+            // Sin alerta: se crea acá, sin esperar a la sincronización (14/11/2026)
+            (k === 'fg-sin' ? ' <button class="btn bg xs" data-adm="alt-crear" data-id="' + esc(f.item) + '">' + ico('campana') + ' Crear alerta</button>' : '') +
+            '</td></tr>';   // sin Registrar pago ni Posponer: el pago va en cada FC de Pendiente de cobrar (14/11/2026)
       }).join('') + '</tbody></table></details>';
     };
     var h = fil.length ? '' : '<div class="empty u-p10">Nada pendiente de facturar.</div>';
@@ -254,7 +261,7 @@
     var p = D.rep.filter(function (c) { return !c.hecho; });
     if (!p.length) return '';
     var pct = Number(p[0].pct) || 50, tot = suma(p, 'monto'), soc = suma(p, 'socio');
-    var h = '<div class="card u-p0 u-ovx"><div class="u-row8 u-p10 u-s11-mt">Depositado sin repartir ' + fmt(tot) + ' · le corresponde el ' + pct + '%' +
+    var h = '<div class="card card-tabla u-p0 u-ovx"><div class="u-row8 u-p10 u-s11-mt">Depositado sin repartir ' + fmt(tot) + ' · le corresponde el ' + pct + '%' +
       '<button class="btn bg xs u-mla" data-adm="socio-todo">' + ico('check') + ' Ya le transferí todo</button></div><table class="tbl"><tbody>' +
       p.map(function (c) {
         return '<tr><td class="u-nw u-fw6">' + (c.nro ? 'FC ' + esc(c.nro) : '—') + '</td>' +
@@ -326,10 +333,11 @@
       '<div class="kpi-sub">' + n(op.length, 'gasto') + ' operativo' + (op.length === 1 ? '' : 's') + (imp > 0 ? ' · sin ' + fmt(imp) + ' de impuestos' : ' · sin impuestos') + '</div></div>';
     if (!op.length) return sec('gas', 'Gastos del mes', 0, '', h + '<div class="empty">Sin gastos cargados.</div>');
     var por = {}; op.forEach(function (g) { var c = g.categoria || 'Sin categoría'; por[c] = (por[c] || 0) + (Number(g.monto_ars) || 0); });
-    h += '<div class="card u-p0 u-ovx"><table class="tbl"><thead><tr><th>Concepto</th><th>Categoría</th><th>Frecuencia</th><th class="u-tr">Por mes</th></tr></thead><tbody>' +
+    h += '<div class="card card-tabla u-p0 u-ovx"><table class="tbl"><thead><tr><th>Concepto</th><th>Categoría</th><th>Frecuencia</th><th>Quién lo paga</th><th class="u-tr">Por mes</th></tr></thead><tbody>' +
       op.map(function (g) {
         return '<tr><td class="u-fw6">' + esc(g.descripcion || '—') + '</td><td class="u-c-mt">' + esc(g.categoria || '—') + '</td>' +
           '<td class="u-s10-mt">' + esc(g.recurrencia || '') + (g.moneda === 'USD' ? ' · ' + fmt(g.monto_usd || 0, 'USD') : '') + '</td>' +
+          '<td class="u-c-mt">' + esc(nomUsr(g.pagador) || '—') + '</td>' +
           '<td class="m u-tr">' + fmt(g.monto_ars) + '</td></tr>';
       }).join('') + '</tbody></table></div>' +
       '<div class="u-s10-mt u-mt6">' + Object.keys(por).sort(function (a, b) { return por[b] - por[a]; })
@@ -374,8 +382,7 @@
       '<select class="fc u-wauto" id="fa-dep" aria-label="Depósito">' + opt('', 'Todos', F.dep) + opt('pendiente', 'Sin depósito', F.dep) + opt('vencida', 'Vencidas sin depósito', F.dep) +
         opt('sinfc', 'Cobros sin factura', F.dep) + opt('depositado', 'Depositados', F.dep) + '</select>' +
       '<select class="fc u-wauto" id="fa-own" aria-label="Quién facturó">' + opt('', 'Quién facturó: todos', F.own) +
-        Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select>' +
-      '<button class="btn bp sm" data-adm="cb-fact">' + ico('factura') + ' Nueva factura</button></div>';
+        Object.keys(owns).sort().map(function (o) { return opt(o, A.f.nombres[o] || o.split('@')[0], F.own); }).join('') + '</select></div>';
     var list = filtrarFact(), pend = list.filter(sinDep);
     h += '<div class="g3 u-mb12">' +
       '<div class="kpi k-cobrado"><div class="kpi-lbl">Total cobrado ARS (neto)</div><div class="kpi-val">' + fmt(suma(list, 'monto')) + '</div><div class="kpi-sub">' + n(list.length, 'cobro') + '</div></div>' +
@@ -386,7 +393,7 @@
     document.querySelectorAll('.ui-d[data-fa]').forEach(function (d, i) { if (!i) A.fOpen = {}; if (d.classList.contains('open')) A.fOpen[d.getAttribute('data-fa')] = 1; });
     var abiertos = A.fOpen || {}, porE = {};
     list.forEach(function (c) { var k = c.empresa || '—'; (porE[k] = porE[k] || []).push(c); });
-    h += '<div class="u-ovx"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th class="u-tr">Cuota</th><th>Comprobante</th><th class="u-tr">Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
+    h += '<div class="fa-wrap"><div class="fa-lista"><table class="tbl fa-tb"><thead><tr><th>Concepto</th><th class="u-tr">Cuota</th><th>Comprobante</th><th class="u-tr">Fecha</th><th class="u-tr">Monto ARS</th><th class="u-tr">USD</th><th>Adjunto</th><th></th></tr></thead></table>';
     Object.keys(porE).sort().forEach(function (emp) {
       var cs = porE[emp], porP = {}, cuerpo = '';
       cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; (porP[k] = porP[k] || []).push(c); });
@@ -506,7 +513,7 @@
       return true;
     }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); });
     if (!L.length) return h + '<div class="empty">' + (G.length ? 'Nada coincide con el filtro.' : 'Sin gastos cargados. Agregá el primero.') + '</div>';
-    return h + '<div class="card u-p0 u-ov"><table class="tbl"><thead><tr><th class="u-tr">Fecha</th><th>Categoría</th><th>Descripción</th><th class="u-tr">ARS</th><th class="u-tr">USD</th>' +
+    return h + '<div class="card card-tabla u-p0 u-ov"><table class="tbl"><thead><tr><th class="u-tr">Fecha</th><th>Categoría</th><th>Descripción</th><th class="u-tr">ARS</th><th class="u-tr">USD</th>' +
       '<th>Frecuencia</th><th>Pagador</th><th>Prorratea</th><th></th></tr></thead><tbody>' + L.map(function (g) {
         // A pagar (14/11/2026): ámbar hasta el vencimiento, rojo vencido; el botón registra el pago
         var vencido = g.a_pagar && g.vence < isoMas(0);
@@ -720,7 +727,8 @@
     if (_montado !== 'admin') return;             // se terminó de leer con otro módulo en pantalla
     marcarSub(A.sub);
     var cab = uiHd((SUBS.find(function (s) { return s[0] === A.sub; }) || ['', 'Administración'])[1], NOTAS[A.sub] || NOTAS.dash);
-    if (A.sub === 'fact') { el.innerHTML = cab + htmlFact(); return; }
+    // Nueva factura arriba a la derecha, en el encabezado (14/11/2026)
+    if (A.sub === 'fact') { el.innerHTML = uiHd('Facturación', NOTAS.fact, '<button class="btn bp sm" data-adm="cb-fact">' + ico('factura') + ' Nueva factura</button>') + htmlFact(); return; }
     if (A.sub === 'gastos') { el.innerHTML = cab + htmlGastos(A.d); return; }
     if (A.sub === 'idx' && A.idx) { el.innerHTML = cab + htmlIdx(); return; }
     if (A.sub === 'imp' && A.imp) { el.innerHTML = cab + htmlImp(); return; }
@@ -729,7 +737,7 @@
       return;
     }
     var D = A.d;
-    el.innerHTML = cab + tablero(D) + faltan(D) + pendiente(D) + ajustes(D) + facturacion(D) + socio(D) + otros(D) + gastos(D);
+    el.innerHTML = cab + tablero(D) + faltan(D) + pendiente(D) + socio(D) + ajustes(D) + facturacion(D) + otros(D) + gastos(D);
   }
 
   VISTAS.admin = async function (el, op) {
@@ -800,7 +808,13 @@
         if (rr.error) return toast(rr.error.message, 'err');
         toast(rr.data.msg, 'ok'); A.recAbierto = false; return refrescar();
       }
+      if (a === 'alt-crear') {
+        var ra = await db().rpc('crear_recordatorios', { ventanas: {}, solo_item: id });
+        if (ra.error) return toast(ra.error.message, 'err');
+        toast((ra.data && ra.data.msg) || 'Alerta creada', 'ok'); return refrescar();
+      }
       if (a === 'pc-reg') return abrirDeposito(refrescar);
+      if (a === 'pc-uno') return abrirDeposito(refrescar, A.d.cobros.filter(function (c) { return String(c.id) === id; }));
       if (a === 'socio' || a === 'socio-todo') {
         var p = A.d.rep.filter(function (c) { return !c.hecho; });
         var lista = a === 'socio' ? [id] : p.map(function (c) { return c.id; });
