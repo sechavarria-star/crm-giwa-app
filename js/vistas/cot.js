@@ -345,7 +345,8 @@
     var fut = mods(v).filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura' && !madreFut(v, m.id); });
     h += '<div class="ui-lat-h u-mt10 cot-t-vi">Etapa futura</div><div class="ui-nota-t">Posibles ventas del proyecto · no suman al precio de hoy</div>' +
       (fut.length ? fut.map(function (m) { var hx = hMod(v, m) + tildadas(v, m.id, true).reduce(function (s, x) { return s + hMod(v, x); }, 0);
-        return kv(esc(nom(m)) + ' · <span class="cot-n">' + h1(hx) + '</span> h', fmt(Math.round(hx * vh(v))), 'ui-p-abono'); }).join('') : '<div class="ui-nota-t">Nada por ahora.</div>');
+        return kv(esc(nom(m)) + ' · <span class="cot-n">' + h1(hx) + '</span> h', fmt(Math.round(hx * vh(v))), 'ui-p-abono'); }).join('') +
+        '<div class="ui-barra u-mt10">' + uiBtn('Crear desarrollo con estas mejoras', 'mas', 's', 'data-cot="fut-dev" data-i="' + CN.devs.indexOf(v) + '"') + '</div>' : '<div class="ui-nota-t">Nada por ahora.</div>');
     return h;
   }
 
@@ -619,26 +620,31 @@
     terPintar();
   }
   // Popup del desarrollo: tipo, título, alcance, mejora y «Partir de un proyecto existente»
-  function devPop(i) {
+  // de (16/11/2026): índice del desarrollo cuya etapa futura pasa a este desarrollo nuevo
+  function devPop(i, de) {
     var v = i >= 0 ? CN.devs[i] : null, con = v && Object.keys(v.r || {}).length, reuse = null;
+    var src = de >= 0 ? CN.devs[de] : null, futIds = src ? Object.keys(src.r).filter(function (id) { return si(src, id) && (src.etapa[id] === 'futura' || madreFut(src, id)); }) : [];
+    if (src) v = null;
+    var pre = src ? { tipo: src.tipo, titulo: 'Mejoras de ' + (src.titulo || tipoNom(src.tipo)),
+      alcance: 'Incluye: ' + mods(src).filter(function (m) { return si(src, m.id) && src.etapa[m.id] === 'futura' && !madreFut(src, m.id); }).map(nom).join(', ') + '.' } : null;
     var proys = (C.ini.lista || []).concat([]);   // los del Cotizador; Reutilizar (entrega 4) trae todos
     var m = modal('m-dev', v ? 'Datos del desarrollo' : 'Nuevo desarrollo',
       '<div class="fg"><label class="fl" for="dv-tipo">Tipo <span class="req">*</span></label><select class="fc" id="dv-tipo"' + (con ? ' disabled' : '') + '><option value="">— Tipo —</option>' +
-        C.ini.tipos.map(function (t) { return '<option value="' + esc(t.id) + '"' + (v && v.tipo === t.id ? ' selected' : '') + '>' + esc(t.nombre) + '</option>'; }).join('') + '</select>' +
+        C.ini.tipos.map(function (t) { return '<option value="' + esc(t.id) + '"' + ((v || pre) && (v || pre).tipo === t.id ? ' selected' : '') + '>' + esc(t.nombre) + '</option>'; }).join('') + '</select>' +
         (con ? '<div class="u-s11-mt">El tipo no se cambia una vez respondidas sus preguntas.</div>' : '') + '</div>' +
-      '<div class="fg"><label class="fl" for="dv-tit">Título</label><input class="fc" id="dv-tit" value="' + esc(v ? v.titulo : CN.nombre) + '"></div>' +
-      '<div class="fg"><label class="fl" for="dv-obj">Alcance</label><textarea class="fc" id="dv-obj" rows="3">' + esc(v && v.objetivo ? v.objetivo : (CN.minuta.texto || '')) + '</textarea>' +
+      '<div class="fg"><label class="fl" for="dv-tit">Título</label><input class="fc" id="dv-tit" value="' + esc(v ? v.titulo : pre ? pre.titulo : CN.nombre) + '"></div>' +
+      '<div class="fg"><label class="fl" for="dv-obj">Alcance</label><textarea class="fc" id="dv-obj" rows="3">' + esc(v && v.objetivo ? v.objetivo : pre ? pre.alcance : (CN.minuta.texto || '')) + '</textarea>' +
         (v ? '<button type="button" class="ui-lnk ui-azul" data-dv="completar">Completar con lo tildado</button>' : '') + '</div>' +
       '<label class="u-row6 u-mb10" id="dv-mej-w"' + (v && v.tipo === 'IA' ? ' hidden' : '') + '><input type="checkbox" id="dv-mej"' + (v && v.mejora ? ' checked' : '') + '> Es una mejora de algo ya hecho: lo repetible se cobra al <span class="ui-num">50 %</span></label>' +
       '<div class="fg" id="dv-esc-w"' + (v && v.tipo === 'IA' ? '' : ' hidden') + '><label class="fl" for="dv-esc">Tipo de agente</label><select class="fc" id="dv-esc">' +
         Object.keys(ESCALA).map(function (k) { var a = v ? (v.escala || (v.mejora ? 'evolucion' : 'completo')) : 'completo';
           return '<option value="' + k + '"' + (a === k ? ' selected' : '') + '>' + ESCALA[k] + '</option>'; }).join('') + '</select>' +
         '<div class="u-s11-mt">Evolución: lo repetible se cobra al <span class="ui-num">50 %</span>.</div></div>' +
-      (con ? '' : '<div class="fg"><label class="fl" for="dv-base">Partir de un proyecto existente</label><select class="fc" id="dv-base"><option value="">Elegí un proyecto…</option>' +
+      (con || pre ? '' : '<div class="fg"><label class="fl" for="dv-base">Partir de un proyecto existente</label><select class="fc" id="dv-base"><option value="">Elegí un proyecto…</option>' +
         '</select><div id="dv-base-l" class="u-mt6"></div></div>'),
       (v && CN.devs.filter(function (d) { return d.tipo; }).length > 1 ? '<button class="btn bg" data-dv="quitar">Quitar este desarrollo</button>' : '') +
       '<button class="btn bg" data-cerrar="m-dev">Cancelar</button><button class="btn bp" data-dv="ok">Listo</button>');
-    if (!con) db().from('proyectos').select('id,nombre,empresa_id').neq('estado_id', 'Borrador').order('creado', { ascending: false }).limit(200).then(function (r) {
+    if (!con && !pre) db().from('proyectos').select('id,nombre,empresa_id').neq('estado_id', 'Borrador').order('creado', { ascending: false }).limit(200).then(function (r) {
       var emp = {}; C.ini.empresas.forEach(function (e) { emp[e.id] = e.nombre; });
       var s = document.getElementById('dv-base'); if (s && r.data) s.innerHTML = '<option value="">Elegí un proyecto…</option>' + r.data.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc((emp[p.empresa_id] || '') + ' · ' + p.nombre) + '</option>'; }).join('');
     });
@@ -668,12 +674,13 @@
       var cambioTipo = nv.tipo !== tipo || !!reuse;
       nv.tipo = tipo; nv.titulo = document.getElementById('dv-tit').value.trim(); nv.objetivo = document.getElementById('dv-obj').value.trim(); nv.escala = tipo === 'IA' ? document.getElementById('dv-esc').value : '';
       nv.mejora = tipo === 'IA' ? nv.escala === 'evolucion' : document.getElementById('dv-mej').checked;
+      if (src && tipo === src.tipo) futIds.forEach(function (id) { nv.r[id] = 'Sí'; if (src.cant[id] != null) nv.cant[id] = src.cant[id]; delete src.r[id]; delete src.etapa[id]; });
       if (reuse && !Object.keys(nv.r).length) { reuse.ids.forEach(function (x) { nv.r[x] = 'Sí'; }); nv.cant = Object.assign({}, reuse.cant || {}); nv.base = { de: reuse.id }; }
       CN.i = CN.devs.indexOf(nv); closeM('m-dev');
       catalogo(tipo).then(function () {
         if (cambioTipo || !v) mods(nv).forEach(function (x) { if (x.sugerido && esBase(x) && !nv.r[x.id]) nv.r[x.id] = 'Sí'; });   // sólo la base arranca puesta; lo sugerido no suma hasta tildarlo
         conMadres(nv);
-        repintar(); estimar(CN.i); auto();
+        repintar(); estimar(CN.i); if (src) estimar(de); auto();
       }).catch(function (e) { toast(e.message, 'err'); });
     };
   }
@@ -985,6 +992,7 @@
       if (a === 'sp-quitar') { CN.sponsors.splice(Number(b.getAttribute('data-i')), 1); auto(); return repintar(); }
       if (a === 'ow-quitar') { CN.owners.splice(Number(b.getAttribute('data-i')), 1); auto(); return repintar(); }
       if (a === 'dev-nuevo') return devPop(-1);
+      if (a === 'fut-dev') return devPop(-1, Number(b.getAttribute('data-i')));
       if (a === 'dev-editar') { ev.stopPropagation(); return devPop(Number(b.getAttribute('data-i'))); }
       if (a === 'dev-ir') { if (ev.target.closest('input,label,button:not([data-cot="dev-ir"])')) return; CN.i = Number(b.getAttribute('data-i')); return repintar(); }
       if (a === 'fun') return funAbrir();

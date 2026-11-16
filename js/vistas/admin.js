@@ -424,20 +424,47 @@
           : ib('fa-com', 'chat', 'Ya cobrado: sólo se le puede comentar')) +
       '</td></tr>';
   }
-  // Reclamo de una factura sin pagar: borrador en Gmail, con el PDF y la antigüedad
+  // Reclamo de una factura sin pagar (16/11/2026): vista previa en la app con la plantilla de GIWA,
+  // se corrige escribiendo sobre el mail y sale recién con «Aprobar y enviar». Lleva el link a la factura, no el PDF.
   async function reclamarFact(c) {
     var rz = await db().from('razones_sociales').select('nombre,mail_facturacion').eq('empresa_id', c.empresa_id).order('por_defecto', { ascending: false });
     if (rz.error) return toast(rz.error.message, 'err');
     var u = rz.data.find(function (x) { return x.nombre === c.razon; }) || rz.data[0], para = u && String(u.mail_facturacion || '').trim();
     if (!para) return toast('Falta el Mail de facturación en la razón social de ' + c.empresa, 'err');
-    if (!(await ask('¿Preparo el reclamo de la factura ' + c.nro_factura + ' para ' + para + '?\n\nQueda como BORRADOR en tu Gmail: lo revisás y lo enviás desde ahí.', 'Reclamar por mail', { ok: 'Preparar' }))) return;
-    var dias = Math.floor((Date.now() - new Date(c.fecha_comp).getTime()) / 864e5);
-    toast('Preparando el borrador…', 'inf');
-    try {
-      var r = await puente('mailFactura', { para: para, cliente: c.empresa, numero: c.nro_factura, fecha_emision: ff(c.fecha_comp), concepto: c.concepto, monto: fmt(c.monto), pdf_id: c.link_fc,
-        nota: 'Esta factura fue emitida hace ' + dias + ' días y todavía no figura acreditada. Si ya la abonaron, por favor desestimen este aviso.' });
-      toast('Borrador creado en tu Gmail' + (r.aviso ? ' · ' + r.aviso : ''), 'ok'); if (r.url) window.open(r.url, '_blank', 'noopener');
-    } catch (e) { toast(e.message, 'err'); }
+    var dias = Math.floor((Date.now() - new Date(c.fecha_comp).getTime()) / 864e5), n = function (x) { return '<span style="font-family:Courier New,monospace">' + esc(x) + '</span>'; };
+    var html = '<div style="font-family:Montserrat,Arial,sans-serif;font-size:14px;color:#1a1a2e;max-width:640px;margin:0 auto">' +
+      '<div style="background:#060716;padding:16px 22px;border-radius:10px 10px 0 0;color:#fff;font-size:20px;font-weight:600;letter-spacing:.02em">GIWA <span style="color:#A855F7;font-family:Courier New,monospace">{IA}</span></div>' +
+      '<div style="border:1px solid #e5e7eb;border-top:0;border-radius:0 0 10px 10px;padding:20px 22px">' +
+      '<h2 style="margin:0 0 14px;font-size:19px;color:#060716">Factura pendiente de pago</h2>' +
+      '<p>Hola, equipo de ' + esc(c.empresa) + '. Les escribimos por la factura ' + n(c.nro_factura) + ', emitida el ' + n(ff(c.fecha_comp)) + '.</p>' +
+      '<p>Concepto: ' + esc(c.concepto || '—') + '<br>Importe: ' + n(fmt(c.monto)) + '</p>' +
+      '<p>Fue emitida hace ' + n(dias) + ' días y todavía no figura acreditada. Si ya la abonaron, por favor desestimen este aviso.</p>' +
+      (c.link_fc ? '<p style="margin-top:18px"><a href="' + esc(c.link_fc) + '" style="display:inline-block;background:#0090FF;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Ver la factura</a></p>' : '') +
+      '<p>Muchas gracias.</p>' +
+      '<p style="font-size:11.5px;color:#888;margin:22px 0 0;border-top:1px solid #eee;padding-top:10px">GIWA {IA}</p></div></div>';
+    var m = document.getElementById('m-recl');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-recl';
+      m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Reclamar por mail</span>' +
+        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-recl">' + ico('cerrar') + '</button></div><div class="mb2">' +
+        '<div class="ui-nota-t" id="rc-para"></div>' +
+        '<div class="fg"><label class="fl" for="rc-as">Asunto</label><input class="fc" id="rc-as"></div>' +
+        '<div class="ui-nota-t">Corregí lo que haga falta escribiendo sobre el mail.</div>' +
+        '<iframe class="sop-rev-mail" id="rc-fr" title="Vista previa del mail"></iframe></div>' +
+        '<div class="mf"><button class="btn bg" data-cerrar="m-recl">Cancelar</button><button class="btn bp" id="rc-ok">Aprobar y enviar</button></div></div>';
+      document.body.appendChild(m);
+    }
+    document.getElementById('rc-para').textContent = 'Para: ' + para;
+    document.getElementById('rc-as').value = 'Factura ' + c.nro_factura + ' pendiente de pago · GIWA';
+    var f = document.getElementById('rc-fr');
+    f.onload = function () { try { f.contentDocument.designMode = 'on'; f.style.height = (f.contentDocument.body.scrollHeight + 40) + 'px'; } catch (e) {} };
+    f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>body{margin:16px;background:#fff}</style></head><body>' + html + '</body></html>';
+    document.getElementById('rc-ok').onclick = async function () {
+      var r = await db().rpc('reclamo_fc_enviar', { cid: c.id, para: para, asunto: document.getElementById('rc-as').value, html: f.contentDocument ? f.contentDocument.body.innerHTML : '' });
+      if (r.error) return toast(r.error.message, 'err');
+      closeM('m-recl'); toast('Aprobado: sale en el próximo minuto', 'ok');
+    };
+    openM('m-recl');
   }
   // Adjuntar: el PDF va a la carpeta de Drive de quien facturó y el link queda en el cobro
   function adjuntarFact(el, c) {
