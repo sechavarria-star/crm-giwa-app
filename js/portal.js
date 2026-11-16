@@ -10,9 +10,9 @@
    «Ver como» (06/11/2026): alguien del equipo abre ?como=EMP-007 y ve el portal
    de esa empresa, sólo para mirar (la base no le deja escribir).
 
-   Pestañas: Mis pedidos (con «Nuevo pedido») y Reportes.
+   Pestañas: Mis tickets (con «Nuevo ticket») y Reportes.
    ══════════════════════════════════════════════════════════════════════ */
-var P = { ini: null, tk: [], rep: [], tab: 'pedidos', filtro: 'abiertos', t: null,
+var P = { ini: null, tk: [], rep: [], tab: 'pedidos', filtro: 'abiertos', des: '', t: null,
           como: new URLSearchParams(location.search).get('como') || '' };
 function $(id) { return document.getElementById(id); }
 function pv(id) { return String(($(id) || {}).value || '').trim(); }
@@ -27,7 +27,7 @@ function pOpts(lista, val, vacio) {
 }
 async function prpc(fn, args) { var r = await db().rpc(fn, args || {}); if (r.error) throw new Error(r.error.message); return r.data; }
 var P_EST = { 'Nuevo': 'ui-p-pendiente', 'En proceso': 'ui-e-curso', 'Esperando cliente': 'ui-e-detenido', 'Cerrado': 'ui-e-finalizado' };
-var P_EST_TXT = { 'Nuevo': 'Recibido', 'En proceso': 'En proceso', 'Esperando cliente': 'Esperando tu respuesta', 'Cerrado': 'Resuelto' };
+var P_EST_TXT = { 'Nuevo': 'Nuevo', 'En proceso': 'En proceso', 'Esperando cliente': 'Esperando respuesta', 'Cerrado': 'Cerrado' };
 function pEst(e) { return '<span class="ui-st ' + (P_EST[e] || 'ui-p-neutro') + '">' + esc(P_EST_TXT[e] || e) + '</span>'; }
 
 // ── entrar ─────────────────────────────────────────────────────
@@ -112,24 +112,41 @@ async function cargar() {
 
 // ── pintar ─────────────────────────────────────────────────────
 function pintar() {
-  var tabs = '<div class="filtros u-mb12" role="group" aria-label="Secciones">' + [['pedidos', 'Mis pedidos'], ['reportes', 'Reportes']].map(function (t) {
+  var tabs = '<div class="filtros u-mb12" role="group" aria-label="Secciones">' + [['pedidos', 'Mis tickets'], ['reportes', 'Reportes']].map(function (t) {
     return '<button class="ptab' + (P.tab === t[0] ? ' on' : '') + '" data-ptab="' + t[0] + '">' + t[1] + (t[0] === 'reportes' && P.rep.length ? ' <span class="m u-c-mt">' + P.rep.length + '</span>' : '') + '</button>'; }).join('') + '</div>';
-  $('vista').innerHTML = uiHd(P.tab === 'reportes' ? 'Reportes' : 'Mis pedidos',
-      P.tab === 'reportes' ? 'Lo que hicimos en tu mantenimiento, mes a mes.' : 'Tus pedidos de soporte y en qué está cada uno.',
-      P.tab === 'pedidos' && !P.como ? uiBtn('Nuevo pedido', 'mas', 'p', 'data-pnuevo="1"') : '') +
+  $('vista').innerHTML = uiHd(P.tab === 'reportes' ? 'Reportes' : 'Mis tickets',
+      P.tab === 'reportes' ? 'Lo que hicimos en tu mantenimiento, mes a mes.' : 'Sus tickets de soporte y el estado de cada uno.',
+      P.tab === 'pedidos' && !P.como ? uiBtn('Nuevo ticket', 'mas', 'p', 'data-pnuevo="1"') : '') +
     tabs + (P.tab === 'reportes' ? htmlReportes() : htmlPedidos());
 }
+// Mis tickets (pantalla 1 aprobada el 06/11/2026): filtros por estado y desarrollo, clasificación y tiempo de respuesta
+var P_FIL = [['abiertos', 'Abiertos'], ['Nuevo', 'Nuevo'], ['En proceso', 'En proceso'], ['Esperando cliente', 'Esperando respuesta'], ['Cerrado', 'Cerrado'], ['todos', 'Todos']];
+function pResp(t) {   // tiempo hasta la primera respuesta de GIWA
+  if (!t.primera_resp) return '<span class="u-c-mt">Sin respuesta</span>';
+  var m = Math.max(0, Math.round((new Date(t.primera_resp) - new Date(t.creado)) / 60000));
+  return '<span class="m">' + (m < 60 ? m + ' min' : m < 2880 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d') + '</span>';
+}
 function htmlPedidos() {
-  var ab = P.tk.filter(function (t) { return !t.cerrado; });
-  var L = P.filtro === 'abiertos' ? ab : P.tk.filter(function (t) { return t.cerrado; });
-  var fil = '<div class="u-row8 u-mb8">' + [['abiertos', 'En curso (' + ab.length + ')'], ['cerrados', 'Resueltos (' + (P.tk.length - ab.length) + ')']].map(function (f) {
-    return '<button class="btn ' + (P.filtro === f[0] ? 'bp' : 'bg') + ' sm" data-pfil="' + f[0] + '">' + esc(f[1]) + '</button>'; }).join('') + '</div>';
-  if (!L.length) return fil + '<div class="empty">' + (P.filtro === 'abiertos' ? 'No tenés pedidos en curso.' : 'Todavía no hay pedidos resueltos.') + '</div>';
-  return fil + '<div class="por-lista">' + L.map(function (t) {
-    return '<button type="button" class="por-tk" data-pver="' + esc(t.id) + '"><div class="por-tk-h"><span class="m u-c-mt">' + esc(t.id) + '</span>' + pEst(t.estado) + '</div>' +
-      '<div class="u-fw6">' + esc(t.titulo) + '</div><div class="u-s11-mt">' + esc([t.desarrollo, t.tipo, 'actualizado ' + ff(t.actualizado)].filter(Boolean).join(' · ')) +
-      (pN(t.comentarios) ? ' · ' + uiIco('chat') + ' ' + t.comentarios : '') + (t.se_factura ? ' · <span class="ui-p-pendiente">se factura aparte</span>' : '') + '</div></button>';
-  }).join('') + '</div>';
+  var ab = P.tk.filter(function (t) { return !t.cerrado; }), mes = _hoyLocal().slice(0, 7);
+  var kpis = '<div class="ui-kpis">' +
+    uiKpi('Abiertos', String(ab.length), 'principal') +
+    uiKpi('Esperando respuesta', String(ab.filter(function (t) { return t.estado === 'Esperando cliente'; }).length), 'e-detenido', '', '', 'Necesitamos un dato suyo para seguir') +
+    uiKpi('Cerrados este mes', String(P.tk.filter(function (t) { return t.cerrado && String(t.resuelto || '').slice(0, 7) === mes; }).length), 'p-cobrado') + '</div>';
+  var des = [];
+  P.tk.forEach(function (t) { if (t.desarrollo_id && !des.some(function (d) { return d[0] === t.desarrollo_id; })) des.push([t.desarrollo_id, t.desarrollo || t.desarrollo_id]); });
+  var fil = '<div class="filtros u-mb8" role="group" aria-label="Estado">' + P_FIL.map(function (f) {
+      return '<button class="ptab' + (P.filtro === f[0] ? ' on' : '') + '" data-pfil="' + esc(f[0]) + '">' + esc(f[1]) + '</button>'; }).join('') + '</div>' +
+    (des.length > 1 ? '<div class="u-row8 u-mb8"><select class="fc u-wauto" id="p-des" aria-label="Desarrollo">' + pOpts(des, P.des, 'Todos los desarrollos') + '</select></div>' : '');
+  var L = P.tk.filter(function (t) {
+    return (P.filtro === 'todos' || (P.filtro === 'abiertos' ? !t.cerrado : t.estado === P.filtro)) && (!P.des || t.desarrollo_id === P.des);
+  });
+  if (!L.length) return kpis + fil + '<div class="empty">No hay tickets con este filtro.</div>';
+  return kpis + fil + '<div class="card card-tabla u-p0 u-ovx"><table class="tbl"><thead><tr><th>Ticket</th><th>Desarrollo</th><th>Estado</th><th>Clasificación</th>' +
+    '<th class="u-tr">Tiempo de respuesta</th><th class="u-tr">Comentarios</th><th></th></tr></thead><tbody>' + L.map(function (t) {
+      return '<tr><td>' + esc(t.titulo) + '<div class="m u-s11-mt">' + esc(t.id) + '</div></td><td>' + esc(t.desarrollo || '—') + '</td><td>' + pEst(t.estado) + '</td>' +
+        '<td>' + esc(t.clasificacion || '—') + '</td><td class="u-tr">' + pResp(t) + '</td><td class="m u-tr">' + pN(t.comentarios) + '</td>' +
+        '<td class="u-tr">' + uiIb('abrir', 'Abrir el ticket', '', 'data-pver="' + esc(t.id) + '"') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
 }
 function htmlReportes() {
   if (!P.rep.length) return '<div class="empty">Todavía no hay reportes publicados.</div>';
@@ -194,7 +211,7 @@ async function abrirArchivo(ruta) {
 // ── nuevo pedido ───────────────────────────────────────────────
 function nuevoPedido(rel) {
   var I = P.ini, des = I.desarrollos || [];
-  modal('m-pn'); set('m-pn-tit', rel ? 'Volvió a pasar · ' + rel.id : 'Nuevo pedido');
+  modal('m-pn'); set('m-pn-tit', rel ? 'Volvió a pasar · ' + rel.id : 'Nuevo ticket');
   var tipos = (I.listas.tipo || []), ayuda = { 'Algo no funciona': 'Algo dejó de andar o da un error', 'Consulta': 'Una duda sobre cómo usar algo', 'Quiero algo nuevo': 'Una mejora o algo que hoy no hace: lo cotizamos' };
   // Compacto (06/11/2026): entra en una pantalla sin scroll, con el mismo tamaño de letra
   $('m-pn-c').innerHTML = '<div class="por-compacto">' +
@@ -262,4 +279,5 @@ document.addEventListener('click', async function (ev) {
     finally { b.disabled = false; }
   }
 });
+document.addEventListener('change', function (ev) { if (ev.target.id === 'p-des') { P.des = ev.target.value; pintar(); } });
 document.addEventListener('DOMContentLoaded', arrancarPortal);
