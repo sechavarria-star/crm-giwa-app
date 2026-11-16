@@ -164,10 +164,11 @@
       (alta ? uiBtn('Guardar borrador', 'guardar', 's', 'data-cot="guardar"') + uiBtn('Crear proyecto', 'check', 'p', 'data-cot="crear"') + uiIb('borrar', 'Descartar lo cargado', 'bor', 'data-cot="descartar"')
             : uiBtn('Guardar cambios', 'guardar', 's', 'data-cot="guardar"') + (CN.estado === 'Borrador' ? uiBtn('Crear proyecto', 'check', 'p', 'data-cot="crear"') : '') +
               uiIb('borrar', 'Borrar el proyecto', 'bor', 'data-cot="borrar" data-id="' + esc(CN.pid) + '"'));
-    var h = '<div class="ui-ficha-hd"><span>' + uiEstado(alta ? 'Prospecto' : CN.estado, { nombre: alta ? 'Nuevo' : CN.estado }) + '</span>' +
+    var hd = '<div class="ui-ficha-hd"><span>' + uiEstado(alta ? 'Prospecto' : CN.estado, { nombre: alta ? 'Nuevo' : CN.estado }) + '</span>' +
       (npend ? '<span class="ui-st ui-p-pendiente" data-tip="Preguntas por definir u opciones sin contestar">' + uiIco('arena') + npend + ' pendiente' + (npend === 1 ? '' : 's') + '</span>' : '') +
       '<span class="ui-acc-est ui-fila-ic">' + acc + '</span></div>' +
       (alta ? '<div class="ui-nota-t">Se guarda solo en este navegador hasta que toques Guardar borrador o Crear proyecto.</div>' : '');
+    var h = '';
     // Datos del cliente
     var cs = (C.ini.contactos || []).filter(function (c) { return c.empresa === CN.empresa; });
     var sp = CN.sponsors.map(function (id, i) { var c = cs.filter(function (x) { return x.id === id; })[0] || { nombre: id }, t = telWa(c.tel);
@@ -191,10 +192,11 @@
     // Desarrollos: cada uno se abre con un clic; el mantenimiento es un desarrollo aparte, con su lápiz
     var n = 0, lista = ds.length ? CN.devs.map(function (d, i) { if (!d.tipo) return ''; n++; var x = tarjetaDev(d, i, n); if (propio(d)) n++; return x; }).join('')
       : '<div class="ui-nota-t">Todavía no hay desarrollos. Tocá «Nuevo desarrollo».</div>';
-    h += uiDesp({ t: 'Desarrollos', n: n, open: true, v: '<span class="ui-num">' + fmt(tot) + '</span>' + (ab ? ' · <span class="ui-num ui-p-abono">' + fmt(ab) + '/mes</span>' : '') },
+    h += uiDesp({ t: 'Desarrollos', n: n, open: edOpen('devs', true), attrs: 'data-ed="devs"', v: '<span class="ui-num">' + fmt(tot) + '</span>' + (ab ? ' · <span class="ui-num ui-p-abono">' + fmt(ab) + '/mes</span>' : '') },
       lista + '<div class="ui-barra">' + uiBtn('Nuevo desarrollo', 'mas', 's', 'data-cot="dev-nuevo"') + '</div>');
-    // Tres columnas (mock aprobado): datos y desarrollos · análisis económico · Lo que suma (fijos al bajar)
-    return '<div class="cot-ed"><div class="cot-ed-c">' + h + '</div><div class="cot-c1 cot-ed-s">' + analisisHtml(dev()) + '</div><div class="cot-c3 cot-lat cot-ed-s">' + lateral(dev(), true) + '</div></div>';
+    // Tres columnas (16/11/2026): datos y desarrollos · Lo que suma · Análisis económico (fijos al bajar)
+    // el estado y las acciones van arriba, a todo el ancho (16/11/2026)
+    return '<div class="cot-ed-hd">' + hd + '</div><div class="cot-ed"><div class="cot-ed-c">' + h + '</div><div class="cot-c3 cot-lat cot-ed-s">' + lateral(dev(), true) + '</div><div class="cot-c1 cot-ed-s">' + analisisHtml(dev()) + '</div></div>';
   }
   // Un desarrollo: número, tipo y título, total y lápiz (datos del desarrollo); abierto, lo que incluye. Debajo, su mantenimiento.
   function tarjetaDev(d, i, n) {
@@ -226,24 +228,10 @@
   // Lo que incluye un desarrollo abierto: stack, costos asociados, FUNCIONALIDADES y Más información
   function incluye(v) {
     var h = '', st = stack(v);
-    if (st) h += '<div class="cot-fila"><span class="cot-fila-l">Stack necesario</span><span class="ui-f1">' + st + '<span class="cot-sub">Sale de las respuestas: dónde corre, canales, modelo de IA e integraciones.</span></span></div>';
-    if (!v.mant.on) h += '<div class="cot-fila"><span class="cot-fila-l">Mantenimiento</span><span class="ui-f1 ui-nota-t">Sin mantenimiento mensual.</span>' + uiBtn('Mantenimiento', 'mas', 's', 'data-cot="mant-on"') + '</div>';
-    // Costos asociados: lo que paga GIWA y lo que paga el cliente; un solo botón «+ Costos»
-    var tx = v.ext._terceros, its = items(tx), lin = function (y) { var c = contr(y.cid);
-      return '<div class="ui-kv cot-sel-i"><span>' + esc(c ? c.producto : (y.nombre || 'Costo externo')) + (c ? ' · <span class="cot-n">' + h1(y.cantidad) + '</span> ' + esc((c.unidad || '').toLowerCase()) : '') + '</span>' +
-        '<span class="ui-num">' + fmt(Math.round(y.cid ? itemMes(y) : Number(y.monto) || 0)) + (y.cid || y.rec !== 'Único' ? '/mes' : ' único') + '</span></div>'; };
-    var grp = function (P) { var L = its.filter(function (y) { return pagaDe(tx, y) === P; }); return L.length ? '<div class="cot-sel-n u-mt6">' + (P === 'GIWA' ? 'Paga GIWA' : 'Paga el cliente') + '</div>' + L.map(lin).join('') : ''; };
-    h += uiDesp({ th: '<span class="ui-lat-h">Costos asociados</span>', n: its.length || '', open: edOpen('costos', false), attrs: 'data-ed="costos"',
-        v: '<span class="ui-nota-t">GIWA <span class="ui-num">' + fmt(extMes(v, 'GIWA')) + '/mes</span> · Cliente <span class="ui-num">' + fmt(extMes(v, 'Cliente')) + '/mes</span></span>' + uiBtn('Costos', 'mas', 's', 'data-cot="ter"') },
-      its.length ? grp('GIWA') + grp('Cliente') : '<div class="ui-nota-t">Sin costos asociados. Tocá «+ Costos».</div>');
-    // FUNCIONALIDADES: lo seleccionado, por funcionalidad, con el lápiz que abre «Corregir»
-    var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m); }), npe = pend(v).length;
-    h += uiDesp({ th: '<span class="ui-lat-h">Funcionalidades</span> <span class="ui-nota-t cot-nt">· <span class="ui-num">' + fs.length + '</span> tildadas · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h' +
-        (npe ? ' · <span class="ui-p-pendiente"><span class="ui-num">' + npe + '</span> por definir</span>' : '') + '</span>', open: edOpen('fun', true), attrs: 'data-ed="fun"',
-        v: uiBtn('Abrir cuestionario', 'lista', 's', 'data-cot="fun"') }, '<div class="cot-c2">' + seleccion(v, true) + '</div>');
-    // Más información: forma de pago, inicio, duración, garantía, descripción y los valores de hora usados
+    // Cuatro bloques plegables (16/11/2026): Información del desarrollo · Stack asociado · Costos · Funcionalidades
+    // Información del desarrollo: forma de pago, inicio, duración, garantía, descripción y los valores de hora usados
     var fg = function (id, l, ctl) { return '<div class="fg"><label class="fl" for="' + id + '">' + l + '</label>' + ctl + '</div>'; };
-    h += uiDesp({ th: '<span class="ui-lat-h">Más información</span>', open: edOpen('mas', false), attrs: 'data-ed="mas"' },
+    var info = uiDesp({ th: '<span class="ui-lat-h">Información del desarrollo</span>', open: edOpen('mas', false), attrs: 'data-ed="mas"', v: uiBtn('Editar', 'editar', 's', 'data-cot="dev-editar" data-i="' + CN.i + '"') },
       '<div class="g2">' +
         fg('dv-fp', 'Forma de pago', '<select class="fc" id="dv-fp" data-cot-v="forma_pago"><option value="">—</option>' + (C.ini.modelos || []).map(function (o) { return '<option value="' + esc(o.id) + '"' + (v.forma_pago === o.id ? ' selected' : '') + '>' + esc(o.nombre) + '</option>'; }).join('') + '</select>') +
         fg('dv-ini', 'Fecha de inicio', '<input class="fc" type="date" id="dv-ini" data-cot-v="inicio" value="' + esc(v.inicio || '') + '">') +
@@ -251,6 +239,22 @@
         fg('dv-gar', 'Días de garantía', '<input class="fc u-tr ui-num" type="number" min="0" id="dv-gar" data-cot-v="garantia" value="' + esc(v.garantia || '') + '">') + '</div>' +
       fg('dv-desc', 'Descripción', '<textarea class="fc" rows="2" id="dv-desc" data-cot-v="objetivo">' + esc(v.objetivo || '') + '</textarea>') +
       '<div class="ui-nota-t">Valor hora <span class="ui-num">' + fmt(Math.round(vh(v))) + '</span> · ' + esc((v.est && v.est.tier) || 'sin Tier') + ' · hora de soporte <span class="ui-num">' + fmt(Math.round(soporte())) + '</span> · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h estimadas</div>');
+    h += info + uiDesp({ th: '<span class="ui-lat-h">Stack asociado</span>', open: edOpen('stack', false), attrs: 'data-ed="stack"', v: uiBtn('Editar stack', 'editar', 's', 'data-cot="fun"') },
+      st ? '<div class="cot-bul">' + st + '</div><div class="cot-sub">Sale de las respuestas del cuestionario: dónde corre, canales, modelo de IA e integraciones.</div>' : '<div class="ui-nota-t">Se arma con las respuestas del cuestionario.</div>');
+    if (!v.mant.on) h += '<div class="cot-fila"><span class="cot-fila-l">Mantenimiento</span><span class="ui-f1 ui-nota-t">Sin mantenimiento mensual.</span>' + uiBtn('Mantenimiento', 'mas', 's', 'data-cot="mant-on"') + '</div>';
+    // Costos asociados: lo que paga GIWA y lo que paga el cliente; un solo botón «+ Costos»
+    var tx = v.ext._terceros, its = items(tx), lin = function (y) { var c = contr(y.cid);
+      return '<div class="ui-kv cot-sel-i cot-bul"><span>' + esc(c ? c.producto : (y.nombre || 'Costo externo')) + (c ? ' · <span class="cot-n">' + h1(y.cantidad) + '</span> ' + esc((c.unidad || '').toLowerCase()) : '') + '</span>' +
+        '<span class="ui-num">' + fmt(Math.round(y.cid ? itemMes(y) : Number(y.monto) || 0)) + (y.cid || y.rec !== 'Único' ? '/mes' : ' único') + '</span></div>'; };
+    var grp = function (P) { var L = its.filter(function (y) { return pagaDe(tx, y) === P; }); return L.length ? '<div class="cot-sel-n u-mt6">' + (P === 'GIWA' ? 'Paga GIWA' : 'Paga el cliente') + '</div>' + L.map(lin).join('') : ''; };
+    h += uiDesp({ th: '<span class="ui-lat-h">Costos</span>', n: its.length || '', open: edOpen('costos', false), attrs: 'data-ed="costos"',
+        v: '<span class="ui-nota-t">GIWA <span class="ui-num">' + fmt(extMes(v, 'GIWA')) + '/mes</span> · Cliente <span class="ui-num">' + fmt(extMes(v, 'Cliente')) + '/mes</span></span>' + uiBtn('Editar costos', 'editar', 's', 'data-cot="ter"') },
+      its.length ? grp('GIWA') + grp('Cliente') : '<div class="ui-nota-t">Sin costos asociados. Tocá «Editar costos».</div>');
+    // FUNCIONALIDADES: lo seleccionado, por funcionalidad, con el lápiz que abre «Corregir»
+    var fs = Object.keys(sel(v)).filter(function (id) { var m = mod(v, id); return m && m.horas > 0 && !esBase(m); }), npe = pend(v).length;
+    h += uiDesp({ th: '<span class="ui-lat-h">Funcionalidades</span> <span class="ui-nota-t cot-nt">· <span class="ui-num">' + fs.length + '</span> tildadas · <span class="ui-num">' + h1(v.est ? v.est.horas : 0) + '</span> h' +
+        (npe ? ' · <span class="ui-p-pendiente"><span class="ui-num">' + npe + '</span> por definir</span>' : '') + '</span>', open: edOpen('fun', true), attrs: 'data-ed="fun"',
+        v: uiBtn('Abrir cuestionario', 'lista', 's', 'data-cot="fun"') }, '<div class="cot-c2">' + seleccion(v, true) + '</div>');
     return h;
   }
   // Análisis económico (cot_analisis): referencia de mercado, alertas y qué conviene sumar o sacar. Son sugerencias: no cambian nada.
@@ -273,7 +277,7 @@
     if (!al.length && !np) h += '<div class="ui-nota-t">Sin alertas.</div>';
     al.forEach(function (x) { h += row(dot(x.nivel === 'error' ? 'ui-p-error' : 'ui-p-pendiente') + esc(x.texto) + (x.sop ? ' (<span class="cot-n">' + fmt(x.sop) + '</span> contra <span class="cot-n">' + fmt(x.costo_h) + '</span>)' : ''),
       x.monto ? '<span class="ui-num">' + fmt(x.monto) + (x.mensual ? '/mes' : '') + '</span>' : null, x.nivel === 'error' ? 'ui-p-error' : 'ui-p-pendiente'); });
-    if (np) h += row(dot('ui-p-pendiente') + 'Quedan <span class="cot-n">' + np + '</span> pregunta' + (np === 1 ? '' : 's') + ' por definir', null);
+    if (np) h += row(dot('ui-p-pendiente') + (np === 1 ? 'Queda' : 'Quedan') + ' <span class="cot-n">' + np + '</span> pregunta' + (np === 1 ? '' : 's') + ' por definir', null);
     // Qué conviene sumar o sacar
     var su = (a.sugerencias || []).map(function (x) { return row('<span class="ui-e-finalizado">Sumar</span> · ' + esc(x.texto) + ' (<span class="cot-n">' + fmt(x.a) + '</span>' + (x.mensual ? ' por mes' : '') + ')', '<span class="ui-num">+' + fmt(x.monto) + (x.mensual ? '/mes' : '') + '</span>', 'ui-e-finalizado'); });
     var V = C.ini.valores || {};
@@ -739,13 +743,15 @@
   function htmlReunion() {
     if (!RE) RE = reNuevo();
     setTimeout(function () { reTipo(false); }, 0);
-    return '<div id="re"><div class="ui-filtros"><select class="ui-campo" id="re-emp" aria-label="Cliente"><option value="">Cliente…</option>' +
+    // 16/11/2026: arriba el encabezado con moneda, pago único y abono (como Nuevo proyecto); tres columnas: texto · lo tildado · lo que suma
+    return '<div id="re"><div class="cot-re-tot" id="re-tot"></div><div class="ui-filtros"><select class="ui-campo" id="re-emp" aria-label="Cliente"><option value="">Cliente…</option>' +
         C.ini.empresas.map(function (e) { return '<option value="' + esc(e.id) + '"' + (e.id === RE.empresa ? ' selected' : '') + '>' + esc(e.nombre) + '</option>'; }).join('') + '</select>' +
       '<select class="ui-campo" id="re-tipo" aria-label="Tipo de desarrollo">' + C.ini.tipos.map(function (t) { return '<option value="' + esc(t.id) + '"' + (t.id === RE.tipo ? ' selected' : '') + '>' + esc(t.nombre) + '</option>'; }).join('') + '</select>' +
       '<input class="ui-campo ui-f1" id="re-tit" placeholder="Nombre del desarrollo" aria-label="Nombre del desarrollo" value="' + esc(RE.titulo) + '"></div>' +
-      '<div class="cot-re"><div><textarea class="fc cot-re-txt" id="re-min" placeholder="Lo que cuenta el cliente, o pegá acá un README…" aria-label="Minuta o README">' + esc(RE.minuta) + '</textarea>' +
-        '<div class="ui-barra">' + uiBtn('Tildar desde el texto', 'check', 'p', 'data-re="leer"') + '</div><div id="re-msg" class="u-s11-mt"></div></div>' +
-      '<div id="re-lista"></div></div><div class="cot-re-tot" id="re-tot"></div></div>';
+      '<div class="cot-re"><div><textarea class="fc cot-re-txt" id="re-min" placeholder="Lo que cuenta el cliente, o pegá acá un .md o las instrucciones…" aria-label="Minuta, .md o instrucciones">' + esc(RE.minuta) + '</textarea>' +
+        '<div class="ui-barra"><label class="ui-btn ui-s">' + uiIco('documento') + 'Subir .md<input type="file" class="ui-arch-inp" id="re-md" accept=".md,.txt,text/markdown,text/plain" hidden></label>' +
+        uiBtn('Tildar desde el texto', 'check', 'p', 'data-re="leer"') + '</div><div id="re-msg" class="u-s11-mt"></div></div>' +
+      '<div id="re-lista"></div><div class="cot-c3 cot-lat" id="re-suma"></div></div></div>';
   }
   async function reTipo(limpio) {
     try { await catalogo(RE.tipo); } catch (e) { return toast(e.message, 'err'); }
@@ -762,23 +768,33 @@
       orden.map(function (b) { var L = [].concat.apply([], por[b].map(tild)); if (!L.length) return '';
         return '<div class="ui-lat-h u-mt10">' + esc(b) + '</div>' + L.map(function (m) { return '<div class="u-s11' + (RE.ia[m.id] ? ' ui-p-abono' : '') + '">' + esc(nom(m)) + '</div>'; }).join(''); }).join('') +
       '<div class="ui-barra u-mt10">' + uiBtn('Abrir el cuestionario', 'lista', 'p', 'data-re="cuest"') + '</div>';
+    reSuma();
     set('re-msg', RE.msg + (RE.propuesta ? '<div class="fg u-mt10"><label class="fl" for="re-prop">Propuesta para el cliente</label><textarea class="fc" rows="4" id="re-prop">' + esc(RE.propuesta) + '</textarea></div>' : ''));
     reTotal();
   }
-  function reAbono() { return RE.abono != null ? RE.abono : Math.round(mantHs(RE) * soporte()); }
+  function reAbono() { return RE.mrr === false ? 0 : RE.abono != null ? RE.abono : Math.round(mantHs(RE) * soporte()); }
+  // Lo que suma: cada funcionalidad tildada con sus horas y su monto, y el total (16/11/2026)
+  function reSuma() {
+    var b = document.getElementById('re-suma'); if (!b) return;
+    var H = hEst(RE), v = vh(RE), L = mods(RE).filter(function (m) { return H[m.id] > 0; });
+    b.innerHTML = '<div class="ui-lat-h cot-t-ok">Lo que suma</div>' + (!RE.est ? '<div class="ui-nota-t">Calculando…</div>' : !L.length ? '<div class="ui-nota-t">Tildá funcionalidades para ver lo que suma cada una.</div>' :
+      L.map(function (m) { return '<div class="ui-kv cot-sel-i cot-bul"><span>' + esc(nom(m)) + ' · <span class="cot-n">' + h1(H[m.id]) + '</span> h</span><span class="ui-num">' + fmt(Math.round(H[m.id] * v)) + '</span></div>'; }).join('') +
+      '<div class="ui-kv u-mt10"><span>Pago único · <span class="cot-n">' + h1(RE.est.horas) + '</span> h</span><span class="ui-num">' + fmt(sugerido(RE)) + '</span></div>');
+  }
   function reTotal() {
     // Montos en la moneda elegida (ARS o USD al tipo de cambio del día); el abono se guarda siempre en pesos
     var e = RE.est, h = e ? Math.round(e.horas * 10) / 10 : 0, mon = RE.mon === 'USD' && tc() ? 'USD' : 'ARS';
     var cv = function (n) { return mon === 'USD' ? Math.round(n / tc() * 100) / 100 : Math.round(n); };
     set('re-tot', '<select id="re-mon" aria-label="Moneda"><option' + (mon === 'ARS' ? ' selected' : '') + '>ARS</option><option' + (mon === 'USD' ? ' selected' : '') + '>USD</option></select>' +
       '<span>Pago único <span class="ui-num">' + (e ? fmt(cv(sugerido(RE)), mon) : '…') + '</span> · <span class="ui-num">' + h + '</span> h' + (RE.empresa ? '' : ' <span class="ui-nota-t">(sin Tier: elegí el cliente)</span>') + '</span>' +
-      '<label class="u-row6">Por mes <input class="fc u-wauto u-tr ui-num" type="number" min="0" id="re-ab"' + (mon === 'USD' ? ' step="0.01"' : ' data-monto') + ' value="' + cv(reAbono()) + '" data-tip="Sugerido: ' + mantHs(RE) + ' h de soporte. El monto es tuyo: cambialo si querés."></label>' +
+      '<label class="u-row6"><input type="checkbox" id="re-mrr"' + (RE.mrr === false ? '' : ' checked') + '> Incluye abono (MRR)</label>' +
+      (RE.mrr === false ? '' : '<label class="u-row6">Por mes <input class="fc u-wauto u-tr ui-num" type="number" min="0" id="re-ab"' + (mon === 'USD' ? ' step="0.01"' : ' data-monto') + ' value="' + cv(reAbono()) + '" data-tip="Sugerido: ' + mantHs(RE) + ' h de soporte. El monto es tuyo: cambialo si querés."></label>') +
       '<span class="ui-f1"></span>' + uiBtn('Pasar a Nuevo proyecto', 'derecha', 's', 'data-re="nuevo"') + uiBtn('Guardar borrador', 'guardar', 'p', 'data-re="guardar"'));
   }
   function reEstimar() {
     clearTimeout(_t.re);
     _t.re = setTimeout(async function () {
-      try { var r = await rpc('estimar_desarrollo', { tipo: RE.tipo, empresa_id: RE.empresa || '', opts: { sel: sel(RE), cant: RE.cant } }); RE.est = r.ok ? r : null; reTotal(); } catch (e) { toast(e.message, 'err'); }
+      try { var r = await rpc('estimar_desarrollo', { tipo: RE.tipo, empresa_id: RE.empresa || '', opts: { sel: sel(RE), cant: RE.cant } }); RE.est = r.ok ? r : null; reTotal(); reSuma(); } catch (e) { toast(e.message, 'err'); }
     }, 250);
   }
   function reChange(t) {
@@ -787,6 +803,9 @@
     if (t.id === 're-tit') { RE.titulo = t.value.trim(); return; }
     if (t.id === 're-min') { RE.minuta = t.value; return; }
     if (t.id === 're-mon') { RE.mon = t.value; return reTotal(); }
+    if (t.id === 're-mrr') { RE.mrr = t.checked; return reTotal(); }
+    if (t.id === 're-md') { var f = t.files && t.files[0]; if (!f) return;
+      return f.text().then(function (x) { RE.minuta = x; var ta = document.getElementById('re-min'); if (ta) ta.value = x; t.value = ''; }); }
     if (t.id === 're-ab') { var n = Number(String(t.value).replace(',', '.')) || 0; RE.abono = t.value === '' ? null : Math.round(RE.mon === 'USD' && tc() ? n * tc() : n); return; }
     if (t.id === 're-prop') { RE.propuesta = t.value; return; }
     if (t.hasAttribute('data-re-cant')) { RE.cant[t.getAttribute('data-re-cant')] = Math.max(1, Number(t.value) || 1); return reEstimar(); }
@@ -801,7 +820,7 @@
     x.empresa = RE.empresa; x.nombre = RE.titulo || tipoNom(RE.tipo); x.minuta = { texto: RE.minuta, objetivo: RE.minuta, propuesta: RE.propuesta || undefined, origen: RE.leido ? 'Leído del texto' : 'En la reunión' };
     var cs = C.ini.contactos.filter(function (c) { return c.empresa === RE.empresa; }); if (cs.length === 1) x.sponsors = [cs[0].id];
     v.tipo = RE.tipo; v.titulo = x.nombre; v.r = RE.r; v.cant = RE.cant; v.notas = RE.notas; v.est = RE.est;
-    v.mant = Object.assign(v.mant, { on: true, hs: mantHs(RE), abono: reAbono(), manual: RE.abono != null });
+    v.mant = Object.assign(v.mant, { on: RE.mrr !== false, hs: mantHs(RE), abono: reAbono(), manual: RE.abono != null });
     x.devs = [v]; return x;
   }
   async function reClick(a, el) {

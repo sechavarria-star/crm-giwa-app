@@ -388,9 +388,10 @@ input.ui-monto { text-align: right; font-family: var(--f-num); }
 .ui-ib.ui-add:hover { color: var(--secundaria); background: var(--suave-secundaria); }
 
 /* Cotizador · En la reunión: el texto al lado del catálogo y los totales abajo (03/11/2026) */
-.cot-re { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: var(--e5); align-items: start; }
+.cot-re { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 330px; gap: var(--e5); align-items: start; }
+@media (max-width: 1100px) { .cot-re { grid-template-columns: minmax(0, 1fr); } }
 .cot-re-txt { width: 100%; min-height: 360px; line-height: 1.6; }
-.cot-re-tot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e4); margin-top: var(--e4); padding-top: var(--e3); border-top: 1px solid var(--marco); font-size: var(--t-m); }
+.cot-re-tot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e4); margin-bottom: var(--e4); padding-bottom: var(--e3); border-bottom: 1px solid var(--marco); font-size: var(--t-m); }   /* encabezado, arriba (16/11/2026) */
 
 /* Nueva factura: el concepto de cada línea y la zona del PDF (03/11/2026) */
 .cb-concepto { margin-top: var(--e1); }
@@ -533,3 +534,7 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 /* Sección Facturación: las mismas columnas en Toca facturar, Sin alerta y Próximas, así Facturar queda a la misma altura */
 .fg-tb { table-layout: fixed; width: 100%; }
 .fg-tb td:nth-child(2) { width: 200px; } .fg-tb td:nth-child(3) { width: 120px; } .fg-tb td:nth-child(4) { width: 130px; } .fg-tb td:nth-child(5) { width: 110px; }
+/* Cotizador · edición (16/11/2026): el nombre de cada módulo en mayúsculas y lo que suma en viñetas; costos y stack también */
+.cot-ed .cot-sel-t > .ui-f1 { text-transform: uppercase; letter-spacing: var(--espaciado); }
+.cot-ed .cot-sel-i > span:first-child::before, .cot-bul > span:first-child::before, div.cot-bul:not(.ui-kv)::before { content: '•'; color: var(--texto2); margin-right: 8px; }
+.cot-ed-hd { margin-bottom: var(--e4); }
