@@ -466,8 +466,8 @@
     var adjDe = function (nid) { var L = X.adj.filter(function (a) { return (a.nota_id || null) === nid; }); return L.length ? '<div class="sop-adjs">' + L.map(adjHtml).join('') + '</div>' : ''; };
     var meta = '<div class="ft-meta"><span>' + uiIco('empresa') + esc(t.empresa_nombre || t.empresa_id) + '</span>' +
       (t.proyecto_nombre ? '<span>' + uiIco('tablero') + esc(t.proyecto_nombre) + '</span>' : '') +
-      '<span>' + uiIco('lista') + esc(t.desarrollo_titulo || 'Sin desarrollo') + '</span><span>' + esc(t.tipo) + (t.sintoma ? ' · ' + esc(t.sintoma) : '') + '</span>' +
-      '<span>' + uiIco('persona') + esc(nombre(t.solicitante)) + ' · ' + esc(t.canal) + '</span><span class="m">' + esc(fh(t.creado)) + '</span>' +
+      '<span>' + uiIco('lista') + esc(t.desarrollo_titulo || 'Sin desarrollo') + '</span><span>' + esc(t.tipo) + '</span>' +
+      '<span>' + uiIco('persona') + esc(nombre(t.solicitante)) + '</span><span class="m">' + esc(fh(t.creado)) + '</span>' +
       (t.relacionado_con ? '<span>Vuelve de <button type="button" class="sop-link m" data-sver="' + esc(t.relacionado_con) + '">' + esc(t.relacionado_con) + '</button></span>' : '') + '</div>';
     var clasif = '<div class="u-row8 u-mb6">' + chip(t.clasificacion, COL_CLA) + (t.forzada ? '<span class="u-s11-mt">puesta a mano</span>' : '') +
       (t.tarea_id ? '<button type="button" class="sop-link" data-starea="' + esc(t.tarea_id) + '">Tarea de cotización ' + esc(t.tarea_id) + '</button>' : '') + '</div>' +
@@ -499,9 +499,8 @@
         '<div class="g2"><div class="fg"><label class="fl" for="sop-rsp">Responsable</label><select class="fc" id="sop-rsp">' + opts(S.d.usu.map(function (u) { return [String(u.mail).toLowerCase(), u.nombre]; }), String(t.responsable || '').toLowerCase(), 'Sin asignar') + '</select></div>' +
           '<div class="fg"><label class="fl" for="sop-ven">Vence</label><input class="fc" id="sop-ven" type="date" value="' + esc(t.vence || '') + '"></div></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="sop-tip">Tipo</label><select class="fc" id="sop-tip">' + opts(L('Soporte_TipoCliente').concat(L('Soporte_TipoGiwa')).concat(L('Soporte_TipoCliente').concat(L('Soporte_TipoGiwa')).indexOf(t.tipo) < 0 ? [t.tipo] : []), t.tipo) + '</select></div>' +
-          '<div class="fg"><label class="fl" for="sop-sin">Síntoma</label><select class="fc" id="sop-sin">' + opts(L('Soporte_Sintoma'), t.sintoma, '—') + '</select></div></div>' +
-        '<div class="g2"><div class="fg"><label class="fl" for="sop-cat">Categoría</label><select class="fc" id="sop-cat">' + opts(L('Soporte_Categoria'), t.categoria, '—') + '</select></div>' +
-          '<div class="fg"><label class="fl" for="sop-mod">Módulo</label><input class="fc" id="sop-mod" value="' + esc(t.modulo || '') + '"></div></div>' +
+          '<div class="fg"><label class="fl" for="sop-cat">Categoría</label><select class="fc" id="sop-cat">' + opts(L('Soporte_Categoria'), t.categoria, '—') + '</select></div></div>' +
+        '<div class="fg"><label class="fl" for="sop-mod">Módulo</label><input class="fc" id="sop-mod" value="' + esc(t.modulo || '') + '"></div>' +
         (t.desarrollo_id ? '' : '<div class="fg"><label class="fl" for="sop-des">Desarrollo</label><select class="fc" id="sop-des">' + opts(X.desa.map(function (d) { return [d.id, d.titulo + ' · ' + d.tipo_nombre]; }), '', 'Elegí el desarrollo') + '</select></div>') +
         '<div class="sec u-mt10">Clasificación</div>' +
         '<div class="fg"><label class="fl" for="sop-cla">Forzar la clasificación</label><select class="fc" id="sop-cla">' + opts(L('Soporte_Clasificacion'), t.clasificacion_forzada || '', 'Automática (' + (t.forzada ? 'según el desarrollo' : t.clasificacion) + ')') + '</select></div>' +
@@ -550,7 +549,7 @@
         toast('Respuesta guardada', 'ok'); return trasCambio(t.id);
       }
       if (a === 'guardar') {
-        var c = { estado: v('sop-est'), prioridad: v('sop-pri'), responsable: v('sop-rsp'), vence: v('sop-ven'), tipo: v('sop-tip'), sintoma: v('sop-sin'),
+        var c = { estado: v('sop-est'), prioridad: v('sop-pri'), responsable: v('sop-rsp'), vence: v('sop-ven'), tipo: v('sop-tip'),
                   categoria: v('sop-cat'), modulo: v('sop-mod'), clasificacion_forzada: v('sop-cla'), forzada_motivo: v('sop-clm') };
         if (v('sop-tar')) c.tarifa_hora = v('sop-tar');
         if ($('sop-des') && v('sop-des')) c.desarrollo_id = v('sop-des');
@@ -570,14 +569,13 @@
     finally { b.disabled = false; }
   }
 
-  // ── nuevo ticket (desde GIWA: cualquier empresa, tipos internos, canal y solicitante) ──
+  // ── nuevo ticket (desde GIWA: cualquier empresa, tipos internos y solicitante) ──
   function abrirNuevo() {
     var L = function (k) { return lista(k); };
     $('sopn-cuerpo').innerHTML =
       '<div class="g2"><div class="fg"><label class="fl" for="sopn-emp">Empresa <span class="req">*</span></label><select class="fc" id="sopn-emp">' + opts(S.d.emps.map(function (e) { return [e.id, e.nombre]; }), S.emp, 'Elegí la empresa') + '</select></div>' +
         '<div class="fg"><label class="fl" for="sopn-des">Desarrollo</label><select class="fc" id="sopn-des"></select></div></div>' +
-      '<div class="g3"><div class="fg"><label class="fl" for="sopn-tip">Tipo</label><select class="fc" id="sopn-tip">' + opts(L('Soporte_TipoCliente').concat(L('Soporte_TipoGiwa')), 'Algo no funciona') + '</select></div>' +
-        '<div class="fg"><label class="fl" for="sopn-can">Llegó por</label><select class="fc" id="sopn-can">' + opts(L('Soporte_Canal'), 'Mail') + '</select></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="sopn-tip">Tipo</label><select class="fc" id="sopn-tip">' + opts(L('Soporte_TipoCliente').concat(L('Soporte_TipoGiwa')), 'Algo no funciona') + '</select></div>' +
         '<div class="fg"><label class="fl" for="sopn-pri">Prioridad</label><select class="fc" id="sopn-pri">' + opts(L('Soporte_Prioridad'), 'Media') + '</select></div></div>' +
       '<div class="fg"><label class="fl" for="sopn-sol">Quién lo pidió</label><select class="fc" id="sopn-sol"></select></div>' +
       '<div class="fg"><label class="fl" for="sopn-tit">Título <span class="req">*</span></label><input class="fc" id="sopn-tit" maxlength="200"></div>' +
@@ -603,7 +601,7 @@
     var b = $('sopn-ok'); b.disabled = true;
     try {
       var res = $('sopn-res').checked;
-      var r = await rpc('soporte_crear', { p: { empresa_id: v('sopn-emp'), desarrollo_id: v('sopn-des'), tipo: v('sopn-tip'), canal: v('sopn-can'), prioridad: v('sopn-pri'),
+      var r = await rpc('soporte_crear', { p: { empresa_id: v('sopn-emp'), desarrollo_id: v('sopn-des'), tipo: v('sopn-tip'), prioridad: v('sopn-pri'),
         solicitante: v('sopn-sol'), titulo: v('sopn-tit'), descripcion: v('sopn-desc'), resuelto: res, avisar: $('sopn-av').checked,
         respuesta: res ? v('sopn-rta') : '', horas: res ? v('sopn-h') : '', fecha: v('sopn-f') } });
       closeM('m-sopn'); toast('Se creó ' + r.id, 'ok'); await trasCambio(r.id);
