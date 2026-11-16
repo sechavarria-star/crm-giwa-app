@@ -26,7 +26,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
   var S = { d: null, sub: 'tickets', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
-  var SUBS = ['tickets', 'tablero', 'reportes', 'accesos'];
+  var SUBS = ['tickets', 'tablero', 'reportes', 'mails', 'accesos'];
   var PORTAL_URL = 'https://crm.giwa-ia.com/soporte/';
   var FILTROS = [['abiertos', 'Abiertos'], ['Nuevo', 'Nuevos'], ['En proceso', 'En proceso'], ['Esperando cliente', 'Esperando cliente'], ['Cerrado', 'Cerrados'], ['todos', 'Todos']];
   // Estado del ticket → color (Nuevo pide acción; Esperando cliente es seguimiento; Cerrado, resultado)
@@ -111,9 +111,9 @@
     if (_montado !== 'soporte' || !el.querySelector('#sop-cuerpo')) return;
     marcarSub(S.sub);
     el.querySelector('#sop-q').hidden = S.sub !== 'tickets';
-    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'tablero' ? htmlTablero() : S.sub === 'reportes' ? htmlReportes() : S.sub === 'accesos' ? htmlAccesos() : htmlLista();
+    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'tablero' ? htmlTablero() : S.sub === 'reportes' ? htmlReportes() : S.sub === 'accesos' ? htmlAccesos() : S.sub === 'mails' ? htmlRevisar() : htmlLista();
     el.querySelector('#sop-nuevo').innerHTML = uiIco('mas') + (S.sub === 'reportes' ? 'Nuevo reporte' : 'Nuevo ticket');
-    el.querySelector('#sop-nuevo').hidden = S.sub === 'accesos';
+    el.querySelector('#sop-nuevo').hidden = S.sub === 'accesos' || S.sub === 'mails';
   }
 
   // ── Tablero por período (_tableroApi_) ───────────────────────
@@ -331,6 +331,41 @@
           '<label class="u-row6 u-s12 u-nowrap"><input type="checkbox" id="sopa-ni-' + eid + '" checked> y mandarle la invitación</label>' + uiBtn('Agregar', 'mas', 's', 'data-saotro="' + eid + '"') + '</div></div>';
     }).join('') + '</div>';
   }
+  // ── Mails por enviar (16/11/2026): ningún mail sale sin revisión. Cada borrador se ve con la plantilla de GIWA,
+  //    se corrige escribiendo directo sobre el mail y sale recién con «Aprobar y enviar» (soporte_mail_aprobar).
+  var TIPO_MAIL = { invitacion: 'Invitación al portal', ticket: 'Pedido', resuelto: 'Pedido resuelto', cierre: 'Pedido resuelto', nota: 'Respuesta en un pedido', reporte: 'Reporte de mantenimiento' };
+  function htmlRevisar() { setTimeout(pintarRevisar, 0); return '<div class="ui-nota-t u-mb10">Ningún mail sale solo: revisalo, corregí lo que haga falta escribiendo sobre el mail y tocá «Aprobar y enviar».</div><div id="sop-rev"><div class="loading"><div class="spin"></div></div></div>'; }
+  async function pintarRevisar() {
+    var c = $('sop-rev'); if (!c) return;
+    var r = await db().rpc('soporte_mails_revisar');
+    if (r.error) { c.innerHTML = '<div class="empty u-c-rd">' + esc(r.error.message) + '</div>'; return; }
+    S.rev = r.data || [];
+    if (!S.rev.length) { c.innerHTML = '<div class="empty">No hay mails para revisar.</div>'; return; }
+    c.innerHTML = S.rev.map(function (m, i) {
+      return uiDesp({ t: m.para, n2: true, open: i === 0, v: '<span class="m u-s11-mt">' + esc(fh(m.creado)) + '</span>',
+          th: esc(TIPO_MAIL[m.tipo] || m.tipo || 'Mail') + ' · ' + esc(m.para) },
+        '<div class="fg"><label class="fl" for="rev-as-' + m.id + '">Asunto</label><input class="fc" id="rev-as-' + m.id + '" value="' + esc(m.asunto) + '"></div>' +
+        '<iframe class="sop-rev-mail" id="rev-fr-' + m.id + '" title="Vista previa del mail" data-rev="' + m.id + '"></iframe>' +
+        '<div class="ui-barra ui-der u-mt10">' + uiBtn('Descartar', 'borrar', 's', 'data-srevno="' + m.id + '"') + uiBtn('Aprobar y enviar', 'check', 'p', 'data-srevok="' + m.id + '"') + '</div>');
+    }).join('');
+    // la vista previa se puede editar: se escribe directo sobre el mail
+    S.rev.forEach(function (m) { var f = $('rev-fr-' + m.id); if (!f) return;
+      f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>body{margin:16px;background:#fff}</style></head><body>' + m.html + '</body></html>';
+      f.onload = function () { try { f.contentDocument.designMode = 'on'; f.style.height = (f.contentDocument.body.scrollHeight + 40) + 'px'; } catch (e) {} }; });
+  }
+  async function accionRevisar(b) {
+    var id = Number(b.getAttribute('data-srevok') || b.getAttribute('data-srevno'));
+    try {
+      if (b.hasAttribute('data-srevno')) {
+        if (!(await ask('Este mail no se manda.', '¿Descartar el mail?', { ok: 'Descartar' }))) return;
+        await rpc('soporte_mail_descartar', { mid: id }); toast('Descartado', 'ok');
+      } else {
+        var f = $('rev-fr-' + id), html = f && f.contentDocument ? f.contentDocument.body.innerHTML : '';
+        await rpc('soporte_mail_aprobar', { mid: id, asunto: v('rev-as-' + id), html: html }); toast('Aprobado: sale en el próximo minuto', 'ok');
+      }
+      pintarRevisar();
+    } catch (e) { toast(e.message, 'err'); }
+  }
   // El cartero: si está activo, desde qué cuenta, cuántos mails esperan y los que fallaron
   async function pintarMails() {
     var c = $('sop-mails'); if (!c) return;
@@ -350,7 +385,7 @@
     var r = await sb().functions.invoke('soporte-invitar', { body: { mail: m } });
     var err = r.error ? ((r.error.context && (await r.error.context.json().catch(function () { return {}; })).error) || r.error.message) : '';
     if (err) { toast(err, 'err'); return false; }
-    toast((r.data.ya_existia ? 'Ya tenía usuario: quedó vinculado. ' : 'Usuario creado. ') + (r.data.mail_encolado ? 'La invitación sale por mail en el próximo minuto.' : 'No se pudo encolar el mail: copiá el link del portal y mandáselo.'), r.data.mail_encolado ? 'ok' : 'err');
+    toast((r.data.ya_existia ? 'Ya tenía usuario: quedó vinculado. ' : 'Usuario creado. ') + (r.data.mail_encolado ? 'La invitación quedó en Soporte › Mails por enviar: revisala y aprobala.' : 'No se pudo encolar el mail: copiá el link del portal y mandáselo.'), r.data.mail_encolado ? 'ok' : 'err');
     return true;
   }
   async function accionAccesos(b, el) {
@@ -366,7 +401,7 @@
         if (!(await invitar(b.getAttribute('data-sainv')))) { b.disabled = false; return; }
       } else if (b.hasAttribute('data-sareenv')) {
         var mr = b.getAttribute('data-sareenv');
-        if (!(await ask('Le llega de nuevo el mail con «Activar portal» (sirve 7 días).', '¿Reenviar la invitación a ' + mr + '?', { ok: 'Reenviar' }))) return;
+        if (!(await ask('Se arma de nuevo el mail con «Activar portal» (sirve 7 días) y queda en Mails por enviar para que lo apruebes.', '¿Reenviar la invitación a ' + mr + '?', { ok: 'Reenviar' }))) return;
         if (!(await invitar(mr))) return;
       } else if (b.hasAttribute('data-sacopia')) {
         try { await navigator.clipboard.writeText(PORTAL_URL); toast('Link del portal copiado: ' + PORTAL_URL, 'ok'); } catch (x) { toast(PORTAL_URL, 'inf'); }
@@ -618,8 +653,9 @@
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
+      var b = ev.target.closest('[data-srevok],[data-srevno],[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
       if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint]')) return accionAccesos(b, el);
+      if (b.matches('[data-srevok],[data-srevno]')) return accionRevisar(b);
       if (b.id === 'sop-nuevo') return S.sub === 'reportes' ? abrirReporte('') : abrirNuevo();
       if (b.hasAttribute('data-srep')) return abrirReporte(b.getAttribute('data-srep'));
       if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));

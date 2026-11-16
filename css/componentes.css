@@ -543,3 +543,4 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-flt-t { font-size: 10px; letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); }
 :has(> .ui-flt) { align-items: flex-end; }
 .ui-flt select:has(option:checked:not([value=""])) { border-color: var(--brillo); color: var(--brillo); }
+.sop-rev-mail { width: 100%; min-height: 360px; border: 1px solid var(--marco); border-radius: var(--r); background: #fff; }
