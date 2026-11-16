@@ -230,14 +230,12 @@
       if (!arr.length) return '';
       var ab = A.abiertos[k] !== undefined ? A.abiertos[k] : abierto;
       return '<details class="fact-g" data-sec="' + k + '"' + (ab ? ' open' : '') + '><summary><span class="chev">' + ico('derecha') + '</span>' +
-        '<span>' + tit + '</span><span class="cnt">' + arr.length + '</span><span class="m u-mla">' + fmt(suma(arr, 'monto')) + '</span></summary><table class="tbl"><tbody>' + arr.map(function (f) {
+        '<span>' + tit + '</span><span class="cnt">' + arr.length + '</span><span class="m u-mla">' + fmt(suma(arr, 'monto')) + '</span></summary><table class="tbl fg-tb"><tbody>' + arr.map(function (f) {
         return '<tr><td><b>' + esc(f.titulo || '—') + '</b><div class="u-s10-mt">' + esc(f.ctx.filter(Boolean).join(' · ')) + '</div></td>' +
           '<td class="u-td-mt-r">' + esc(f.det || '') + '</td>' +
           '<td class="u-td-mt-r">' + (f.vence ? ico('calendario') + ' ' + esc(ff(f.vence)) : '') + '</td>' +
           '<td class="m ' + f.cls + ' u-tr">' + fmt(f.monto) + '</td>' +
           '<td class="u-tr u-nw"><button class="btn bp xs" data-adm="cb-fact" data-id="' + esc(f.item) + '">' + ico('documento') + ' Facturar</button>' +
-            // Sin alerta: se crea acá, sin esperar a la sincronización (14/11/2026)
-            (k === 'fg-sin' ? ' <button class="btn bg xs" data-adm="alt-crear" data-id="' + esc(f.item) + '">' + ico('campana') + ' Crear alerta</button>' : '') +
             '</td></tr>';   // sin Registrar pago ni Posponer: el pago va en cada FC de Pendiente de cobrar (14/11/2026)
       }).join('') + '</tbody></table></details>';
     };
@@ -269,7 +267,7 @@
           '<td class="u-td-mt-r">depositó ' + esc(ff(c.deposito)) + '</td>' +
           '<td class="m u-tr u-nw">' + fmt(c.monto) + '</td>' +
           '<td class="m m-pendiente u-tr" title="Lo que le tenés que transferir">' + fmt(c.socio) + '</td>' +
-          '<td class="u-tr"><button class="btn bg xs btn-ico" data-adm="socio" data-id="' + esc(c.id) + '" data-tip="Ya le transferí esta" aria-label="Ya le transferí esta">' + ico('check') + '</button></td></tr>';
+          '<td class="u-tr"><button class="btn bg xs" data-adm="socio" data-id="' + esc(c.id) + '" data-tip="Ya le transferí esta">' + ico('check') + ' Transferí</button></td></tr>';
       }).join('') +
       '<tr><td colspan="3" class="u-fw6">Total a transferir</td><td class="m u-tr u-fw6">' + fmt(tot) + '</td><td class="m m-pendiente u-tr">' + fmt(soc) + '</td><td></td></tr>' +
       '</tbody></table></div>';
@@ -485,14 +483,23 @@
     var kpi = function (cls, lbl, val) { return '<div class="kpi ' + cls + '"><div class="kpi-lbl">' + lbl + '</div><div class="kpi-val">' + val + '</div></div>'; };
     var h = '<div class="kpi-grid u-mb12">' + kpi('k-pendiente', 'Compartido ' + esc(mesTxt), fmt(P.compartido || 0)) +
       kpi('k-contratado', 'Proyectos activos', '<span class="m">' + (P.proyectos_activos || 0) + '</span>') + kpi('k-abono', 'Prorrateo / proyecto', fmt(P.por_proyecto || 0)) + '</div>';
-    var delMes = G.filter(function (g) { return g.mes_key === P.mes && !g.es_impuesto; }), porTipo = {}, socio = { diego: 0, vs: 0 };
+    // Recuadros por tipo de gasto (16/11/2026): Monotributo (el que es costo de GIWA), Proveedores externos (Servicios),
+    // Mensuales recurrentes y Otros. Por socio sigue sin impuestos.
+    var delMes = G.filter(function (g) { return g.mes_key === P.mes && g.costo_giwa; }), socio = { diego: 0, vs: 0 };
+    var GRUPOS = ['Mensuales recurrentes', 'Monotributo', 'Proveedores externos', 'Otros'], porTipo = {};
+    var grupo = function (g) {
+      if (g.es_impuesto) return /monotrib/i.test(g.descripcion || '') ? 'Monotributo' : 'Otros';
+      if (/servicio/i.test(g.categoria || '')) return 'Proveedores externos';
+      return /mensual/i.test(g.recurrencia || '') ? 'Mensuales recurrentes' : 'Otros';
+    };
     delMes.forEach(function (g) {
-      var c = g.categoria || '—', m = Number(g.monto_ars) || 0, k = String(g.pagador || '').toLowerCase();
-      porTipo[c] = (porTipo[c] || 0) + m;
+      var m = Number(g.monto_ars) || 0, k = String(g.pagador || '').toLowerCase(), t = grupo(g);
+      porTipo[t] = (porTipo[t] || 0) + m;
+      if (g.es_impuesto) return;
       if (k.indexOf('d.camps') >= 0) socio.diego += m; else if (k.indexOf('v.gagey') >= 0 || k.indexOf('s.echavarria') >= 0) socio.vs += m;
     });
-    var tipos = Object.keys(porTipo).sort(function (a, b) { return porTipo[b] - porTipo[a]; });
-    if (tipos.length) h += '<div class="sec">Gasto de ' + esc(mesTxt) + ' por tipo <span class="sec-sub">· sin impuestos</span></div><div class="kpi-grid u-mb12">' +
+    var tipos = GRUPOS.filter(function (t) { return porTipo[t]; });
+    if (tipos.length) h += '<div class="sec">Gasto de ' + esc(mesTxt) + ' por tipo</div><div class="kpi-grid u-mb12">' +
       tipos.map(function (c) { return kpi('k-pendiente', esc(c), fmt(porTipo[c])); }).join('') + '</div>' +
       '<div class="sec">Por socio · por mes <span class="sec-sub">(sin Monotributo)</span></div><div class="kpi-grid u-mb12">' +
       kpi('k-pendiente', 'Diego', fmt(socio.diego)) + kpi('k-pendiente', 'Vicky + Sebas', fmt(socio.vs)) + '</div>';
@@ -807,11 +814,6 @@
         var rr = await db().rpc('crear_recordatorios', { ventanas: w, solo_item: null });
         if (rr.error) return toast(rr.error.message, 'err');
         toast(rr.data.msg, 'ok'); A.recAbierto = false; return refrescar();
-      }
-      if (a === 'alt-crear') {
-        var ra = await db().rpc('crear_recordatorios', { ventanas: {}, solo_item: id });
-        if (ra.error) return toast(ra.error.message, 'err');
-        toast((ra.data && ra.data.msg) || 'Alerta creada', 'ok'); return refrescar();
       }
       if (a === 'pc-reg') return abrirDeposito(refrescar);
       if (a === 'pc-uno') return abrirDeposito(refrescar, A.d.cobros.filter(function (c) { return String(c.id) === id; }));

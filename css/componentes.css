@@ -529,4 +529,7 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .pc-tb { table-layout: fixed; width: 100%; max-width: none !important; }
 .pc-tb td:nth-child(1) { width: 36px; } .pc-tb td:nth-child(2) { width: 150px; } .pc-tb td:nth-child(4) { width: 90px; } .pc-tb td:nth-child(5) { width: 130px; } .pc-tb td:nth-child(6) { width: 150px; }
 /* Dashboard: las tablas dentro de las secciones llegan hasta el borde, alineadas con los botones de abajo (14/11/2026) */
-.adm-desp .card-tabla .tbl { max-width: none; }
+.adm-desp .tbl { max-width: none !important; }   /* gana al tope de 960 de app.css */
+/* Sección Facturación: las mismas columnas en Toca facturar, Sin alerta y Próximas, así Facturar queda a la misma altura */
+.fg-tb { table-layout: fixed; width: 100%; }
+.fg-tb td:nth-child(2) { width: 200px; } .fg-tb td:nth-child(3) { width: 120px; } .fg-tb td:nth-child(4) { width: 130px; } .fg-tb td:nth-child(5) { width: 110px; }
