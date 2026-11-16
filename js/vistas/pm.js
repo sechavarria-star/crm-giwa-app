@@ -634,9 +634,11 @@
       inf += '</div>';
       if (it.descripcion) inf += '<div class="ui-nota-t">' + esc(it.descripcion) + '</div>';
       if (can === 'finalizada') inf += resumenFinalizado(it);   // de qué trató, cuánto duró y cuándo se cobró
-      var dt = P.dTab[it.id] || 'info', at = function (k) { return 'data-pm="dtab" data-id="' + esc(it.id) + '" data-t="' + k + '"'; };
-      h += uiTabs([['info', 'Información', at('info')], ['crono', 'Cronograma', at('crono')], ['eco', 'Económico', at('eco')], ['mods', 'Módulos de trabajo', at('mods')]], dt) +
-        ({ info: inf, crono: '<div class="dev-riel">' + fechasHTML(p, it.id) + '</div>', eco: dt === 'eco' ? econDes(it) : '', mods: dt === 'mods' ? modulosDe(it.id) : '' })[dt];
+      // Dos pestañas (16/11/2026): Información junta las fechas y los pagos; Módulos de trabajo queda aparte
+      var dt = P.dTab[it.id] === 'mods' ? 'mods' : 'info', at = function (k) { return 'data-pm="dtab" data-id="' + esc(it.id) + '" data-t="' + k + '"'; };
+      h += uiTabs([['info', 'Información', at('info')], ['mods', 'Módulos de trabajo', at('mods')]], dt) +
+        (dt === 'mods' ? modulosDe(it.id) : inf + '<div class="ui-lat-h u-mt10">Fechas</div><div class="dev-riel">' + fechasHTML(p, it.id) + '</div>' +
+          '<div class="ui-lat-h u-mt10">Pagos</div>' + econDes(it));
       return h + '</div>';
     }).join('');
   }
@@ -782,8 +784,10 @@
   // pestañas; lateral de plata. Las acciones de cada desarrollo van en su fila (02/11/2026)
   function fichaCuerpo(p, enLista) {
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
-    var tabs = [['info', 'Información', tabInfo], ['analisis', 'Análisis', tabAnalisis], ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
-                ['eco', 'Económico', lateral], ['docs', 'Documentos y Drive', tabDocs]];
+    // Tres pestañas (16/11/2026): Información con Documentos y Drive adentro; Análisis con lo Económico
+    var tabs = [['info', 'Información', function (x) { return tabInfo(x) + '<div class="ui-lat-h u-mt10">Documentos y Drive</div>' + tabDocs(x); }],
+                ['analisis', 'Análisis', function (x) { return lateral(x) + '<div class="ui-lat-h u-mt10">Análisis del cliente</div>' + tabAnalisis(x); }],
+                ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
     var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
