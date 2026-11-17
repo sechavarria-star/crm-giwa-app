@@ -319,15 +319,43 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     } catch (e) { toast(e.message, 'err'); }
     fin();
   }
-  // Recién guardada: el borrador del mail en Gmail, para revisar y enviar desde ahí
+  // Recién guardada (17/11/2026): el mail con la factura se ve en la app con su plantilla, se corrige escribiendo
+  // sobre él y sale recién con «Aprobar y enviar», con el PDF adjunto. Ya no se abre Gmail.
   async function ofrecerMail(P, total, rs, pdfId) {
     var para = rs && String(rs.mail_facturacion || '').trim();
-    if (!para) return toast('No hay Mail de facturación en la razón social: el borrador no se preparó', 'inf');
-    if (!(await ask('¿Preparo el mail de la factura ' + v('cb-nro') + ' para ' + para + '?\n\nQueda como BORRADOR en tu Gmail: lo revisás y lo enviás desde ahí.', 'Mail al cliente', { ok: 'Preparar' }))) return;
+    if (!para) return toast('No hay Mail de facturación en la razón social: el mail no se preparó', 'inf');
+    var dos = function (n) { return (v('cb-mon') === 'USD' ? 'USD ' : '$ ') + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var datos = { para: para, cliente: v('cb-emp'), numero: v('cb-nro'), fecha_emision: ff(v('cb-fecha')), concepto: P[0].concepto,
+      monto: dos(total), pdf_id: pdfId, detalle: P.map(function (x) { return { concepto: x.concepto, monto: dos(x.monto) }; }) };
     try {
-      var r = await puente('mailFactura', { para: para, cliente: v('cb-emp'), numero: v('cb-nro'), fecha_emision: ff(v('cb-fecha')), concepto: P[0].concepto,
-        monto: fmt(total, v('cb-mon')), pdf_id: pdfId, detalle: P.map(function (x) { return { concepto: x.concepto, monto: fmt(x.monto, v('cb-mon')) }; }) });
-      toast('Borrador creado en tu Gmail' + (r.aviso ? ' · ' + r.aviso : ''), 'ok'); if (r.url) window.open(r.url, '_blank', 'noopener');
+      toast('Preparando la vista previa…', 'inf');
+      var r = await puente('mailFacturaVer', datos);
+      var m = document.getElementById('m-fmail');
+      if (!m) {
+        m = document.createElement('div'); m.className = 'mo'; m.id = 'm-fmail';
+        m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Mail de la factura</span>' +
+          '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-fmail">' + ico('cerrar') + '</button></div><div class="mb2">' +
+          '<div class="ui-nota-t" id="fm-para"></div>' +
+          '<div class="fg"><label class="fl" for="fm-as">Asunto</label><input class="fc" id="fm-as"></div>' +
+          '<div class="ui-nota-t">Corregí lo que haga falta escribiendo sobre el mail.</div>' +
+          '<iframe class="sop-rev-mail" id="fm-fr" title="Vista previa del mail"></iframe></div>' +
+          '<div class="mf"><button class="btn bg" data-cerrar="m-fmail">No enviar</button><button class="btn bp" id="fm-ok">Aprobar y enviar</button></div></div>';
+        document.body.appendChild(m);
+      }
+      document.getElementById('fm-para').textContent = 'Para: ' + r.para + (r.adjunto ? ' · con la factura en PDF adjunta' : ' · sin PDF adjunto');
+      document.getElementById('fm-as').value = r.asunto || '';
+      var f = document.getElementById('fm-fr');
+      f.onload = function () { try { f.contentDocument.designMode = 'on'; f.style.height = (f.contentDocument.body.scrollHeight + 40) + 'px'; } catch (e) {} };
+      f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>body{margin:16px;background:#fff}</style></head><body>' + (r.html || '') + '</body></html>';
+      document.getElementById('fm-ok').onclick = async function () {
+        var b = this; b.disabled = true;
+        try {
+          var e = await puente('mailFacturaEnviar', Object.assign({}, datos, { asunto: document.getElementById('fm-as').value, html: f.contentDocument ? f.contentDocument.body.innerHTML : '' }));
+          closeM('m-fmail'); toast('Mail enviado a ' + (e.enviado_a || para) + (e.aviso ? ' · ' + e.aviso : ''), 'ok');
+        } catch (er) { toast(er.message, 'err'); }
+        b.disabled = false;
+      };
+      openM('m-fmail');
     } catch (e) { toast(e.message, 'err'); }
   }
 })();
