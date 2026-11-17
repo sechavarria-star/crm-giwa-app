@@ -649,8 +649,10 @@
       // Dos pestañas (16/11/2026): Información junta las fechas y los pagos; Módulos de trabajo queda aparte
       var dt = P.dTab[it.id] === 'mods' ? 'mods' : 'info', at = function (k) { return 'data-pm="dtab" data-id="' + esc(it.id) + '" data-t="' + k + '"'; };
       h += uiTabs([['info', 'Información', at('info')], ['mods', 'Módulos de trabajo', at('mods')]], dt) +
-        (dt === 'mods' ? modulosDe(it.id) : inf + uiDesp({ t: 'Cronograma', open: true }, '<div class="dev-riel">' + fechasHTML(p, it.id) + '</div>') +   // desplegables (16/11/2026)
-          uiDesp({ t: 'Económico', open: true, v: econDes(it).btn }, econDes(it).eco));   // los pagos se ven en Administración (17/11/2026)
+        // Un único recuadro de Información, sin desplegables ni pagos (17/11/2026): descripción, fechas, riel, forma de pago,
+        // los recuadros económicos y «Editar» cuando corresponde. Los pagos se ven en Administración.
+        (dt === 'mods' ? modulosDe(it.id) : '<div class="card dev-info">' + (econDes(it).btn ? '<div class="ui-barra ui-der">' + econDes(it).btn + '</div>' : '') +
+          inf + '<div class="dev-riel u-mt10">' + fechasHTML(p, it.id) + '</div>' + econDes(it).eco + '</div>');
       return h + '</div>';
     }).join('') + alta;
   }
@@ -757,7 +759,7 @@
     // «Editar» sólo antes de aprobarse: arriba, en el encabezado de Económico (16/11/2026)
     return { btn: !ganado && can !== 'rechazada' ? uiBtn('Editar', 'editar', 's', 'data-pm="ed-monto" data-id="' + esc(it.id) + '"') : '',
       eco: '<div class="ui-datos u-mb12"><div><span class="ui-lbl">Cotizado</span><span class="ui-num">' + (cot ? fmt(cot) : ganado ? '—' : fmt(tot)) + '</span></div>' +
-        (ganado ? '<div><span class="ui-lbl">Aprobado</span><span class="ui-num">' + fmt(tot) + '</span></div>' : '') +
+        // «Aprobado» no se repite: es el «Contratado» de los recuadros (17/11/2026)
         '</div>' +
       lateralDes(it, usd), pagos:
       (cs.length ? '<table class="ui-tbl"><thead><tr><th class="ui-r">Cuota</th><th>Comprobante</th><th class="ui-r">Fecha</th><th class="ui-r">Monto</th><th>Estado</th></tr></thead><tbody>' + cs.map(function (c) {

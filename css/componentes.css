@@ -573,3 +573,4 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-tl.ui-tl-h .ui-tl-i::before { display: none; }
 .ui-tl.ui-tl-h .ui-tl-p { position: absolute; top: -5px; left: 0; }
 .ui-tl.ui-tl-h .ui-tl-n { font-size: var(--t-s); }
+.dev-info { padding: var(--e4); margin-top: var(--e3); }   /* desarrollo: un único recuadro de Información (17/11/2026) */
