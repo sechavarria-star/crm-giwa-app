@@ -178,7 +178,11 @@ async function verPedido(id) {
       '<div class="ft-note-t">' + esc(n.texto || '') + '</div>' + ((n.adjuntos || []).length ? '<div class="sop-adjs">' + n.adjuntos.map(adjP).join('') + '</div>' : '') + '</div>';
   }).join('') || '<div class="ft-info">Todavía no hay respuestas.</div>';
   var cons = t.consumo ? '<div class="u-s11-mt u-mt6">' + esc(t.consumo.titulo) + ': este mes usaste <span class="m">' + phs(t.consumo.usadas) + '</span> de <span class="m">' + phs(t.consumo.cupo) + '</span> (quedan <span class="m">' + phs(t.consumo.quedan) + '</span>).</div>' : '';
-  $('m-pt-c').innerHTML =
+  // Seguimiento (pantalla 3 aprobada): riel de tres pasos con el color de cada estado; se encienden hasta el actual
+  var paso = t.estado === 'Cerrado' ? 2 : t.estado === 'Nuevo' ? 0 : 1, medio = t.estado === 'Esperando cliente' ? 'Esperando cliente' : 'En proceso';
+  var riel = '<div class="ui-riel">' + ['Nuevo', medio, 'Cerrado'].map(function (e, i) {
+    return '<div class="ui-seg ' + P_EST[e] + (i <= paso ? ' on' : '') + '"><div class="ui-seg-b"></div><div class="ui-seg-l">' + esc(P_EST_TXT[e]) + '</div></div>'; }).join('') + '</div>';
+  $('m-pt-c').innerHTML = riel +
     '<div class="ft-meta"><span>' + uiIco('lista') + esc(t.desarrollo || '') + '</span><span>' + esc(t.tipo || '') + '</span><span>' + pEst(t.estado) + '</span><span class="m">' + esc(pfh(t.creado)) + '</span>' +
       (t.relacionado_con ? '<span>Vuelve de ' + esc(t.relacionado_con) + '</span>' : '') + '</div>' +
     (t.clasif_motivo ? uiMotivo(t.clasif_motivo) : '') + (t.se_factura ? uiAviso((t.motivo_factura || 'Este pedido se factura aparte.') + ' Te llega en la factura.', 'adv') : '') + cons +

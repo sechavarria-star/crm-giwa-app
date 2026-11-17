@@ -25,8 +25,8 @@
    un ticket cargado por GIWA, sólo si se tilda. Mails: estado del cartero y su clave.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var S = { d: null, sub: 'tickets', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
-  var SUBS = ['tickets', 'tablero', 'reportes', 'mails', 'accesos'];
+  var S = { d: null, sub: 'clientes', filtro: 'abiertos', emp: '', resp: '', busca: '', t: null, per: new Date().toISOString().slice(0, 7) };
+  var SUBS = ['clientes', 'tickets', 'tablero', 'reportes', 'mails', 'accesos'];
   var PORTAL_URL = 'https://crm.giwa-ia.com/soporte/';
   var FILTROS = [['abiertos', 'Abiertos'], ['Nuevo', 'Nuevos'], ['En proceso', 'En proceso'], ['Esperando cliente', 'Esperando cliente'], ['Cerrado', 'Cerrados'], ['todos', 'Todos']];
   // Estado del ticket → color (Nuevo pide acción; Esperando cliente es seguimiento; Cerrado, resultado)
@@ -56,18 +56,19 @@
   async function cargar() {
     var r = await Promise.all([
       db().from('v_soporte_tickets').select('id,creado,actualizado,empresa_id,empresa_nombre,desarrollo_id,desarrollo_titulo,proyecto_nombre,tipo,titulo,prioridad,estado,clasificacion,responsable,solicitante,vence,horas,horas_facturables,costo,comentarios,cerrado').order('actualizado', { ascending: false }),
-      db().from('empresas').select('id,nombre').order('nombre'),
+      db().from('empresas').select('id,nombre,logo').order('nombre'),
       db().from('usuarios').select('mail,nombre,es_giwa,activo').eq('es_giwa', true),
       db().from('contactos').select('email,nombre,apellido,empresa_id'),
       db().from('cot_config').select('clave,valor').like('clave', 'Soporte_%'),
       db().from('v_soporte_cuentas_mes').select('*'),
       db().from('soporte_reportes').select('id,empresa_id,desarrollo_id,periodo,tipo,titulo,estado,publicado,enviado_a,actualizado').order('periodo', { ascending: false, nullsFirst: false }).order('creado', { ascending: false }),
       db().from('soporte_empresas').select('*'),
-      db().from('soporte_accesos').select('*').order('mail')
+      db().from('soporte_accesos').select('*').order('mail'),
+      db().from('v_soporte_desarrollos').select('empresa_id,cupo_horas').eq('es_mantenimiento', true).eq('vigente', true)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     S.d = { tk: r[0].data, emps: r[1].data, usu: r[2].data.filter(function (u) { return u.activo !== false; }), cons: r[3].data,
-            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data, rep: r[6].data, se: r[7].data, acc: r[8].data };
+            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data, rep: r[6].data, se: r[7].data, acc: r[8].data, mm: r[9].data };
   }
 
   // ── la lista ─────────────────────────────────────────────────
@@ -111,9 +112,29 @@
     if (_montado !== 'soporte' || !el.querySelector('#sop-cuerpo')) return;
     marcarSub(S.sub);
     el.querySelector('#sop-q').hidden = S.sub !== 'tickets';
-    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'tablero' ? htmlTablero() : S.sub === 'reportes' ? htmlReportes() : S.sub === 'accesos' ? htmlAccesos() : S.sub === 'mails' ? htmlRevisar() : htmlLista();
+    el.querySelector('#sop-cuerpo').innerHTML = S.sub === 'clientes' ? htmlClientes() : S.sub === 'tablero' ? htmlTablero() : S.sub === 'reportes' ? htmlReportes() : S.sub === 'accesos' ? htmlAccesos() : S.sub === 'mails' ? htmlRevisar() : htmlLista();
     el.querySelector('#sop-nuevo').innerHTML = uiIco('mas') + (S.sub === 'reportes' ? 'Nuevo reporte' : 'Nuevo ticket');
     el.querySelector('#sop-nuevo').hidden = S.sub === 'accesos' || S.sub === 'mails';
+  }
+
+  // ── Clientes (pantalla 4 aprobada, 06/11/2026): todos, con o sin mantenimiento ──
+  // Abiertos, horas a facturar del mes y horas del mantenimiento contra las contratadas. Sin mantenimiento, todo se factura.
+  function htmlClientes() {
+    var mes = _hoyLocal().slice(0, 7), ids = [];
+    S.d.se.map(function (x) { return x.empresa_id; }).concat(S.d.tk.map(function (t) { return t.empresa_id; })).forEach(function (id) { if (id && ids.indexOf(id) < 0) ids.push(id); });
+    var E = ids.map(function (id) { return S.d.emps.find(function (e) { return e.id === id; }) || { id: id, nombre: id }; })
+      .sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
+    if (!E.length) return '<div class="empty">Todavía no hay clientes en el portal.</div>';
+    return '<div class="g3">' + E.map(function (e) {
+      var ab = S.d.tk.filter(function (t) { return t.empresa_id === e.id && !t.cerrado; }).length;
+      var M = S.d.cm.filter(function (x) { return x.empresa_id === e.id && x.mes === mes; });
+      var fact = M.reduce(function (a, x) { return a + N(x.fact); }, 0), usadas = M.reduce(function (a, x) { return a + N(x.mant); }, 0);
+      var mm = S.d.mm.filter(function (x) { return x.empresa_id === e.id; }), cupo = mm.reduce(function (a, x) { return a + N(x.cupo_horas); }, 0);
+      return '<div class="card"><div class="u-row8">' + uiLogo(e.nombre, e.logo) + '<span>' + esc(e.nombre) + '</span><span class="u-mla">' + uiIb('abrir', 'Ver sus tickets', '', 'data-semp="' + esc(e.id) + '"') + '</span></div>' +
+        '<div class="u-s11-mt u-mt6"><span class="m">' + ab + '</span> abierto' + (ab === 1 ? '' : 's') + ' · ' +
+          (fact ? '<span class="m ui-p-pendiente">' + hs(fact) + '</span> a facturar' : 'sin horas a facturar') + '</div>' +
+        '<div class="u-s11-mt">' + (mm.length ? (cupo ? '<span class="m">' + hs(usadas) + ' de ' + hs(cupo) + '</span> del mes' : 'Mantenimiento sin horas fijas') : 'Sin mantenimiento: se factura') + '</div></div>';
+    }).join('') + '</div>';
   }
 
   // ── Tablero por período (_tableroApi_) ───────────────────────
@@ -499,12 +520,24 @@
     var X = S.t, t = X.t, cerr = t.cerrado;
     $('sop-tit').textContent = t.id + ' · ' + t.titulo;
     var adjDe = function (nid) { var L = X.adj.filter(function (a) { return (a.nota_id || null) === nid; }); return L.length ? '<div class="sop-adjs">' + L.map(adjHtml).join('') + '</div>' : ''; };
-    var meta = '<div class="ft-meta"><span>' + uiIco('empresa') + esc(t.empresa_nombre || t.empresa_id) + '</span>' +
-      (t.proyecto_nombre ? '<span>' + uiIco('tablero') + esc(t.proyecto_nombre) + '</span>' : '') +
-      '<span>' + uiIco('lista') + esc(t.desarrollo_titulo || 'Sin desarrollo') + '</span><span>' + esc(t.tipo) + '</span>' +
+    // Pantalla 5 aprobada (06/11/2026): los datos en una banda arriba; la conversación a todo el ancho y
+    // seguimiento, clasificación y resolver en un desplegable debajo («Cambiar» lo abre).
+    var em = S.d.emps.find(function (e) { return e.id === t.empresa_id; }) || {};
+    var celda = function (k, v) { return '<div><div class="fl">' + k + '</div><div>' + v + '</div></div>'; };
+    var resp = t.primera_resp ? Math.max(0, Math.round((new Date(t.primera_resp) - new Date(t.creado)) / 60000)) : null;
+    var banda = '<div class="g3 u-mb8">' +
+      celda('Cliente', '<span class="u-row6">' + uiLogo(em.nombre || t.empresa_nombre, em.logo) + esc(t.empresa_nombre || t.empresa_id) + '</span>') +
+      celda('Desarrollo', esc(t.desarrollo_titulo || 'Sin desarrollo') + (t.proyecto_nombre ? '<div class="u-s11-mt">' + esc(t.proyecto_nombre) + '</div>' : '')) +
+      celda('Estado', chip(t.estado, COL_EST)) +
+      celda('Responsable', esc(t.responsable ? nombre(t.responsable) : 'Sin asignar')) +
+      celda('Clasificación', chip(t.clasificacion, COL_CLA) + (t.forzada ? ' <span class="u-s11-mt">puesta a mano</span>' : '') +
+        (cerr ? '' : '<div><button type="button" class="sop-link" data-sacc="datos">Cambiar</button></div>')) +
+      celda('Tiempos', 'Respuesta: ' + (resp == null ? '<span class="u-c-mt">sin respuesta</span>' : '<span class="m">' + (resp < 60 ? resp + ' min' : resp < 2880 ? Math.round(resp / 60) + ' h' : Math.round(resp / 1440) + ' d') + '</span>') +
+        '<div class="u-s11-mt">Horas: <span class="m">' + hs(t.horas) + '</span></div>') + '</div>';
+    var meta = '<div class="ft-meta"><span>' + esc(t.tipo) + '</span>' +
       '<span>' + uiIco('persona') + esc(nombre(t.solicitante)) + '</span><span class="m">' + esc(fh(t.creado)) + '</span>' +
       (t.relacionado_con ? '<span>Vuelve de <button type="button" class="sop-link m" data-sver="' + esc(t.relacionado_con) + '">' + esc(t.relacionado_con) + '</button></span>' : '') + '</div>';
-    var clasif = '<div class="u-row8 u-mb6">' + chip(t.clasificacion, COL_CLA) + (t.forzada ? '<span class="u-s11-mt">puesta a mano</span>' : '') +
+    var clasif = '<div class="u-row8 u-mb6">' +
       (t.tarea_id ? '<button type="button" class="sop-link" data-starea="' + esc(t.tarea_id) + '">Tarea de cotización ' + esc(t.tarea_id) + '</button>' : '') + '</div>' +
       uiMotivo(t.clasif_motivo || '') + (t.motivo_factura ? uiAviso(t.motivo_factura + (N(t.costo) ? ' ' + hs(t.horas_facturables) + ' × ' + fmt(t.tarifa) + ' = ' + fmt(t.costo) + '.' : ''), 'adv') : '');
     var notas = X.notas.map(function (n) {
@@ -547,7 +580,8 @@
         '<div class="g2 u-mt6"><div class="fg"><label class="fl" for="sop-rh">Horas finales</label><input class="fc u-tr" id="sop-rh" type="number" min="0" step="0.25" placeholder="Opcional"></div>' +
           '<div class="fg"><label class="fl" for="sop-rf">Fecha de trabajo</label><input class="fc" id="sop-rf" type="date" value="' + _hoyLocal() + '"></div></div>' +
         '<div class="u-row8"><label class="u-row6 u-s12"><input type="checkbox" id="sop-rav" checked> Avisar al cliente por mail</label>' + uiBtn('Resolver', 'check', 'p', 'data-sacc="resolver"') + '</div>';
-    $('sop-cuerpo-t').innerHTML = '<div class="sop-ficha"><div>' + cuerpoIzq + '</div><div class="sop-lado">' + lado + '</div></div>';
+    $('sop-cuerpo-t').innerHTML = banda + cuerpoIzq + '<div class="u-mt10">' +
+      uiDesp({ ic: 'ajustes', t: cerr ? 'Resuelto' : 'Seguimiento, clasificación y resolver', attrs: 'id="sop-datos"' }, '<div class="sop-lado">' + lado + '</div>') + '</div>';
   }
 
   // sube los archivos elegidos al bucket y los registra en el ticket (y en la respuesta, si hay)
@@ -575,6 +609,7 @@
     }
     var b = ev.target.closest('[data-sacc]'); if (!b || b.disabled) return;
     var a = b.getAttribute('data-sacc'), t = S.t.t;
+    if (a === 'datos') { var dd = $('sop-datos'); dd.classList.add('open'); return dd.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     b.disabled = true;
     try {
       if (a === 'nota') {
@@ -653,7 +688,7 @@
     if (S.d && !(op && op.forzar)) { pintar(el); var antes = JSON.stringify(S.d); cargar().then(function () { if (JSON.stringify(S.d) !== antes) pintar(el); }).catch(function () {}); }
     else { await cargar(); pintar(el); }
     el.onclick = function (ev) {
-      var b = ev.target.closest('[data-srevok],[data-srevno],[data-sfil],[data-sver],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
+      var b = ev.target.closest('[data-srevok],[data-srevno],[data-sfil],[data-sver],[data-semp],[data-sfac],[data-sdesfac],[data-srep],[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint],#sop-nuevo'); if (!b) return;
       if (b.matches('[data-sahab],[data-saav],[data-saotro],[data-sainv],[data-sareenv],[data-sacopia],[data-saclave],[data-sareint]')) return accionAccesos(b, el);
       if (b.matches('[data-srevok],[data-srevno]')) return accionRevisar(b);
       if (b.id === 'sop-nuevo') return S.sub === 'reportes' ? abrirReporte('') : abrirNuevo();
@@ -668,6 +703,7 @@
         });
       }
       if (b.hasAttribute('data-sver')) return verTicket(b.getAttribute('data-sver'));
+      if (b.hasAttribute('data-semp')) { S.emp = b.getAttribute('data-semp'); S.sub = 'tickets'; S.filtro = 'abiertos'; return pintar(el); }
       S.filtro = b.getAttribute('data-sfil'); pintar(el);
     };
     el.onchange = function (ev) {
