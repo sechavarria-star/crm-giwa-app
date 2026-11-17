@@ -567,3 +567,9 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .fa-lista .ui-d[data-niv="2"] + .ui-cuerpo { padding-left: var(--e4); }
 /* Clientes: tres tarjetas por fila (Seguimiento sigue de a dos) (16/11/2026) */
 .ui-tarjetas.cli-tarjetas { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+/* Cronograma como riel horizontal compacto (17/11/2026): izquierda a derecha, línea fina y puntos chicos */
+.ui-tl.ui-tl-h { display: flex; gap: 0; overflow-x: auto; padding: var(--e2) 0; }
+.ui-tl.ui-tl-h .ui-tl-i { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 130px; padding: 14px var(--e3) 0 0; border-top: 1px solid var(--marco); position: relative; }
+.ui-tl.ui-tl-h .ui-tl-i::before { display: none; }
+.ui-tl.ui-tl-h .ui-tl-p { position: absolute; top: -5px; left: 0; }
+.ui-tl.ui-tl-h .ui-tl-n { font-size: var(--t-s); }

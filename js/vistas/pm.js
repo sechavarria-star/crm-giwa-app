@@ -501,7 +501,7 @@
     });
     if (!ev.length) return '<div class="ui-nota-t">Sin fechas cargadas.</div>';
     ev.sort(function (a, b) { return (a.f ? a.f.getTime() : 9e15) - (b.f ? b.f.getTime() : 9e15); });
-    return '<ol class="ui-tl">' + ev.map(function (x) {
+    return '<ol class="ui-tl ui-tl-h">' + ev.map(function (x) {
       var hecho = x.f && x.f <= hoy;
       return '<li class="ui-tl-i' + (hecho ? ' hecho' : '') + '"><span class="ui-tl-p ui-e-' + (x.f ? x.c : 'rechazado') + '"></span>' +
         '<span class="ui-tl-f">' + (x.f ? ff(x.f) : '—') + '</span>' +
@@ -611,7 +611,7 @@
       else if (tot > 0) plata = '<span>Cotizado <span class="ui-num ui-p-neutro">' + fmt(tot) + '</span></span>';
       var h = '<div class="ui-dev' + (abierto ? ' open' : '') + '" data-des="' + esc(it.id) + '">' +
         '<span class="ui-dev-barra ui-e-' + uiClaveEst(it.estado) + '"></span><span class="ui-ch">' + uiIco('derecha') + '</span>' + uiTipo(it, it.estado, det) +
-        '<div><div class="ui-dev-n">' + esc(it.titulo || it.descripcion || '—') + '</div><div class="ui-sub-t">' + esc(sub) + '</div>' + (plata ? '<div class="ui-dev-plata">' + plata + '</div>' : '') + '</div>' +
+        '<div><div class="ui-dev-n">' + esc(it.titulo || it.descripcion || '—') + '</div></div>' +   // sólo el nombre (17/11/2026)
         '<div class="ui-dev-der"><span>' + uiEstado(it.estado || '—') + (det ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</span>' +
         (iconos ? '<span class="ui-fila-ic">' + iconos + '</span>' : '') + '</div></div><div class="ui-devc">';
       // Contratado, cobrado y pendiente van sólo en el lateral: acá no se repiten (29/10/2026)
@@ -649,7 +649,7 @@
       var dt = P.dTab[it.id] === 'mods' ? 'mods' : 'info', at = function (k) { return 'data-pm="dtab" data-id="' + esc(it.id) + '" data-t="' + k + '"'; };
       h += uiTabs([['info', 'Información', at('info')], ['mods', 'Módulos de trabajo', at('mods')]], dt) +
         (dt === 'mods' ? modulosDe(it.id) : inf + uiDesp({ t: 'Cronograma', open: true }, '<div class="dev-riel">' + fechasHTML(p, it.id) + '</div>') +   // desplegables (16/11/2026)
-          uiDesp({ t: 'Económico', open: true, v: econDes(it).btn }, econDes(it).eco) + uiDesp({ t: 'Pagos', open: true }, econDes(it).pagos));
+          uiDesp({ t: 'Económico', open: true, v: econDes(it).btn }, econDes(it).eco));   // los pagos se ven en Administración (17/11/2026)
       return h + '</div>';
     }).join('') + alta;
   }
@@ -679,6 +679,19 @@
   }
   // Documentos y Drive (02/11/2026): la carpeta que ya existe (la del proyecto o, si no, la de la empresa)
   // y los comprobantes con su archivo. No crea carpetas ni copia archivos.
+  // Tickets de soporte del proyecto (17/11/2026): sólo lectura; se gestionan en Soporte
+  function tabTickets(p) {
+    setTimeout(async function () {
+      var c = document.getElementById('pm-tk'); if (!c) return;
+      var r = await db().from('soporte_tickets').select('id,titulo,estado,prioridad,creado,responsable').eq('proyecto_id', p.id).order('creado', { ascending: false });
+      if (r.error) { c.innerHTML = '<div class="ui-nota-t">' + esc(r.error.message) + '</div>'; return; }
+      c.innerHTML = r.data.length ? r.data.map(function (t) {
+        return '<div class="ui-linea"><span class="ui-num ui-nota-t">' + esc(t.id) + '</span><span class="ui-f1">' + esc(t.titulo || '—') + '</span>' +
+          '<span class="ui-nota-t">' + esc(t.prioridad || '') + '</span><span>' + uiEstado(t.estado || '—') + '</span><span class="ui-num ui-nota-t">' + esc(ff(t.creado)) + '</span></div>'; }).join('')
+        : '<div class="ui-nota-t">Este proyecto no tiene tickets de soporte.</div>';
+    }, 0);
+    return '<div id="pm-tk"><div class="loading"><div class="spin"></div></div></div>';
+  }
   function tabDocs(p) {
     var drv = p.carpeta || '', emp = (P.emps[p.empresa] || {}).drive_interno || '';
     var lnk = function (u, t) { return '<a class="ui-lnk ui-azul" href="' + esc(u) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + t + '</a>'; };
@@ -687,12 +700,12 @@
     // Mockups y propuestas: tabla entregables, accesos = [{ tipo, nombre, url }]. Se abren en otra pestaña.
     // Mismo formato que Contactos (16/11/2026): desplegable con título, cantidad y «+ Mockup o propuesta»
     var ents = P.f.entregables || [];
-    h += uiDesp({ t: 'Mockups y propuestas', n: ents.length, open: true, v: uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') }, (ents.length ? ents.map(function (e) {
+    // Documentos, Drive, mockups y propuestas en un solo desplegable (17/11/2026)
+    return uiDesp({ t: 'Documentos, Drive y propuestas', n: ents.length, open: true, v: uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') }, h + (ents.length ? ents.map(function (e) {
       var ac = (e.accesos || [])[0] || {}, u = String(ac.url || ''), web = /^https?:\/\//i.test(u);
       return '<div class="ui-linea"><span class="ui-f1">' + esc(e.titulo || ac.nombre || 'Sin título') + ' <span class="ui-nota-t">· ' + esc(e.tipo || '') + '</span></span>' +
         (web ? '<a class="ui-ib" href="' + esc(u) + '" target="_blank" rel="noopener" data-tip="Abrir" aria-label="Abrir ' + esc(e.titulo || '') + '">' + uiIco('abrir') + '</a>' : '<span class="ui-nota-t">' + esc(u) + '</span>') + '</div>'; }).join('')
       : '<div class="ui-nota-t">Sin mockups ni propuestas.</div>'));
-    return h;
   }
   // Análisis del cliente (getAnalisisCliente): lo que guardó el Cotizador, no se recalcula
   function tabAnalisis() {
@@ -732,7 +745,7 @@
         uiKpi('Por cobrar', fmt(sm), 'p-pendiente', '', usd(sm)) + '</div><div class="ui-nota-t">No suma al contratado: se factura por cuota.</div><br>';
     }
     var hs = sum(p.items, 'horas');
-    if (hs) h += '<div class="ui-lat-h">Del contrato</div><div class="ui-lat-g">' + uiKpi('Horas vendidas', Math.round(hs) + ' h', 'p-neutro') + '</div>';
+    if (false && hs) h += '<div class="ui-lat-h">Del contrato</div><div class="ui-lat-g">' + uiKpi('Horas vendidas', Math.round(hs) + ' h', 'p-neutro') + '</div>';
     return h + analisisFicha(p) + '</div>';
   }
   function econDes(it) {
@@ -803,9 +816,10 @@
   function fichaCuerpo(p, enLista) {
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
     // Tres pestañas (16/11/2026): Información con Documentos y Drive adentro; Análisis con lo Económico
-    var tabs = [['info', 'Información', function (x) { return tabInfo(x) + '<div class="ui-lat-h u-mt10">Documentos y Drive</div>' + tabDocs(x); }],
+    var tabs = [['info', 'Información', function (x) { return tabInfo(x) + tabDocs(x); }],
                 ['analisis', 'Análisis económico', function (x) { return lateral(x) + '<div class="ui-lat-h u-mt10">Análisis del cliente</div>' + tabAnalisis(x); }],
-                ['desarrollos', 'Desarrollos del proyecto' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos]];
+                ['desarrollos', 'Desarrollos del proyecto' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
+                ['tickets', 'Tickets', tabTickets]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
     var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
