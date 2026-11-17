@@ -220,10 +220,14 @@
     D.alertas.filter(function (a) { return /factur/i.test(a.alerta_tipo + ' ' + a.titulo + ' ' + a.tipo); })
       .forEach(function (a) { if (a.item_id && (!altPorItem[a.item_id] || !a.enviada)) altPorItem[a.item_id] = a; });
     var fil = [];
-    D.mens.forEach(function (m) { fil.push({ titulo: m.titulo, ctx: [m.empresa, m.proyecto], det: m.periodo, monto: m.monto, item: m.item_id, cls: 'm-abono' }); });
+    D.mens.forEach(function (m) { fil.push({ titulo: m.titulo, ctx: [m.empresa, m.proyecto], det: m.periodo, monto: m.monto, item: m.item_id, cls: 'm-abono', pk: m.periodo_key }); });
     D.saldos.forEach(function (s) { fil.push({ titulo: s.titulo, ctx: [s.empresa, s.proyecto], det: 'Saldo' + (s.facturado > 0 ? ' · ya facturado ' + fmt(s.facturado) : ''), monto: s.saldo, item: s.item_id, cls: 'm-contratado' }); });
     var g = { toca: [], prox: [], sin: [] };
-    fil.forEach(function (f) { var a = altPorItem[f.item]; f.vence = a ? a.fecha : ''; f.alerta = a ? a.id : ''; (a ? (a.enviada ? g.prox : g.toca) : g.sin).push(f); });
+    // Toca facturar si la fecha del aviso ya llegó o el abono es de este mes o anterior; si no, Próximas (17/11/2026).
+    // Antes «Próximas» era «el aviso ya se mandó», y una factura vencida con aviso enviado quedaba fuera de Toca facturar.
+    var hoyIso = isoMas(0), h1 = new Date(), mesK = h1.getFullYear() + '-' + String(h1.getMonth() + 1).padStart(2, '0');
+    fil.forEach(function (f) { var a = altPorItem[f.item]; f.vence = a ? a.fecha : ''; f.alerta = a ? a.id : '';
+      (a ? ((String(a.fecha || '').slice(0, 10) <= hoyIso || (f.pk && f.pk <= mesK)) ? g.toca : g.prox) : g.sin).push(f); });
     var porVence = function (x, y) { return String(x.vence).localeCompare(String(y.vence)); };
     g.toca.sort(porVence); g.prox.sort(porVence);
     // Cada grupo (Toca facturar · Sin alerta · Próximas) es un desplegable con el mismo encabezado: flecha, título, cantidad y total
@@ -349,13 +353,13 @@
   async function cargarFact() {
     var r = await Promise.all([
       db().from('v_cobros').select('*'),
-      db().from('empresas').select('id,logo'),
+      db().from('empresas').select('id,logo,alias'),
       db().from('usuarios').select('mail,nombre')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
-    var logos = {}; r[1].data.forEach(function (e) { logos[e.id] = e.logo; });
+    var logos = {}, alias = {}; r[1].data.forEach(function (e) { logos[e.id] = e.logo; alias[e.id] = e.alias || ''; });
     var nombres = {}; r[2].data.forEach(function (u) { nombres[String(u.mail || '').trim().toLowerCase()] = u.nombre; });
-    A.f = { cobros: r[0].data, logos: logos, nombres: nombres };
+    A.f = { cobros: r[0].data, logos: logos, nombres: nombres, alias: alias };
   }
   function sinDep(c) { return c.monto > 0 && !c.fecha_deposito && !c.fecha_transf; }
   function filtrarFact() {
@@ -367,7 +371,7 @@
       if (F.dep === 'vencida' && !(sinDep(c) && c.fecha_comp && c.fecha_comp < hoy)) return false;
       if (F.dep === 'sinfc' && String(c.nro_factura || '').trim()) return false;
       if (F.dep === 'depositado' && !(c.fecha_deposito || c.fecha_transf)) return false;
-      if (F.q && (c.empresa + c.proy_nombre + c.concepto + c.nro_factura).toLowerCase().indexOf(F.q) < 0) return false;
+      if (F.q && (c.empresa + ' ' + (A.f.alias[c.empresa_id] || '') + ' ' + c.proy_nombre + c.concepto + c.nro_factura).toLowerCase().indexOf(F.q) < 0) return false;   // también por alias (17/11/2026)
       return true;
     }).sort(function (a, b) { return String(b.fecha_comp || '').localeCompare(String(a.fecha_comp || '')); });
   }

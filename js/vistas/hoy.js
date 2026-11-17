@@ -50,9 +50,9 @@
     H.users = r[5].data.map(function (u) { return { mail: String(u.mail || '').trim().toLowerCase(), name: u.nombre || u.mail }; });
     var dv = Number(r[4].data) || 30;
     // Abonos a facturar: sólo los del mes en curso. La vista da el primer mes sin factura; si ya se facturó, es el siguiente (12/11/2026)
-    var h0 = new Date(), mesK = h0.getFullYear() + '-' + h0.getMonth();
+    var h0 = new Date(), mesK = h0.getFullYear() + '-' + String(h0.getMonth() + 1).padStart(2, '0');   // mes 1-12 y con dos dígitos (17/11/2026)
     H.plata = { venc: r[1].data.filter(function (c) { return c.dias !== null && c.dias >= dv; }).length,
-                mens: r[2].data.filter(function (m) { return m.periodo_key === mesK; }).length, saldos: r[3].data.length };
+                mens: r[2].data.filter(function (m) { return String(m.periodo_key || '') <= mesK; }).length, saldos: r[3].data.length };
     H.ok = true;
   }
 

@@ -37,7 +37,7 @@
     var r = await Promise.all([
       db().from('v_pm_proyectos').select('*'),
       db().from('v_pm_seguimiento').select('*'),
-      db().from('empresas').select('id,nombre,logo,drive_interno'),
+      db().from('empresas').select('id,nombre,alias,logo,drive_interno'),
       db().from('usuarios').select('mail,nombre'),
       db().rpc('estados_spec'),
       db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
@@ -282,7 +282,7 @@
     var S = P.seg, all = P.proys;
     var q = norm(S.q);
     var pasaSeg = function (p) { return segPasa(p, 'todos') && (!S.fil.length || S.fil.some(function (k) { return segPasa(p, k); })); };
-    var list = all.filter(pasaSeg).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0; });
+    var list = all.filter(pasaSeg).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0 || norm((P.emps[p.empresa] || {}).alias || '').indexOf(q) >= 0; });
     var h = '<div class="ui-filtros"><input class="ui-campo ui-f1" id="seg-q" placeholder="Buscar cliente o proyecto…" aria-label="Buscar" value="' + esc(S.q) + '"></div>' +
       barraFiltro(SEG_FIL, S.fil, function (k) { return all.filter(function (p) { return segPasa(p, k); }).length; }, 'segfil',
                   all.filter(function (p) { return segPasa(p, 'todos'); }).length, list.length);
@@ -347,7 +347,7 @@
           return '<option value="' + o[0] + '"' + (R.orden === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
       '</div>';
     var q = norm(R.q);
-    var f = all.filter(function (p) { return !fil.length || fil.some(function (k) { return proyPasa(p, k); }); }).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0; });
+    var f = all.filter(function (p) { return !fil.length || fil.some(function (k) { return proyPasa(p, k); }); }).filter(function (p) { return !q || norm(p.nombre).indexOf(q) >= 0 || norm(p.empresa).indexOf(q) >= 0 || norm((P.emps[p.empresa] || {}).alias || '').indexOf(q) >= 0; });
     h = htmlKpis(f) + barraFiltro(PR_FIL, fil, function (k) { return all.filter(function (p) { return proyPasa(p, k); }).length; }, 'prchip', all.length, f.length) + h;
     if (!f.length) return h + '<div class="ui-nota-t">Sin proyectos para este filtro.</div>';
     f.sort(function (a, b) {
