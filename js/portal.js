@@ -210,13 +210,25 @@ async function abrirArchivo(ruta) {
 
 // ── nuevo pedido ───────────────────────────────────────────────
 function nuevoPedido(rel) {
-  var I = P.ini, des = I.desarrollos || [];
+  var I = P.ini, todos = I.desarrollos || [];
+  // Pantalla 2 aprobada (06/11/2026): el cliente entra por proyecto y elige el sistema; las líneas de
+  // mantenimiento y de horas de soporte (las que tienen mant_de) no se ofrecen. Cada sistema dice si
+  // tiene un mantenimiento mensual vigente que lo cubra (mant_de del CRM, igual que soporte_abono_de).
+  var des = todos.filter(function (d) { return (!d.es_mantenimiento && !(d.mant_de || []).length) || (rel && d.id === rel.desarrollo_id); });
+  if (!des.length) des = todos;
+  var conMant = function (d) { return todos.some(function (m) { return m.es_mantenimiento && m.vigente && (m.mant_de || []).indexOf(d.id) >= 0; }); };
+  var sel = rel ? rel.desarrollo_id : (des.length === 1 ? des[0].id : ''), proys = [];
+  des.forEach(function (d) { if (proys.indexOf(d.proyecto || '') < 0) proys.push(d.proyecto || ''); });
+  var opDes = '<option value="">Elegí la aplicación</option>' + proys.map(function (p) {
+    return '<optgroup label="' + esc(p || 'Sin proyecto') + '">' + des.filter(function (d) { return (d.proyecto || '') === p; }).map(function (d) {
+      return '<option value="' + esc(d.id) + '"' + (d.id === sel ? ' selected' : '') + '>' + esc(d.titulo + ' · ' + (conMant(d) ? 'Mantenimiento mensual' : 'Sin mantenimiento')) + '</option>'; }).join('') + '</optgroup>';
+  }).join('');
   modal('m-pn'); set('m-pn-tit', rel ? 'Volvió a pasar · ' + rel.id : 'Nuevo ticket');
   var tipos = (I.listas.tipo || []), ayuda = { 'Algo no funciona': 'Algo dejó de andar o da un error', 'Consulta': 'Una duda sobre cómo usar algo', 'Quiero algo nuevo': 'Una mejora o algo que hoy no hace: lo cotizamos' };
   // Compacto (06/11/2026): entra en una pantalla sin scroll, con el mismo tamaño de letra
   $('m-pn-c').innerHTML = '<div class="por-compacto">' +
     '<div class="g2"><div class="fg"><label class="fl" for="pn-des">Sobre qué <span class="req">*</span></label><select class="fc" id="pn-des">' +
-      pOpts(des.map(function (d) { return [d.id, d.proyecto && d.proyecto !== d.titulo ? d.proyecto + ' · ' + d.titulo : d.titulo]; }), rel ? rel.desarrollo_id : (des.length === 1 ? des[0].id : ''), 'Elegí la aplicación') + '</select></div>' +
+      opDes + '</select></div>' +
       '<div class="fg"><label class="fl" for="pn-pri">Urgencia</label><select class="fc" id="pn-pri">' + pOpts(I.listas.prioridad || [], 'Media') + '</select></div></div>' +
     '<div class="fg"><span class="fl">Qué necesitás</span><div class="por-tipos">' + tipos.map(function (t, i) {
       return '<label class="por-tipo"><input type="radio" name="pn-tipo" value="' + esc(t) + '"' + ((rel ? rel.tipo === t : i === 0) ? ' checked' : '') + '><span><b>' + esc(t) + '</b><br><span class="u-s11-mt">' + esc(ayuda[t] || '') + '</span></span></label>'; }).join('') + '</div></div>' +
