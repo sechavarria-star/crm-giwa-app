@@ -326,7 +326,7 @@
       sub: ab ? '<div class="ui-motivo ui-fp-mot"><span class="ui-e-' + uiClaveEst(p.estado_proyecto || 'Prospecto') + '">' + esc(porQue(p, _canonProy(p.estado_proyecto)) || deDondeSale(p)) + '</span></div>' : '',
       est: (p.detenido ? uiEstado('Detenido', { detenido: true }) : uiEstado(p.estado_proyecto || '—')) +
         // abierta: debajo del estado, Detener en chico y con su palabra (16/11/2026)
-        (ab && !p.detenido && ['finalizado', 'rechazado'].indexOf(_canonProy(p.estado_proyecto)) < 0 ? '<button type="button" class="ui-det-txt" data-pm="det-proy" data-id="' + esc(p.id) + '">' + uiIco('pausa') + 'Detener</button>' : '') },
+        (false && ab && !p.detenido && ['finalizado', 'rechazado'].indexOf(_canonProy(p.estado_proyecto)) < 0 ? '<button type="button" class="ui-det-txt" data-pm="det-proy" data-id="' + esc(p.id) + '">' + uiIco('pausa') + 'Detener</button>' : '') },
       ab && P.f && P.f.id === p.id ? fichaCuerpo(p, true) : '');
   }
   // Proyectos = el universo completo (29/10/2026): los mismos chips de Seguimiento más Finalizado
@@ -538,7 +538,8 @@
           (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
           (c.email ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + uiIco('mail') + '</a>' : '') + '</div>';
       }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>');
-    h += uiDesp({ t: 'Cronograma' }, fechasHTML(p));
+    // Las acciones de estado (Aprobar, No aceptar, Detener, Finalizar…) van una sola vez, debajo del riel (17/11/2026)
+    h += uiDesp({ t: 'Cronograma', open: true }, fechasHTML(p) + '<div class="ui-barra u-mt10 ui-fila-ic">' + accionesYAlerta(p) + '</div>');
     return h;
   }
   function mantArranca(p, m) {
@@ -657,7 +658,7 @@
   function tabTareas(p) {
     var F = P.f, pid = esc(p.id);
     // Título arriba, en la misma línea que «+ Nueva tarea», y en ámbar (pendientes) para identificarlas (16/11/2026)
-    var h = '<div class="ui-barra pm-tar-hd"><span class="ui-lat-h ui-p-pendiente">Tareas</span><span class="u-f1"></span>' + uiBtn('Nueva tarea', 'mas', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div>';
+    var h = '<div class="ui-tabs pm-tar-hd"><span class="ui-tab on">Tareas</span><span class="u-f1"></span>' + uiBtn('Nueva tarea', 'mas', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div>';
     var ab = F.tareas.filter(function (t) { return !t.closed; }).sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
     var tid = {}; F.tareas.forEach(function (t) { tid[t.id] = t; });
     h += ab.length ? TareasUI.html(ab, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>';
@@ -823,13 +824,14 @@
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
     var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
-    var acc = '<span class="ui-acc-est ui-fila-ic">' + accionesYAlerta(p, enLista) + '</span>';
+    var acc = '';   // las acciones de estado van debajo del riel del cronograma (17/11/2026)
     var cab = enLista
       ? '<div class="ui-ficha-hd"><span class="u-f1">' + (av || '') + '</span>' + acc + '</div>'
       : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
         '<span>' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</span>' + av + acc + '</div>' + motivo + riel(p);
-    var cuerpo = cab + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
-      '<div class="ui-cols ui-cols-ficha"><div>' + t[2](p) + '</div><div>' + tabTareas(p) + novedadesProy() + '</div></div>';
+    // Tareas a la altura de las pestañas, con su mismo formato (17/11/2026)
+    var cuerpo = cab + '<div class="ui-cols ui-cols-ficha"><div>' + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
+      t[2](p) + '</div><div>' + tabTareas(p) + novedadesProy() + '</div></div>';
     return enLista ? cuerpo : '<div class="ui-ficha ui-ficha-sola">' + cuerpo + '</div>';
   }
   // ══ NUEVO PROYECTO · Carga rápida (= «Carga rápida» del Cotizador, 29/10/2026) ══
