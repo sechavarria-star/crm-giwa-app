@@ -64,11 +64,11 @@
       db().from('soporte_reportes').select('id,empresa_id,desarrollo_id,periodo,tipo,titulo,estado,publicado,enviado_a,actualizado').order('periodo', { ascending: false, nullsFirst: false }).order('creado', { ascending: false }),
       db().from('soporte_empresas').select('*'),
       db().from('soporte_accesos').select('*').order('mail'),
-      db().from('v_soporte_desarrollos').select('empresa_id,cupo_horas').eq('es_mantenimiento', true).eq('vigente', true)
+      db().from('v_soporte_desarrollos').select('empresa_id,cupo_horas,es_mantenimiento,vigente').eq('ganado', true)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     S.d = { tk: r[0].data, emps: r[1].data, usu: r[2].data.filter(function (u) { return u.activo !== false; }), cons: r[3].data,
-            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data, rep: r[6].data, se: r[7].data, acc: r[8].data, mm: r[9].data };
+            cfg: r[4].data.reduce(function (o, c) { o[c.clave] = c.valor; return o; }, {}), cm: r[5].data, rep: r[6].data, se: r[7].data, acc: r[8].data, gan: r[9].data, mm: r[9].data.filter(function (x) { return x.es_mantenimiento && x.vigente; }) };
   }
 
   // ── la lista ─────────────────────────────────────────────────
@@ -118,10 +118,11 @@
   }
 
   // ── Clientes (pantalla 4 aprobada, 06/11/2026): todos, con o sin mantenimiento ──
+  // Clientes = habilitados en el portal, con tickets o con algún desarrollo ganado (17/11: faltaban Prodigy y URBA).
   // Abiertos, horas a facturar del mes y horas del mantenimiento contra las contratadas. Sin mantenimiento, todo se factura.
   function htmlClientes() {
     var mes = _hoyLocal().slice(0, 7), ids = [];
-    S.d.se.map(function (x) { return x.empresa_id; }).concat(S.d.tk.map(function (t) { return t.empresa_id; })).forEach(function (id) { if (id && ids.indexOf(id) < 0) ids.push(id); });
+    S.d.se.map(function (x) { return x.empresa_id; }).concat(S.d.tk.map(function (t) { return t.empresa_id; })).concat(S.d.gan.map(function (x) { return x.empresa_id; })).forEach(function (id) { if (id && ids.indexOf(id) < 0) ids.push(id); });
     var E = ids.map(function (id) { return S.d.emps.find(function (e) { return e.id === id; }) || { id: id, nombre: id }; })
       .sort(function (a, b) { return a.nombre.localeCompare(b.nombre); });
     if (!E.length) return '<div class="empty">Todavía no hay clientes en el portal.</div>';
