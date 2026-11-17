@@ -574,3 +574,12 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-tl.ui-tl-h .ui-tl-p { position: absolute; top: -5px; left: 0; }
 .ui-tl.ui-tl-h .ui-tl-n { font-size: var(--t-s); }
 .dev-info { padding: var(--e4); margin-top: var(--e3); }   /* desarrollo: un único recuadro de Información (17/11/2026) */
+/* Riel cronológico (17/11/2026): flechas horizontales de color según el estado, como una línea de tiempo */
+.tl-riel { list-style: none; margin: 0; padding: var(--e2) 0; display: flex; gap: 2px; overflow-x: auto; }
+.tl-paso { flex: 1 1 0; min-width: 110px; display: flex; flex-direction: column; gap: 4px; }
+.tl-flecha { display: flex; align-items: center; justify-content: center; height: 26px; background: currentColor; opacity: .35;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%); }
+.tl-paso.hecho .tl-flecha { opacity: 1; }
+.tl-flecha .ui-num { color: #060716; font-size: var(--t-s); }
+.tl-nom { font-size: var(--t-s); color: var(--texto); padding-left: 10px; }
+.tl-est { font-size: var(--t-xs, 10px); color: currentColor; text-transform: uppercase; letter-spacing: .04em; padding-left: 10px; }

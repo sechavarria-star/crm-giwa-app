@@ -501,11 +501,11 @@
     });
     if (!ev.length) return '<div class="ui-nota-t">Sin fechas cargadas.</div>';
     ev.sort(function (a, b) { return (a.f ? a.f.getTime() : 9e15) - (b.f ? b.f.getTime() : 9e15); });
-    return '<ol class="ui-tl ui-tl-h">' + ev.map(function (x) {
-      var hecho = x.f && x.f <= hoy;
-      return '<li class="ui-tl-i' + (hecho ? ' hecho' : '') + '"><span class="ui-tl-p ui-e-' + (x.f ? x.c : 'rechazado') + '"></span>' +
-        '<span class="ui-tl-f">' + (x.f ? ff(x.f) : '—') + '</span>' +
-        '<span class="ui-tl-t">' + esc(x.t) + (x.n ? '<div class="ui-tl-n">' + esc(x.n) + '</div>' : '') + '</span></li>';
+    // Riel (17/11/2026): flechas de color por estado con la fecha adentro; debajo el desarrollo y su estado. Sin notas.
+    return '<ol class="tl-riel">' + ev.map(function (x) {
+      var pz = String(x.t).split(' · '), hito = pz[0].replace(/^Fin de obra$/, 'Fin'), nom = pz.slice(1).join(' · ');
+      return '<li class="tl-paso ui-e-' + (x.f ? x.c : 'rechazado') + (x.f && x.f <= hoy ? ' hecho' : '') + '"><span class="tl-flecha"><span class="ui-num">' + (x.f ? ff(x.f) : '—') + '</span></span>' +
+        '<span class="tl-nom">' + esc(nom || hito) + '</span>' + (nom ? '<span class="tl-est">' + esc(hito) + '</span>' : '') + '</li>';
     }).join('') + '</ol>';
   }
   function tabInfo(p) {
@@ -515,29 +515,28 @@
       ? uiBtn('Editar proyecto', 'editar', 'p', 'data-pm="editar-proy"')
       : '<span class="ui-nota-t" title="El proyecto ya arrancó: los datos se cargaron al cotizar. Acá sólo se suman contactos.">Sólo lectura</span>';
     var dato = function (l, v) { return '<div><span class="ui-lbl">' + l + '</span>' + v + '</div>'; };
-    var h = uiDesp({ t: 'Datos del proyecto', open: true, v: editar },
-      dato('Descripción', esc(p.descripcion || '—')) + '<br><div class="ui-datos">' +
+    // Datos del proyecto (17/11/2026): sin las fechas (están en el riel) y con los contactos adentro
+    var datosB = dato('Descripción', esc(p.descripcion || '—')) + '<br><div class="ui-datos">' +
       [['Sponsor', esc(p.sponsor || '—')], ['Owner', esc(nombre(p.owner) || '—')], ['Probabilidad', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>'],
-       ['Duración', dur ? '<span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') : '—'], ['Fecha propuesta', '<span class="ui-num">' + (ff(p.fecha_propuesta) || '—') + '</span>'], ['Cierre probable de negociación', F.cierreProb ? '<span class="ui-num">' + ff(F.cierreProb) + '</span>' :
-         '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')],   // si falta, se carga acá (16/11/2026)
-       ['Inicio', '<span class="ui-num">' + (ff(mInicio(p)) || '—') + '</span>'], ['Cierre estimado', cie.fecha ? '<span class="ui-num">' + ff(cie.fecha) + '</span>' + (cie.firme ? '' : ' (parcial)') : '—']].map(function (x) {
+       ['Duración', dur ? '<span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') : '—']].concat(F.cierreProb ? [] : [['Cierre probable de negociación',
+         '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')]]).map(function (x) {   // sólo si falta, para cargarla
         return dato(x[0], x[1]);
       }).join('') + '</div>' +
       (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') +
         _devsDe(p).filter(function (it) { return !_pd(it.fecha_fin) && !_pd(it.fecha_cierre) && !(_pd(it.fecha_ini || it.fecha_est) && _nFront(it.semanas) > 0); }).map(function (it) {
           return '<div class="ui-linea"><span class="ui-f1">' + esc(it.titulo || it.id) + '</span><input class="fc u-wauto ui-num" type="date" data-ffin="' + esc(it.id) + '" aria-label="Fecha de fin de ' + esc(it.titulo || it.id) + '">' +
-            uiBtn('Guardar', 'check', 's', 'data-pm="fin-des" data-id="' + esc(it.id) + '"') + '</div>'; }).join('') : ''));
+            uiBtn('Guardar', 'check', 's', 'data-pm="fin-des" data-id="' + esc(it.id) + '"') + '</div>'; }).join('') : '');
     // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
-    h += uiDesp({ t: 'Contactos · ' + (p.empresa || ''), n: F.cons.length,
-      v: _canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'mas', 's', 'data-pm="contacto"') },   // «+ Contacto» (16/11/2026)
-      F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
+    var h = uiDesp({ t: 'Datos del proyecto', open: true, v: editar }, datosB + '<div class="ui-barra u-mt10"><span class="ui-lat-h u-f1">Contactos · ' + esc(p.empresa || '') + '</span>' +
+      (_canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'mas', 's', 'data-pm="contacto"')) + '</div>' +
+      (F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
         var tel = telWa(c.telefono), tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
         return '<div class="ui-linea"><button type="button" class="ui-ib' + (mio(c) ? ' on' : '') + '" data-pm="estrella" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + (mio(c) ? '★' : '☆') + '</button>' +
           '<span class="ui-f1">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim() || '—') + ' <span class="ui-nota-t">· ' + esc(c.puesto || c.area_trabajo || c.email || '') + '</span></span>' +
           (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
           (c.email ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + uiIco('mail') + '</a>' : '') + '</div>';
-      }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>');
+      }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>'));
     // Las acciones de estado (Aprobar, No aceptar, Detener, Finalizar…) van una sola vez, debajo del riel (17/11/2026)
     h += uiDesp({ t: 'Cronograma', open: true }, fechasHTML(p) + '<div class="ui-barra u-mt10 ui-fila-ic">' + accionesYAlerta(p) + '</div>');
     return h;
@@ -640,7 +639,7 @@
         inf += '<span>Inicio <span class="ui-num">' + (ff(it.fecha_est) || '—') + '</span></span><span>Fin <span class="ui-num">' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</span></span>';
       } else {
         // Inicio como texto y un calendario para cambiarlo, igual que el cierre probable (16/11/2026)
-        inf += '<span>Inicio <span class="ui-num">' + (ff(it.fecha_est) || '—') + '</span></span>' + uiIb('calendario', 'Cambiar el inicio', '', 'data-pm="ini-des" data-id="' + esc(it.id) + '"') +
+        inf += '<span>Cambiar inicio</span>' + uiIb('calendario', 'Cambiar el inicio', '', 'data-pm="ini-des" data-id="' + esc(it.id) + '"') +
           (depende(it) ? corre('post-ini', 7, '1 sem.', 'Corre el inicio una semana') + corre('post-ini', 30, '1 mes', 'Corre el inicio un mes') : '') +
           (it.fecha_fin ? '<span>Fin <span class="ui-num">' + ff(it.fecha_fin) + '</span></span>' : '');
       }
@@ -758,10 +757,7 @@
     // Dos desplegables (16/11/2026): Económico (montos y recuadros) y Pagos (las cuotas y su estado)
     // «Editar» sólo antes de aprobarse: arriba, en el encabezado de Económico (16/11/2026)
     return { btn: !ganado && can !== 'rechazada' ? uiBtn('Editar', 'editar', 's', 'data-pm="ed-monto" data-id="' + esc(it.id) + '"') : '',
-      eco: '<div class="ui-datos u-mb12"><div><span class="ui-lbl">Cotizado</span><span class="ui-num">' + (cot ? fmt(cot) : ganado ? '—' : fmt(tot)) + '</span></div>' +
-        // «Aprobado» no se repite: es el «Contratado» de los recuadros (17/11/2026)
-        '</div>' +
-      lateralDes(it, usd), pagos:
+      eco: lateralDes(it, usd), pagos:
       (cs.length ? '<table class="ui-tbl"><thead><tr><th class="ui-r">Cuota</th><th>Comprobante</th><th class="ui-r">Fecha</th><th class="ui-r">Monto</th><th>Estado</th></tr></thead><tbody>' + cs.map(function (c) {
         return '<tr><td class="ui-r">' + esc(c.cuota_nro || '—') + '</td><td>' + esc([c.tipo_comprobante, c.comprobante_nro].filter(Boolean).join(' ') || '—') + '</td><td class="ui-num ui-r">' + (ff(c.comprobante_fecha) || '—') + '</td><td class="ui-r">' + fmt(c.monto_ars) + '</td>' +
           '<td>' + (c.deposito_fecha ? '<span class="ui-p-cobrado">Cobrado <span class="ui-num">' + ff(c.deposito_fecha) + '</span></span>' : '<span class="ui-p-pendiente">Sin cobrar</span>') + '</td></tr>'; }).join('') + '</tbody></table>'
