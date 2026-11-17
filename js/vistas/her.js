@@ -276,6 +276,8 @@
   }
 
   VISTAS.her = async function (el, op) {
+    // IPC y TC (17/11/2026): vive en Herramientas, pero la pantalla es la de Administración (admin.js), con sus botones
+    if (subPedida() === 'idx') { _montado = 'admin'; return VISTAS.admin(el, op); }
     S.sub = subValida(subPedida());
     if (op && op.forzar) N.ok = false;
     await abrirModulo(el, { id: 'her', texto: 'Cargando Herramientas…', forzar: op && op.forzar, cargar: cargar,
@@ -301,6 +303,9 @@
       SIM.clic(ev, el);
     };
   };
-  VISTAS.her.irA = function (s) { S.sub = subValida(s); pintar(document.getElementById('vista')); };
+  VISTAS.her.irA = function (s) {
+    if (s === 'idx') { _montado = 'admin'; return VISTAS.admin(document.getElementById('vista')); }
+    S.sub = subValida(s); pintar(document.getElementById('vista'));
+  };
   VISTAS.her.precargar = cargar;
 })();

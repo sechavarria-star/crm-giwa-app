@@ -25,10 +25,10 @@ var MODULOS = [
     subs: [['clientes', 'Clientes'], ['tickets', 'Tickets'], ['tablero', 'Tablero'], ['reportes', 'Reportes'], ['mails', 'Mails por enviar'], ['accesos', 'Accesos al portal']] },
   { id: 'cot',      nombre: 'Cotizador',      ico: 'lista',    listo: true },   // Nuevo proyecto y Borradores (03/11/2026)
   { id: 'admin',    nombre: 'Administración', ico: 'plata',    listo: true,
-    subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['prov', 'Proveedores'], ['idx', 'IPC y TC'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },
+    subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['prov', 'Proveedores'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },   // IPC y TC pasa a Herramientas (17/11/2026)
   { id: 'fin',      nombre: 'Estado financiero', ico: 'porcentaje', listo: true },
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
-    subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']] },
+    subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['idx', 'IPC y TC'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']] },
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
     subs: [['listas', 'Listas'], ['vh', 'Valor hora y targets'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más'], ['datos', 'Datos', 'v.gagey@giwa-ia.com', '#/datos']] },
   // Administración de datos (03/11/2026): el menú sólo se lo muestra a Victoria; el permiso real lo da la base (crm_giwa.es_duena)
