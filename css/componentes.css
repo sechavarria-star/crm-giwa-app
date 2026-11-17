@@ -583,3 +583,12 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .tl-flecha .ui-num { color: #060716; font-size: var(--t-s); }
 .tl-nom { font-size: var(--t-s); color: var(--texto); padding-left: 10px; }
 .tl-est { font-size: var(--t-xs, 10px); color: currentColor; text-transform: uppercase; letter-spacing: .04em; padding-left: 10px; }
+/* 17/11/2026 · riel sólo con borde (menos color), aire antes de lo que sigue, fondo del desarrollo como los desplegables */
+.tl-flecha { background: none; opacity: 1; clip-path: none; border: 1px solid currentColor; border-radius: 3px; }
+.tl-paso:not(.hecho) .tl-flecha { opacity: .45; }
+.tl-flecha .ui-num { color: currentColor; }
+.tl-riel { margin-bottom: var(--e4); }
+.dev-info { background: transparent; border: 1px solid var(--marco); box-shadow: none; }
+.ui-datos > .u-col-todo { grid-column: 1 / -1; }
+/* En todas las vistas de formularios, el nombre del campo en mayúscula (17/11/2026) */
+.fl, label.fl { text-transform: uppercase; letter-spacing: .06em; }
