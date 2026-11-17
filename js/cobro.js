@@ -319,43 +319,72 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     } catch (e) { toast(e.message, 'err'); }
     fin();
   }
-  // Recién guardada (17/11/2026): el mail con la factura se ve en la app con su plantilla, se corrige escribiendo
-  // sobre él y sale recién con «Aprobar y enviar», con el PDF adjunto. Ya no se abre Gmail.
+  // Recién guardada (17/11/2026): el mail con la factura se abre en la ventana de Administración, con su plantilla
+  // y el PDF adjunto; se corrige ahí y sale desde administracion@ recién con «Enviar». Ya no se abre Gmail.
   async function ofrecerMail(P, total, rs, pdfId) {
     var para = rs && String(rs.mail_facturacion || '').trim();
     if (!para) return toast('No hay Mail de facturación en la razón social: el mail no se preparó', 'inf');
     var dos = function (n) { return (v('cb-mon') === 'USD' ? 'USD ' : '$ ') + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-    var datos = { para: para, cliente: v('cb-emp'), numero: v('cb-nro'), fecha_emision: ff(v('cb-fecha')), concepto: P[0].concepto,
-      monto: dos(total), pdf_id: pdfId, detalle: P.map(function (x) { return { concepto: x.concepto, monto: dos(x.monto) }; }) };
     try {
-      toast('Preparando la vista previa…', 'inf');
-      var r = await puente('mailFacturaVer', datos);
-      var m = document.getElementById('m-fmail');
-      if (!m) {
-        m = document.createElement('div'); m.className = 'mo'; m.id = 'm-fmail';
-        m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Mail de la factura</span>' +
-          '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-fmail">' + ico('cerrar') + '</button></div><div class="mb2">' +
-          '<div class="ui-nota-t" id="fm-para"></div>' +
-          '<div class="fg"><label class="fl" for="fm-as">Asunto</label><input class="fc" id="fm-as"></div>' +
-          '<div class="ui-nota-t">Corregí lo que haga falta escribiendo sobre el mail.</div>' +
-          '<iframe class="sop-rev-mail" id="fm-fr" title="Vista previa del mail"></iframe></div>' +
-          '<div class="mf"><button class="btn bg" data-cerrar="m-fmail">No enviar</button><button class="btn bp" id="fm-ok">Aprobar y enviar</button></div></div>';
-        document.body.appendChild(m);
-      }
-      document.getElementById('fm-para').textContent = 'Para: ' + r.para + (r.adjunto ? ' · con la factura en PDF adjunta' : ' · sin PDF adjunto');
-      document.getElementById('fm-as').value = r.asunto || '';
-      var f = document.getElementById('fm-fr');
-      f.onload = function () { try { f.contentDocument.designMode = 'on'; f.style.height = (f.contentDocument.body.scrollHeight + 40) + 'px'; } catch (e) {} };
-      f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>body{margin:16px;background:#fff}</style></head><body>' + (r.html || '') + '</body></html>';
-      document.getElementById('fm-ok').onclick = async function () {
-        var b = this; b.disabled = true;
-        try {
-          var e = await puente('mailFacturaEnviar', Object.assign({}, datos, { asunto: document.getElementById('fm-as').value, html: f.contentDocument ? f.contentDocument.body.innerHTML : '' }));
-          closeM('m-fmail'); toast('Mail enviado a ' + (e.enviado_a || para) + (e.aviso ? ' · ' + e.aviso : ''), 'ok');
-        } catch (er) { toast(er.message, 'err'); }
-        b.disabled = false;
-      };
-      openM('m-fmail');
+      toast('Preparando el mail…', 'inf');
+      var r = await puente('mailFacturaVer', { para: para, cliente: v('cb-emp'), numero: v('cb-nro'), fecha_emision: ff(v('cb-fecha')), concepto: P[0].concepto,
+        monto: dos(total), pdf_id: pdfId, detalle: P.map(function (x) { return { concepto: x.concepto, monto: dos(x.monto) }; }) });
+      mailAdmin({ para: r.para, asunto: r.asunto, html: r.html, pdf_id: pdfId, pdf_nombre: 'Factura ' + v('cb-nro') + '.pdf' });
     } catch (e) { toast(e.message, 'err'); }
   }
+
+  // ── Ventana de mail de Administración (17/11/2026) ──
+  // Para, asunto, texto con formato (negrita, cursiva, lista, link) y adjuntos. Sale siempre desde
+  // administracion@giwa-ia.com por el Puente; nada se manda sin «Enviar».
+  var MA = { adj: [] };
+  function maAdjPintar() {
+    var l = document.getElementById('ma-adj-l'); if (!l) return;
+    l.innerHTML = (MA.pdf ? '<div class="ui-linea"><span class="ui-f1">' + ico('documento') + ' ' + esc(MA.pdf) + '</span><span class="ui-nota-t">factura</span></div>' : '') +
+      MA.adj.map(function (a, k) { return '<div class="ui-linea"><span class="ui-f1">' + ico('clip') + ' ' + esc(a.nombre) + '</span><button type="button" class="ui-ib" data-ma-quitar="' + k + '" data-tip="Quitar" aria-label="Quitar ' + esc(a.nombre) + '">' + ico('cerrar') + '</button></div>'; }).join('');
+  }
+  window.mailAdmin = function (o) {
+    MA = { adj: [], pdf: o.pdf_id ? (o.pdf_nombre || 'Factura.pdf') : '', pdf_id: o.pdf_id || '' };
+    var m = document.getElementById('m-madmin');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-madmin';
+      var bt = function (c, t, i) { return '<button type="button" class="btn bg xs" data-ma-cmd="' + c + '" title="' + t + '">' + i + '</button>'; };
+      m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Nuevo mail · Administración</span>' +
+        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-madmin">' + ico('cerrar') + '</button></div><div class="mb2">' +
+        '<div class="ui-nota-t">De: GIWA {IA} - Administración · administracion@giwa-ia.com</div>' +
+        '<div class="fg"><label class="fl" for="ma-para">Para</label><input class="fc" id="ma-para"></div>' +
+        '<div class="fg"><label class="fl" for="ma-as">Asunto</label><input class="fc" id="ma-as"></div>' +
+        '<div class="u-row8 u-mb6">' + bt('bold', 'Negrita', '<b>N</b>') + bt('italic', 'Cursiva', '<i>C</i>') + bt('insertUnorderedList', 'Lista', '•') + bt('createLink', 'Link', 'Link') + '</div>' +
+        '<iframe class="sop-rev-mail" id="ma-fr" title="Texto del mail"></iframe>' +
+        '<div class="fg u-mt10"><div class="u-row8"><span class="fl u-f1">Adjuntos</span><label class="btn bg xs">' + ico('clip') + ' Adjuntar<input type="file" id="ma-file" class="ui-arch-inp" multiple hidden></label></div><div id="ma-adj-l"></div></div>' +
+        '</div><div class="mf"><button class="btn bg" data-cerrar="m-madmin">Cancelar</button><button class="btn bp" id="ma-ok">Enviar</button></div></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', function (ev) {
+        var c = ev.target.closest('[data-ma-cmd]'), q = ev.target.closest('[data-ma-quitar]'), d = document.getElementById('ma-fr').contentDocument;
+        if (c) { var cmd = c.getAttribute('data-ma-cmd'), arg = null; if (cmd === 'createLink') { arg = prompt('Dirección del link (https://…)'); if (!arg) return; } d.execCommand(cmd, false, arg); return; }
+        if (q) { MA.adj.splice(Number(q.getAttribute('data-ma-quitar')), 1); maAdjPintar(); }
+      });
+      document.getElementById('ma-file').addEventListener('change', function () {
+        Array.prototype.forEach.call(this.files, function (f) {
+          var rd = new FileReader(); rd.onload = function () { MA.adj.push({ nombre: f.name, mime: f.type || 'application/octet-stream', base64: String(rd.result).split(',')[1] }); maAdjPintar(); }; rd.readAsDataURL(f);
+        }); this.value = '';
+      });
+    }
+    document.getElementById('ma-para').value = o.para || '';
+    document.getElementById('ma-as').value = o.asunto || '';
+    var f = document.getElementById('ma-fr');
+    f.onload = function () { try { f.contentDocument.designMode = 'on'; f.style.height = Math.max(320, f.contentDocument.body.scrollHeight + 40) + 'px'; } catch (e) {} };
+    f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>body{margin:16px;background:#fff;font-family:Montserrat,Arial,sans-serif}</style></head><body>' + (o.html || '<p></p>') + '</body></html>';
+    maAdjPintar();
+    document.getElementById('ma-ok').onclick = async function () {
+      var b = this, para = document.getElementById('ma-para').value.trim(), as = document.getElementById('ma-as').value.trim();
+      if (!para || !as) return toast('Falta el destinatario o el asunto', 'err');
+      b.disabled = true;
+      try {
+        var e = await puente('mailAdmin', { para: para, asunto: as, html: f.contentDocument.body.innerHTML, adjuntos: MA.adj, pdf_id: MA.pdf_id });
+        closeM('m-madmin'); toast('Mail enviado desde administracion@ a ' + (e.enviado_a || para) + (e.aviso ? ' · ' + e.aviso : ''), 'ok');
+      } catch (er) { toast(er.message, 'err'); }
+      b.disabled = false;
+    };
+    openM('m-madmin');
+  };
 })();
