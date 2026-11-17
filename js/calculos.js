@@ -193,6 +193,9 @@ function mFinObra(p) {
   var f = null, faltan = 0;
   _devsDe(p).forEach(function(it){
     var x = _pd(it.fecha_fin) || _pd(it.fecha_cierre);
+    // sin fecha de fin: inicio + las semanas de la cotización / propuesta (16/11/2026)
+    var ini = _pd(it.fecha_ini || it.fecha_est), sem = _nFront(it.semanas);
+    if (!x && ini && sem > 0) x = new Date(ini.getTime() + sem * 7 * 864e5);
     if (x) { if (!f || x > f) f = x; } else faltan++;
   });
   return { fecha:f, faltan:faltan };

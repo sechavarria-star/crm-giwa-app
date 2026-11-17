@@ -111,7 +111,7 @@ function uiDesp(o, cuerpo) {
 function uiFilaProy(o, ficha) {
   return '<div class="ui-fp' + (o.open ? ' open' : '') + '" ' + (o.attrs || '') + '>' +
            '<span class="ui-ch">' + uiIco('derecha') + '</span>' + uiLogo(o.emp, o.logoUrl) +
-           '<div><div class="ui-pro">' + esc(o.pro) + '</div><div class="ui-emp">' + esc(o.emp) + '</div></div>' +
+           '<div><div class="ui-pro">' + esc(o.pro) + '</div><div class="ui-emp">' + esc(o.emp) + '</div>' + (o.sub || '') + '</div>' +   // o.sub: HTML debajo del nombre (16/11/2026)
            '<span class="ui-fp-est">' + (o.est || '') + '</span>' +
          '</div><div class="ui-ficha">' + (ficha || '') + '</div>';
 }

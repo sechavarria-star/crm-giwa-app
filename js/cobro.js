@@ -270,8 +270,18 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
       $('cb-info').textContent = pago ? 'Queda como cobro sin comprobante, con el pago ya registrado. La factura se puede cargar después.'
                                       : '';
       pintarRs(); pintarFilas();
+      if (!pago) proxNro();
       openM('m-cobro');
     } catch (e) { toast('No se pudo abrir: ' + e.message, 'err'); }
+  }
+  // Número sugerido (16/11/2026): la última Factura de quien factura + 1, en su punto de venta (0005-00000050)
+  async function proxNro() {
+    var yo = (CRM_USUARIO && CRM_USUARIO.mail) || ''; if (!yo) return;
+    var r = await db().from('v_cobros').select('nro_factura,fecha_comp').eq('factura_owner', yo).ilike('tipo_comp', 'Factura%').order('fecha_comp', { ascending: false }).limit(60);
+    var pv = '', max = 0;
+    (r.data || []).forEach(function (c) { var m = String(c.nro_factura || '').match(/^(\d+)-(\d+)$/); if (!m) return; if (!pv) pv = m[1]; if (Number(m[1]) === Number(pv)) max = Math.max(max, Number(m[2])); });
+    var inp = $('cb-nro'); if (!pv || !inp || inp.value) return;
+    inp.value = String(Number(pv)).padStart(4, '0') + '-' + String(max + 1).padStart(8, '0');
   }
   window.abrirFactura = function (ctx, opts) { return abrir('factura', ctx, opts); };
   window.abrirPago = function (ctx, opts) { return abrir('pago', ctx, opts); };

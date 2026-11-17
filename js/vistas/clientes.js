@@ -100,7 +100,7 @@
   var TIP_CLI = { 'prospecto': 'Todavía sin proyectos aprobados', 'detenido': 'Tiene proyectos detenidos', 'cliente': 'Tiene proyectos aprobados',
                   'abono activo': 'Paga un abono mensual', 'deuda vencida': 'Tiene cobros vencidos' };
   function htmlEmpresas(lista) {
-    return '<div class="ui-tarjetas">' + lista.map(function (e) {
+    return '<div class="ui-tarjetas cli-tarjetas">' + lista.map(function (e) {   // tres por fila (16/11/2026)
       var np = D.nProy[e.id] || 0, g = clienteDe(e), cls = EST_CLI[g.estado] || 'ui-p-neutro';
       var web = e.web ? (e.web.indexOf('http') === 0 ? e.web : 'https://' + e.web) : '';
       var lugar = [e.localidad, e.provincia].filter(Boolean).join(', ');

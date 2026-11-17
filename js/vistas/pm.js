@@ -322,7 +322,11 @@
     var ab = P.inline === p.id;
     return uiFilaProy({ emp: p.empresa || '', pro: p.nombre || '—', logoUrl: (P.emps[p.empresa] || {}).logo, open: ab,
       attrs: 'data-pm="inline" data-id="' + esc(p.id) + '" aria-expanded="' + ab + '"',
-      est: p.detenido ? uiEstado('Detenido', { detenido: true }) : uiEstado(p.estado_proyecto || '—') },
+      // abierta: el porqué del estado va debajo del nombre, donde estaba la empresa (16/11/2026)
+      sub: ab ? '<div class="ui-motivo ui-fp-mot"><span class="ui-e-' + uiClaveEst(p.estado_proyecto || 'Prospecto') + '">' + esc(porQue(p, _canonProy(p.estado_proyecto)) || deDondeSale(p)) + '</span></div>' : '',
+      est: (p.detenido ? uiEstado('Detenido', { detenido: true }) : uiEstado(p.estado_proyecto || '—')) +
+        // abierta: debajo del estado, Detener en chico y con su palabra (16/11/2026)
+        (ab && !p.detenido && ['finalizado', 'rechazado'].indexOf(_canonProy(p.estado_proyecto)) < 0 ? '<button type="button" class="ui-det-txt" data-pm="det-proy" data-id="' + esc(p.id) + '">' + uiIco('pausa') + 'Detener</button>' : '') },
       ab && P.f && P.f.id === p.id ? fichaCuerpo(p, true) : '');
   }
   // Proyectos = el universo completo (29/10/2026): los mismos chips de Seguimiento más Finalizado
@@ -507,25 +511,26 @@
   function tabInfo(p) {
     var F = P.f, dur = mDuracionMeses(p), cie = mCierre(p);
     // Un proyecto Activo o Finalizado ya se cargó: se mira. Lo que sigue cambiando son los contactos.
-    var editar = _canonProy(p.estado_proyecto) !== 'rechazado'
+    var editar = ['activo', 'finalizado', 'rechazado'].indexOf(_canonProy(p.estado_proyecto)) < 0   // Activo ya no se edita (16/11/2026)
       ? uiBtn('Editar proyecto', 'editar', 'p', 'data-pm="editar-proy"')
       : '<span class="ui-nota-t" title="El proyecto ya arrancó: los datos se cargaron al cotizar. Acá sólo se suman contactos.">Sólo lectura</span>';
     var dato = function (l, v) { return '<div><span class="ui-lbl">' + l + '</span>' + v + '</div>'; };
     var h = uiDesp({ t: 'Datos del proyecto', open: true, v: editar },
       dato('Descripción', esc(p.descripcion || '—')) + '<br><div class="ui-datos">' +
       [['Sponsor', esc(p.sponsor || '—')], ['Owner', esc(nombre(p.owner) || '—')], ['Probabilidad', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>'],
-       ['Duración', dur ? '<span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') : '—'], ['Fecha propuesta', '<span class="ui-num">' + (ff(p.fecha_propuesta) || '—') + '</span>'], ['Cierre probable de negociación', '<span class="ui-num">' + (ff(F.cierreProb) || '—') + '</span>'],
+       ['Duración', dur ? '<span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') : '—'], ['Fecha propuesta', '<span class="ui-num">' + (ff(p.fecha_propuesta) || '—') + '</span>'], ['Cierre probable de negociación', F.cierreProb ? '<span class="ui-num">' + ff(F.cierreProb) + '</span>' :
+         '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')],   // si falta, se carga acá (16/11/2026)
        ['Inicio', '<span class="ui-num">' + (ff(mInicio(p)) || '—') + '</span>'], ['Cierre estimado', cie.fecha ? '<span class="ui-num">' + ff(cie.fecha) + '</span>' + (cie.firme ? '' : ' (parcial)') : '—']].map(function (x) {
         return dato(x[0], x[1]);
       }).join('') + '</div>' +
       (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') +
-        _devsDe(p).filter(function (it) { return !_pd(it.fecha_fin) && !_pd(it.fecha_cierre); }).map(function (it) {
+        _devsDe(p).filter(function (it) { return !_pd(it.fecha_fin) && !_pd(it.fecha_cierre) && !(_pd(it.fecha_ini || it.fecha_est) && _nFront(it.semanas) > 0); }).map(function (it) {
           return '<div class="ui-linea"><span class="ui-f1">' + esc(it.titulo || it.id) + '</span><input class="fc u-wauto ui-num" type="date" data-ffin="' + esc(it.id) + '" aria-label="Fecha de fin de ' + esc(it.titulo || it.id) + '">' +
             uiBtn('Guardar', 'check', 's', 'data-pm="fin-des" data-id="' + esc(it.id) + '"') + '</div>'; }).join('') : ''));
     // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
     h += uiDesp({ t: 'Contactos · ' + (p.empresa || ''), n: F.cons.length,
-      v: _canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'contacto', 's', 'data-pm="contacto"') },
+      v: _canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'mas', 's', 'data-pm="contacto"') },   // «+ Contacto» (16/11/2026)
       F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
         var tel = telWa(c.telefono), tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
         return '<div class="ui-linea"><button type="button" class="ui-ib' + (mio(c) ? ' on' : '') + '" data-pm="estrella" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + (mio(c) ? '★' : '☆') + '</button>' +
@@ -587,9 +592,10 @@
     var lista = (p.items || []).slice().sort(function (a, b) { return k(a) - k(b); });
     // Mejora o soporte: una sola acción del PROYECTO; el modal pregunta cuál y de qué desarrollo depende
     var bases = basesAlta(p);
-    var alta = bases.length ? '<div class="ui-barra ui-der">' + uiBtn('Desarrollo', 'mas', 's', 'data-pm="alta-des" data-id="' + esc(p.id) + '"') + '</div>' : '';
+    var alta = bases.length ? '<div class="ui-barra ui-der u-mt10">' + uiBtn('Desarrollo', 'mas', 's', 'data-pm="alta-des" data-id="' + esc(p.id) + '"') + '</div>' : '';
     if (!lista.length) return alta + '<div class="ui-nota-t">Sin desarrollos.</div>';
-    return alta + lista.map(function (it) {
+    // «+ Desarrollo» abajo de todos los desarrollos (16/11/2026)
+    return lista.map(function (it) {
       var rec = esMant(it), det = !!it.detenido || !!p.detenido, can = _canonSol(it.estado);
       var cuota = Number(it.cuota_act) || Number(it.valor_cuota) || 0;
       var sub = [it.tipo_nombre || it.tipo, it.modelo_nombre || it.modelo].filter(Boolean).join(' · ');
@@ -614,9 +620,14 @@
         // abono y cuotas ya están en la fila (plata): no se repiten acá (02/11/2026)
       } else if (it.cuotas > 1) l1.push('<span class="ui-num">' + it.cuotas + '</span> cuotas');
       if (it.horas) l1.push('Vendidas <span class="ui-num">' + it.horas + ' h</span>');
+      // Duración en semanas (16/11/2026): si falta (proyectos migrados), un ícono para cargarla
+      if (!rec) l1.push(Number(it.semanas) > 0 ? 'Duración <span class="ui-num">' + Number(it.semanas) + '</span> semanas'
+        : 'Duración — ' + uiIb('calendario', 'Cargar la duración en semanas', '', 'data-pm="sem-des" data-id="' + esc(it.id) + '"'));
       if (it.socios) l1.push(esc(crmLista(it.socios).map(nombre).join(', ')));
-      if (it.garantia_dias) l1.push('<span class="ui-num">' + it.garantia_dias + '</span> días de garantía');
-      var inf = l1.length ? '<div class="ui-linea-sub">' + l1.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>' : '';
+      if (it.garantia_dias && !rec) l1.push('<span class="ui-num">' + it.garantia_dias + '</span> días de garantía');   // el mantenimiento (MRR) no tiene garantía (16/11/2026)
+      // La descripción (el alcance de la cotización) arriba de todo, siempre a la vista (16/11/2026)
+      var inf = '<div class="u-mb10"><span class="ui-lbl">Descripción</span>' + (it.descripcion && it.descripcion !== it.titulo ? esc(it.descripcion) : '<span class="ui-nota-t">Sin descripción: se carga en el Alcance de la cotización.</span>') + '</div>' +
+        (l1.length ? '<div class="ui-linea-sub">' + l1.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>' : '');
       var corre = function (a, d, txt, tit) { return uiBtn(txt, 'mas', 's', 'data-pm="' + a + '" data-id="' + esc(it.id) + '" data-d="' + d + '" title="' + tit + '"'); };
       inf += '<div class="ui-linea-sub">';
       if (rec) { if (!it.fecha_est && !mantArranca(p, it)) inf += '<span class="ui-p-pendiente">No se sabe cuándo arranca: falta vincularlo a un desarrollo o cargarle la fecha de fin</span>'; }
@@ -627,25 +638,26 @@
       } else if (desCerrado(it) || can === 'rechazada') {
         inf += '<span>Inicio <span class="ui-num">' + (ff(it.fecha_est) || '—') + '</span></span><span>Fin <span class="ui-num">' + (ff(it.fecha_fin || it.fecha_cierre) || '—') + '</span></span>';
       } else {
-        inf += '<span>Inicio</span><input class="ui-campo ui-num" type="date" data-fini="' + esc(it.id) + '" value="' + esc(it.fecha_est ? String(it.fecha_est).slice(0, 10) : '') + '" aria-label="Inicio del desarrollo">' +
+        // Inicio como texto y un calendario para cambiarlo, igual que el cierre probable (16/11/2026)
+        inf += '<span>Inicio <span class="ui-num">' + (ff(it.fecha_est) || '—') + '</span></span>' + uiIb('calendario', 'Cambiar el inicio', '', 'data-pm="ini-des" data-id="' + esc(it.id) + '"') +
           (depende(it) ? corre('post-ini', 7, '1 sem.', 'Corre el inicio una semana') + corre('post-ini', 30, '1 mes', 'Corre el inicio un mes') : '') +
           (it.fecha_fin ? '<span>Fin <span class="ui-num">' + ff(it.fecha_fin) + '</span></span>' : '');
       }
       inf += '</div>';
-      if (it.descripcion) inf += '<div class="ui-nota-t">' + esc(it.descripcion) + '</div>';
       if (can === 'finalizada') inf += resumenFinalizado(it);   // de qué trató, cuánto duró y cuándo se cobró
       // Dos pestañas (16/11/2026): Información junta las fechas y los pagos; Módulos de trabajo queda aparte
       var dt = P.dTab[it.id] === 'mods' ? 'mods' : 'info', at = function (k) { return 'data-pm="dtab" data-id="' + esc(it.id) + '" data-t="' + k + '"'; };
       h += uiTabs([['info', 'Información', at('info')], ['mods', 'Módulos de trabajo', at('mods')]], dt) +
-        (dt === 'mods' ? modulosDe(it.id) : inf + '<div class="ui-lat-h u-mt10">Fechas</div><div class="dev-riel">' + fechasHTML(p, it.id) + '</div>' +
-          '<div class="ui-lat-h u-mt10">Pagos</div>' + econDes(it));
+        (dt === 'mods' ? modulosDe(it.id) : inf + uiDesp({ t: 'Cronograma', open: true }, '<div class="dev-riel">' + fechasHTML(p, it.id) + '</div>') +   // desplegables (16/11/2026)
+          uiDesp({ t: 'Económico', open: true, v: econDes(it).btn }, econDes(it).eco) + uiDesp({ t: 'Pagos', open: true }, econDes(it).pagos));
       return h + '</div>';
-    }).join('');
+    }).join('') + alta;
   }
   // Tareas y comentarios con la forma de HOY (js/tareas.js)
   function tabTareas(p) {
     var F = P.f, pid = esc(p.id);
-    var h = '<div class="ui-barra ui-der">' + uiBtn('Nueva tarea', 'mas', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div><div class="ui-lat-h">Tareas</div>';
+    // Título arriba, en la misma línea que «+ Nueva tarea», y en ámbar (pendientes) para identificarlas (16/11/2026)
+    var h = '<div class="ui-barra pm-tar-hd"><span class="ui-lat-h ui-p-pendiente">Tareas</span><span class="u-f1"></span>' + uiBtn('Nueva tarea', 'mas', 's', 'data-pm="nueva-tarea" data-id="' + pid + '"') + '</div>';
     var ab = F.tareas.filter(function (t) { return !t.closed; }).sort(function (a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); });
     var tid = {}; F.tareas.forEach(function (t) { tid[t.id] = t; });
     h += ab.length ? TareasUI.html(ab, P.tst, usuarios()) : '<div class="ui-nota-t">Sin tareas pendientes.</div>';
@@ -673,11 +685,13 @@
     var h = '<div class="ui-barra">' + (drv ? lnk(drv, 'Carpeta del proyecto') : '') + (emp && emp !== drv ? lnk(emp, 'Drive de ' + esc(p.empresa || 'la empresa')) : '') + '</div>';
     if (!drv && !emp) h = uiAviso('Este proyecto no tiene carpeta de Drive cargada, ni su empresa.', 'adv');
     // Mockups y propuestas: tabla entregables, accesos = [{ tipo, nombre, url }]. Se abren en otra pestaña.
-    h += '<div class="ui-barra ui-der">' + uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') + '</div><div class="ui-lat-h">Mockups y propuestas</div>' + ((P.f.entregables || []).length ? P.f.entregables.map(function (e) {
+    // Mismo formato que Contactos (16/11/2026): desplegable con título, cantidad y «+ Mockup o propuesta»
+    var ents = P.f.entregables || [];
+    h += uiDesp({ t: 'Mockups y propuestas', n: ents.length, open: true, v: uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') }, (ents.length ? ents.map(function (e) {
       var ac = (e.accesos || [])[0] || {}, u = String(ac.url || ''), web = /^https?:\/\//i.test(u);
       return '<div class="ui-linea"><span class="ui-f1">' + esc(e.titulo || ac.nombre || 'Sin título') + ' <span class="ui-nota-t">· ' + esc(e.tipo || '') + '</span></span>' +
         (web ? '<a class="ui-ib" href="' + esc(u) + '" target="_blank" rel="noopener" data-tip="Abrir" aria-label="Abrir ' + esc(e.titulo || '') + '">' + uiIco('abrir') + '</a>' : '<span class="ui-nota-t">' + esc(u) + '</span>') + '</div>'; }).join('')
-      : '<div class="ui-nota-t">Sin mockups ni propuestas.</div>') + '<br>';
+      : '<div class="ui-nota-t">Sin mockups ni propuestas.</div>'));
     return h;
   }
   // Análisis del cliente (getAnalisisCliente): lo que guardó el Cotizador, no se recalcula
@@ -707,12 +721,12 @@
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
     var tot = mTotal(p), cob = mCobradoDev(p), sal = mSaldo(p);
     var nDev = (p.items || []).filter(function (x) { return !esMant(x) && esGanado(x.estado); }).length, nDevT = (p.items || []).filter(function (x) { return !esMant(x); }).length;
-    var h = '<div id="pm-lat"><div class="ui-lat-h">Desarrollos · ' + nDev + (nDevT > nDev ? ' de ' + nDevT : '') + ' contratado' + (nDev === 1 ? '' : 's') + '</div><div class="ui-lat-g">' +
+    var h = '<div id="pm-lat"><div class="ui-lat-h">Desarrollos · ' + nDev + (nDevT > nDev ? ' de ' + nDevT : '') + ' contratado' + (nDev === 1 ? '' : 's') + '</div><div class="ui-lat-g ui-lat-g3">' +
       uiKpi('Contratado', fmt(tot), 'p-contratado', '', usd(tot)) + uiKpi('Cobrado', fmt(cob), 'p-cobrado', '', usd(cob)) + uiKpi('Pendiente', fmt(sal), 'p-pendiente', '', usd(sal)) + '</div>';
     var rec = mRecurrente(p), sm = mSaldoMant(p);
     if (rec > 0 || sm > 0) {
       var fm = mFinMant(p);
-      h += '<div class="ui-lat-h">Mantenimiento y soporte</div><div class="ui-lat-g">' +
+      h += '<div class="ui-lat-h">Mantenimiento y soporte</div><div class="ui-lat-g ui-lat-g3">' +
         uiKpi('Abono mensual', fmt(rec), 'p-abono', (p.mant_vivos || 0) + ' en curso', usd(rec)) +
         uiKpi('Ya cobrado', fmt(mCobradoMant(p)), 'p-cobrado', fm.cobradas + ' de ' + fm.totales + ' cuotas cobradas', usd(mCobradoMant(p))) +
         uiKpi('Por cobrar', fmt(sm), 'p-pendiente', '', usd(sm)) + '</div><div class="ui-nota-t">No suma al contratado: se factura por cuota.</div><br>';
@@ -725,19 +739,22 @@
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
     var cot = (P.f.cotizado || {})[it.id], ganado = esGanado(it.estado), tot = Number(it.total_ars) || 0, can = _canonSol(it.estado);
     var cs = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id; });
-    return '<div class="ui-datos u-mb12"><div><span class="ui-lbl">Cotizado</span><span class="ui-num">' + (cot ? fmt(cot) : ganado ? '—' : fmt(tot)) + '</span></div>' +
+    // Dos desplegables (16/11/2026): Económico (montos y recuadros) y Pagos (las cuotas y su estado)
+    // «Editar» sólo antes de aprobarse: arriba, en el encabezado de Económico (16/11/2026)
+    return { btn: !ganado && can !== 'rechazada' ? uiBtn('Editar', 'editar', 's', 'data-pm="ed-monto" data-id="' + esc(it.id) + '"') : '',
+      eco: '<div class="ui-datos u-mb12"><div><span class="ui-lbl">Cotizado</span><span class="ui-num">' + (cot ? fmt(cot) : ganado ? '—' : fmt(tot)) + '</span></div>' +
         (ganado ? '<div><span class="ui-lbl">Aprobado</span><span class="ui-num">' + fmt(tot) + '</span></div>' : '') +
-        (can !== 'rechazada' ? '<div>' + uiBtn('Editar monto', 'editar', 's', 'data-pm="ed-monto" data-id="' + esc(it.id) + '"') + '</div>' : '') + '</div>' +
-      lateralDes(it, usd) + '<div class="ui-lat-h">Cuotas y estado del pago</div>' +
+        '</div>' +
+      lateralDes(it, usd), pagos:
       (cs.length ? '<table class="ui-tbl"><thead><tr><th class="ui-r">Cuota</th><th>Comprobante</th><th class="ui-r">Fecha</th><th class="ui-r">Monto</th><th>Estado</th></tr></thead><tbody>' + cs.map(function (c) {
         return '<tr><td class="ui-r">' + esc(c.cuota_nro || '—') + '</td><td>' + esc([c.tipo_comprobante, c.comprobante_nro].filter(Boolean).join(' ') || '—') + '</td><td class="ui-num ui-r">' + (ff(c.comprobante_fecha) || '—') + '</td><td class="ui-r">' + fmt(c.monto_ars) + '</td>' +
           '<td>' + (c.deposito_fecha ? '<span class="ui-p-cobrado">Cobrado <span class="ui-num">' + ff(c.deposito_fecha) + '</span></span>' : '<span class="ui-p-pendiente">Sin cobrar</span>') + '</td></tr>'; }).join('') + '</tbody></table>'
-        : '<div class="ui-nota-t">Todavía no hay cuotas facturadas.</div>');
+        : '<div class="ui-nota-t">Todavía no hay cuotas facturadas.</div>') };
   }
   function lateralDes(it, usd) {
     var cs = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id; });
     var cob = cs.filter(function (c) { return c.deposito_fecha; }).reduce(function (a, c) { return a + (Number(c.monto_ars) || 0); }, 0);
-    var h = '<div class="ui-lat-h">' + esc(it.titulo || it.id) + '</div><div class="ui-lat-g">';
+    var h = '<div class="ui-lat-g ui-lat-fila">';   // sin repetir el nombre del desarrollo: va dentro de «Económico"   // todos en una línea (16/11/2026)
     if (esMant(it)) {
       var cu = Number(it.cuota_act) || Number(it.valor_cuota) || 0, d = Number(it.duracion) || 0, cf = Number(it.cuotas_facturadas) || 0;
       h += uiKpi('Abono mensual', fmt(cu), 'p-abono', '', usd(cu)) +
@@ -759,15 +776,16 @@
     return h + fichaCuerpo(p);
   }
   // Acciones del proyecto: Detener y Finalizar como íconos junto al estado (C5); las demás, botones con su confirmación
-  function iconosEstado(p) {
+  // sinDet (16/11/2026): en la fila abierta de la lista, Detener va con su palabra debajo del estado
+  function iconosEstado(p, sinDet) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id), acc = p.detenido ? [] : accionesProy(p);
     return (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
+        (p.detenido ? uiIb('play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : sinDet ? '' : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
   }
   // Acciones del PROYECTO, arriba a la derecha de la ficha: las del estado (botones con su confirmación),
   // Arrancar si hay aprobados, y Tarea y Comentario como íconos (02/11/2026)
-  function accionesYAlerta(p) {
+  function accionesYAlerta(p, sinDet) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
     var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
     var viejo = function (txt, tipo) { return '<a class="ui-btn ui-' + tipo + '" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
@@ -777,7 +795,7 @@
           var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
         (aprob && !p.detenido ? uiBtn('Arrancar', 'play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
         ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
-      iconosEstado(p);
+      iconosEstado(p, sinDet);
   }
   // C5 · la ficha: motivo en gris y, junto al estado, Detener y Finalizar; botones secundarios; pestañas; lateral de plata
   // C5 · la ficha: el motivo en el color del estado; arriba a la derecha las acciones del proyecto;
@@ -786,14 +804,14 @@
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
     // Tres pestañas (16/11/2026): Información con Documentos y Drive adentro; Análisis con lo Económico
     var tabs = [['info', 'Información', function (x) { return tabInfo(x) + '<div class="ui-lat-h u-mt10">Documentos y Drive</div>' + tabDocs(x); }],
-                ['analisis', 'Análisis', function (x) { return lateral(x) + '<div class="ui-lat-h u-mt10">Análisis del cliente</div>' + tabAnalisis(x); }],
-                ['desarrollos', 'Desarrollos' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos]];
+                ['analisis', 'Análisis económico', function (x) { return lateral(x) + '<div class="ui-lat-h u-mt10">Análisis del cliente</div>' + tabAnalisis(x); }],
+                ['desarrollos', 'Desarrollos del proyecto' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
     var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
-    var acc = '<span class="ui-acc-est ui-fila-ic">' + accionesYAlerta(p) + '</span>';
+    var acc = '<span class="ui-acc-est ui-fila-ic">' + accionesYAlerta(p, enLista) + '</span>';
     var cab = enLista
-      ? '<div class="ui-ficha-hd">' + motivo + (av ? ' ' + av : '') + acc + '</div>'
+      ? '<div class="ui-ficha-hd"><span class="u-f1">' + (av || '') + '</span>' + acc + '</div>'
       : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
         '<span>' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</span>' + av + acc + '</div>' + motivo + riel(p);
     var cuerpo = cab + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
@@ -816,7 +834,8 @@
         '<div class="fg"><label class="fl" for="nv-cierre">Fecha probable de cierre de negociación <span class="req">*</span></label><input class="fc" type="date" id="nv-cierre"></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="nv-tipo">Desarrollo <span class="req">*</span></label><select class="fc" id="nv-tipo"></select></div>' +
         '<div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div></div>' +
-      '<div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el título del proyecto"></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el título del proyecto"></div>' +
+        '<div class="fg"><label class="fl" for="nv-sem">Duración en semanas <span class="req">*</span></label><input class="fc u-tr ui-num" type="number" min="1" id="nv-sem"></div></div>' +   // 16/11/2026
       '<div class="fg"><div class="u-row8"><label class="fl u-f1" for="nv-monto">Monto del desarrollo <span class="req">*</span></label>' +
           '<span class="ui-mon" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</span></div>' +
         '<input class="fc u-tr m" type="number" min="0" id="nv-monto" data-monto><div class="u-s11-mt" id="nv-eq"></div></div>' +
@@ -900,13 +919,14 @@
   async function nvGuardar(el) {
     var v = function (id) { return String(document.getElementById(id).value || '').trim(); };
     var falta = [!v('nv-emp') && 'la empresa', !v('nv-nom') && 'el título del proyecto', !v('nv-tipo') && 'el tipo de desarrollo',
-                 !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago', !v('nv-cierre') && 'la fecha probable de cierre'].filter(Boolean);
+                 !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago', !v('nv-cierre') && 'la fecha probable de cierre', !(Number(v('nv-sem')) > 0) && 'la duración en semanas'].filter(Boolean);
     if (falta.length) return set('nv-err', 'Falta ' + falta.join(', ') + '.');
     var b = document.querySelector('#m-nv [data-pm="nv-ok"]'); b.disabled = true;
     var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'), fecha_cierre: v('nv-cierre'),
       titulo: v('nv-tit') || v('nv-nom'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
     b.disabled = false;
     if (r.error) return set('nv-err', esc(r.error.message));
+    if (r.data.did) { var rs = await db().rpc('desarrollo_semanas', { did: r.data.did, semanas: Number(v('nv-sem')) }); if (rs.error) toast('La duración no se guardó: ' + rs.error.message, 'err'); }
     closeM('m-nv'); toast(r.data.pid + ' cargado como Prospecto', 'ok');
     await cargar(); P.sub = 'proy'; abrirFicha(el, r.data.pid);
   }
@@ -1030,7 +1050,7 @@
     var cab = uiHd('Proyectos', {
       seg: 'Proyectos en marcha y en negociación, para revisar.',
       proy: 'Todos los proyectos, con sus desarrollos y su estado.'
-    }[P.sub] || 'Seguimiento y estado de cada proyecto.', uiBtn('Nuevo proyecto rápido', 'mas', 'p', 'data-pm="nv-abrir"'));
+    }[P.sub] || 'Seguimiento y estado de cada proyecto.', uiBtn('Nueva cotización', 'lista', 's', 'data-pm="nueva-cot"') + uiBtn('Nuevo proyecto rápido', 'mas', 'p', 'data-pm="nv-abrir"'));
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     var tabs = uiTabs([['proy', 'Proyectos', 'data-pm="sub" data-s="proy"'], ['seg', 'Seguimiento', 'data-pm="sub" data-s="seg"']], P.sub);
     if (P.sub === 'seg') el.innerHTML = cab + tabs + '<div id="seg-c">' + htmlSeg() + '</div>';
@@ -1229,6 +1249,8 @@
     el.onchange = function (ev) {
       var t = ev.target;
       if (t.id === 'pr-orden') { P.pr.orden = t.value; return pintar(el); }
+      if (t.hasAttribute && t.hasAttribute('data-fsem')) return Number(t.value) > 0 ? hacer('desarrollo_semanas', { did: t.getAttribute('data-fsem'), semanas: Number(t.value) }, 'Duración guardada') : null;
+      if (t.hasAttribute && t.hasAttribute('data-fcierre')) return t.value ? hacer('proyecto_cierre_probable', { pid: t.getAttribute('data-fcierre'), fecha: t.value }, 'Fecha de cierre guardada') : null;
       if (t.hasAttribute && t.hasAttribute('data-fini')) return hacer('fecha_desarrollo', { did: t.getAttribute('data-fini'), campo: 'fecha_ini', fecha: t.value || null }, 'Fecha del desarrollo guardada');
     };
     // Comentario rápido: Enter guarda en el proyecto
@@ -1260,6 +1282,13 @@
         return hacer('fecha_desarrollo', { did: id, campo: 'fecha_fin', fecha: ffin.value }, 'Fecha de fin guardada');
       }
       if (a === 'nv-abrir') return nvAbrir(el);
+      if (a === 'sem-des') { var fs = document.createElement('input'); fs.type = 'number'; fs.min = '1'; fs.className = 'ui-campo ui-num'; fs.style.width = '90px'; fs.placeholder = 'semanas'; fs.setAttribute('data-fsem', b.getAttribute('data-id')); fs.setAttribute('aria-label', 'Duración en semanas');
+        b.replaceWith(fs); fs.focus(); return; }
+      if (a === 'ini-des') { var fd = document.createElement('input'); fd.type = 'date'; fd.className = 'ui-campo ui-num'; fd.setAttribute('data-fini', b.getAttribute('data-id')); fd.setAttribute('aria-label', 'Inicio del desarrollo');
+        b.replaceWith(fd); fd.focus(); setTimeout(function () { var c = fd.parentNode && fd.parentNode.querySelector('.ui-ib'); if (c) c.click(); }, 60); return; }
+      if (a === 'cierre-prob') { var fi = document.createElement('input'); fi.type = 'date'; fi.className = 'ui-campo ui-num'; fi.setAttribute('data-fcierre', b.getAttribute('data-id')); fi.setAttribute('aria-label', 'Cierre probable de negociación');
+        b.replaceWith(fi); fi.focus(); setTimeout(function () { var c = fi.parentNode && fi.parentNode.querySelector('.ui-ib'); if (c) c.click(); }, 60); return; }
+      if (a === 'nueva-cot') { location.hash = '#/cot/nuevo'; return; }   // Cotizador › Nuevo proyecto (16/11/2026)
       if (a === 'contactos') { var pc = proy(id); return abrirFichaEmpresa(pc.empresa_id, { onSave: refrescar }); }
       if (a === 'seg-contacto') { ev.preventDefault(); return abrirContacto(null, { empresa: proy(id).empresa_id, onSave: refrescar }); }
       if (a === 'nota-foco') { ev.preventDefault(); var nf = el.querySelector('[data-segnota="' + id + '"]'); if (nf) { nf.focus(); nf.scrollIntoView({ block: 'center' }); } return; }

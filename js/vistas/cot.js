@@ -961,6 +961,8 @@
   VISTAS.cot = async function (el, op) {
     await abrirModulo(el, { id: 'cot', texto: 'Cargando el Cotizador…', forzar: op && op.forzar, cargar: cargar,
       cargado: function () { return !!C.ini; }, firma: function () { return JSON.stringify(C.ini && C.ini.lista); }, pintar: function () { pintar(el); } });
+    // #/cot/nuevo (desde Proyectos › Nueva cotización, 16/11/2026): entra directo a Nuevo proyecto
+    if (subPedida() === 'nuevo' && C.sub !== 'nuevo' && C.ini) { C.sub = 'nuevo'; if (!CN) CN = recuperar() || nuevo(); pintar(el); }
     if (CN) for (var i = 0; i < CN.devs.length; i++) { if (CN.devs[i].tipo) { await catalogo(CN.devs[i].tipo).catch(function () {}); if (!CN.devs[i].est) estimar(i); } }
     el.onclick = async function (ev) {
       if (_montado !== 'cot') return;

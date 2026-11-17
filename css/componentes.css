@@ -93,6 +93,8 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-cols { display: grid; grid-template-columns: 1fr var(--ancho-lateral); gap: var(--e5); }
 .ui-lat-h { font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto2); margin: var(--e1) 0 6px; }
 .ui-lat-g { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e2); margin-bottom: var(--e3); }
+.ui-lat-g.ui-lat-g3 { grid-template-columns: repeat(3, 1fr); }
+.ui-lat-g.ui-lat-fila { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }   /* los recuadros del desarrollo, en una línea */   /* Contratado · Cobrado · Pendiente en una fila (16/11/2026) */
 .ui-lat-g .ui-kpi { padding: var(--e2) var(--e3); }
 .ui-lat-g .ui-kpi-v { font-size: var(--t-xl); margin-top: 6px; }
 .ui-kv { display: flex; justify-content: space-between; align-items: baseline; padding: var(--e2) 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); color: var(--texto2); }
@@ -113,7 +115,7 @@ body.ui-base { margin: 0; background: var(--fondo); color: var(--texto); font-fa
 .ui-dev .ui-fila-ic { justify-content: flex-end; }
 
 /* ── C6 · Estado: ícono + nombre, sin pill ni relleno ── */
-.ui-st { display: inline-flex; align-items: center; gap: var(--e2); font-size: var(--t-m); white-space: nowrap; }
+.ui-st { display: inline-flex; align-items: center; gap: var(--e2); font-size: var(--t-m); white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }   /* estados en mayúscula (16/11/2026) */
 .ui-st .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
 
 /* Marca de Detenido / Pausado: chica, al lado del estado */
@@ -523,6 +525,16 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .pm-emp[open] > .pm-emp-h .ui-ch { transform: rotate(90deg); }
 .pm-emp-n { font-size: var(--t-xl); }
 .pm-emp-b { padding: 0 0 var(--e3) var(--e5); }
+/* Proyectos agrupados por cliente (16/11/2026): el logo ya está en el encabezado del cliente, no se repite en cada fila */
+.pm-emp-b .ui-fp { grid-template-columns: var(--ico-s) 1fr auto; }
+.pm-emp-b .ui-fp > .ui-logo { display: none; }
+.pm-emp-b .ui-fp .ui-emp { display: none; }
+.ui-fp .ui-fp-mot { margin: 3px 0 0; }   /* el porqué del estado, debajo del nombre del proyecto abierto */   /* ni el nombre del cliente: ya está en el encabezado */
+/* Fila abierta: el estado arriba y, debajo, Detener en chico y en naranja (16/11/2026) */
+.ui-fp.open .ui-fp-est { flex-direction: column; align-items: flex-end; gap: 4px; }
+.ui-det-txt { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 0; font: 500 11px Montserrat, sans-serif; color: var(--e-negociacion); cursor: pointer; }
+.ui-det-txt:hover { text-decoration: underline; }
+.ui-det-txt .ui-ico { width: 12px; height: 12px; }
 .cot-nt { text-transform: none; letter-spacing: 0; }
 
 /* Dashboard · Pendiente de cobrar: un desplegable por cliente; columnas iguales en todos (14/11/2026) */
@@ -544,3 +556,14 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 :has(> .ui-flt) { align-items: flex-end; }
 .ui-flt select:has(option:checked:not([value=""])) { border-color: var(--brillo); color: var(--brillo); }
 .sop-rev-mail { width: 100%; min-height: 360px; border: 1px solid var(--marco); border-radius: var(--r); background: #fff; }
+/* Dashboard › Facturación: títulos de los grupos (Toca facturar · Sin alerta · Próximas) en mayúscula y celeste GIWA (16/11/2026) */
+.fact-g > summary > span:nth-child(2) { text-transform: uppercase; letter-spacing: .06em; color: var(--brillo); }
+.pm-tar-hd { align-items: center; margin-bottom: var(--e2); }
+.pm-tar-hd .ui-lat-h { margin: 0; color: var(--p-pendiente, #F59E0B); }
+/* Facturación: jerarquía Cliente › Proyecto › Desarrollo por color y sangría (16/11/2026) */
+.fa-lista .ui-d[data-niv="1"] > .ui-d-t { color: var(--brillo); }
+.fa-lista .ui-d[data-niv="2"] > .ui-d-t { color: var(--texto); }
+.fa-lista .ui-d[data-niv="3"] > .ui-d-t { color: var(--texto2); font-size: var(--t-m); }
+.fa-lista .ui-d[data-niv="2"] + .ui-cuerpo { padding-left: var(--e4); }
+/* Clientes: tres tarjetas por fila (Seguimiento sigue de a dos) (16/11/2026) */
+.ui-tarjetas.cli-tarjetas { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }

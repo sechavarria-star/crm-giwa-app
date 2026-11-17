@@ -396,12 +396,18 @@
     Object.keys(porE).sort().forEach(function (emp) {
       var cs = porE[emp], porP = {}, cuerpo = '';
       cs.forEach(function (c) { var k = c.proy_nombre || '— sin proyecto —'; (porP[k] = porP[k] || []).push(c); });
+      // Cliente › Proyecto › Desarrollo (16/11/2026): tres niveles plegables, cada uno con su color (fa-n1/2/3)
       Object.keys(porP).sort().forEach(function (pn) {
-        var k2 = emp + '|' + pn;
-        cuerpo += uiDesp({ t: pn, n2: true, n: porP[pn].length, open: abiertos[k2], v: fmt(suma(porP[pn], 'monto')), attrs: 'data-fa="' + esc(k2) + '"' },
-          '<table class="tbl fa-tb"><tbody>' + porP[pn].map(filaFact).join('') + '</tbody></table>');
+        var k2 = emp + '|' + pn, porD = {}, cuerpoP = '';
+        porP[pn].forEach(function (c) { var k = c.item_nombre || '— sin desarrollo —'; (porD[k] = porD[k] || []).push(c); });
+        Object.keys(porD).sort().forEach(function (dn) {
+          var k3 = k2 + '|' + dn;
+          cuerpoP += uiDesp({ t: dn, n2: true, n: porD[dn].length, open: abiertos[k3], v: fmt(suma(porD[dn], 'monto')), attrs: 'data-fa="' + esc(k3) + '" data-niv="3"' },
+            '<table class="tbl fa-tb"><tbody>' + porD[dn].map(filaFact).join('') + '</tbody></table>');
+        });
+        cuerpo += uiDesp({ t: pn, n2: true, n: porP[pn].length, open: abiertos[k2], v: fmt(suma(porP[pn], 'monto')), attrs: 'data-fa="' + esc(k2) + '" data-niv="2"' }, cuerpoP);
       });
-      h += uiDesp({ t: emp, logo: uiLogo(emp, cs[0].empresa_id && A.f.logos[cs[0].empresa_id]), n: cs.length, open: abiertos[emp] || !!F.emp, v: fmt(suma(cs, 'monto')), attrs: 'data-fa="' + esc(emp) + '"' }, cuerpo);
+      h += uiDesp({ t: emp, logo: uiLogo(emp, cs[0].empresa_id && A.f.logos[cs[0].empresa_id]), n: cs.length, open: abiertos[emp] || !!F.emp, v: fmt(suma(cs, 'monto')), attrs: 'data-fa="' + esc(emp) + '" data-niv="1"' }, cuerpo);
     });
     return h + '</div></div>';
   }
@@ -437,7 +443,7 @@
       '<div style="border:1px solid #e5e7eb;border-top:0;border-radius:0 0 10px 10px;padding:20px 22px">' +
       '<h2 style="margin:0 0 14px;font-size:19px;color:#060716">Factura pendiente de pago</h2>' +
       '<p>Hola, equipo de ' + esc(c.empresa) + '. Les escribimos por la factura ' + n(c.nro_factura) + ', emitida el ' + n(ff(c.fecha_comp)) + '.</p>' +
-      '<p>Concepto: ' + esc(c.concepto || '—') + '<br>Importe: ' + n(fmt(c.monto)) + '</p>' +
+      '<p>Concepto: ' + esc(c.concepto || '—') + '<br>Importe: ' + n('$ ' + Number(c.monto || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '</p>' +   // en los mails, con dos decimales (16/11/2026)
       '<p>Fue emitida hace ' + n(dias) + ' días y todavía no figura acreditada. Si ya la abonaron, por favor desestimen este aviso.</p>' +
       (c.link_fc ? '<p style="margin-top:18px"><a href="' + esc(c.link_fc) + '" style="display:inline-block;background:#0090FF;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Ver la factura</a></p>' : '') +
       '<p>Muchas gracias.</p>' +
@@ -531,7 +537,7 @@
       kpi('k-contratado', 'Proyectos activos', '<span class="m">' + (P.proyectos_activos || 0) + '</span>') + kpi('k-abono', 'Prorrateo / proyecto', fmt(P.por_proyecto || 0)) + '</div>';
     // Recuadros por tipo de gasto (16/11/2026): Monotributo (el que es costo de GIWA), Proveedores externos (Servicios),
     // Mensuales recurrentes y Otros. Por socio sigue sin impuestos.
-    var delMes = G.filter(function (g) { return g.mes_key === P.mes && g.costo_giwa; }), socio = { diego: 0, vs: 0 };
+    var delMes = G.filter(function (g) { return g.mes_key === P.mes && g.costo_giwa; }), socio = { diego: 0, vs: 0 }, mono = { diego: 0, vs: 0 };
     var GRUPOS = ['Mensuales recurrentes', 'Monotributo', 'Proveedores externos', 'Otros'], porTipo = {};
     var grupo = function (g) {
       if (g.es_impuesto) return /monotrib/i.test(g.descripcion || '') ? 'Monotributo' : 'Otros';
@@ -541,14 +547,20 @@
     delMes.forEach(function (g) {
       var m = Number(g.monto_ars) || 0, k = String(g.pagador || '').toLowerCase(), t = grupo(g);
       porTipo[t] = (porTipo[t] || 0) + m;
-      if (g.es_impuesto) return;
-      if (k.indexOf('d.camps') >= 0) socio.diego += m; else if (k.indexOf('v.gagey') >= 0 || k.indexOf('s.echavarria') >= 0) socio.vs += m;
+      // el Monotributo que es costo de GIWA suma al socio y se aclara abajo cuánto es (16/11/2026)
+      var q = k.indexOf('d.camps') >= 0 ? 'diego' : (k.indexOf('v.gagey') >= 0 || k.indexOf('s.echavarria') >= 0) ? 'vs' : '';
+      if (!q) return; socio[q] += m; if (g.es_impuesto) mono[q] += m;
     });
-    var tipos = GRUPOS.filter(function (t) { return porTipo[t]; });
-    if (tipos.length) h += '<div class="sec">Gasto de ' + esc(mesTxt) + ' por tipo</div><div class="kpi-grid u-mb12">' +
-      tipos.map(function (c) { return kpi('k-pendiente', esc(c), fmt(porTipo[c])); }).join('') + '</div>' +
-      '<div class="sec">Por socio · por mes <span class="sec-sub">(sin Monotributo)</span></div><div class="kpi-grid u-mb12">' +
-      kpi('k-pendiente', 'Diego', fmt(socio.diego)) + kpi('k-pendiente', 'Vicky + Sebas', fmt(socio.vs)) + '</div>';
+    // Impuestos · Monotributo Vicky siempre a la vista (16/11/2026): si ese mes no se cargó, lo avisa en ámbar
+    var tipos = GRUPOS.filter(function (t) { return porTipo[t] || t === 'Monotributo'; });
+    if (delMes.length) h += '<div class="sec">Gasto de ' + esc(mesTxt) + ' por tipo</div><div class="kpi-grid u-mb12">' +
+      tipos.map(function (c) { return c === 'Monotributo'
+        ? '<div class="kpi k-pendiente"><div class="kpi-lbl">Impuestos · Monotributo Vicky</div><div class="kpi-val">' + fmt(porTipo[c] || 0) + '</div>' +
+          (porTipo[c] ? '' : '<div class="kpi-sub ui-p-pendiente">Sin cargar en <span class="m">' + esc(mesTxt) + '</span></div>') + '</div>'
+        : kpi('k-pendiente', esc(c), fmt(porTipo[c])); }).join('') + '</div>' +
+      '<div class="sec">Por socio · por mes</div><div class="kpi-grid u-mb12">' +
+      [['Diego', 'diego'], ['Vicky + Sebas', 'vs']].map(function (x) { return '<div class="kpi k-pendiente"><div class="kpi-lbl">' + x[0] + '</div><div class="kpi-val">' + fmt(socio[x[1]]) + '</div>' +
+        '<div class="kpi-sub">' + (mono[x[1]] ? 'incluye ' + fmt(mono[x[1]]) + ' de Monotributo' : 'sin Monotributo') + '</div></div>'; }).join('') + '</div>';
     var F = A.gf, cats = {}, pags = {};
     G.forEach(function (g) { cats[g.categoria || '—'] = 1; if (g.pagador) pags[g.pagador] = 1; });
     var op = function (v, t, sel) { return '<option value="' + esc(v) + '"' + (v === sel ? ' selected' : '') + '>' + esc(t) + '</option>'; };
