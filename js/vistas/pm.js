@@ -748,7 +748,22 @@
     }
     var hs = sum(p.items, 'horas');
     if (false && hs) h += '<div class="ui-lat-h">Del contrato</div><div class="ui-lat-g">' + uiKpi('Horas vendidas', Math.round(hs) + ' h', 'p-neutro') + '</div>';
-    return h + analisisFicha(p) + '</div>';
+    return h + '</div>';   // sin la comparación con otros proyectos ni el análisis del cliente (17/11/2026)
+  }
+  // Análisis económico por desarrollo (17/11/2026): cada uno con su año, sin comparar con otros proyectos.
+  // Cotizado → Aprobado → Cobrado → Pendiente y en cuántas cuotas termina de cobrarse. El abono (MMR) va aparte, arriba.
+  function porDesarrollo(p) {
+    var L = (p.items || []).filter(function (it) { return !esMant(it) && _canonSol(it.estado) !== 'rechazada'; });
+    if (!L.length) return '';
+    var n = function (v) { return '<td class="ui-r ui-num">' + (v ? fmt(v) : '—') + '</td>'; };
+    return '<div class="ui-lat-h u-mt10">Por desarrollo</div><table class="ui-tbl"><thead><tr><th>Desarrollo</th><th class="ui-r">Año</th><th class="ui-r">Cotizado</th><th class="ui-r">Aprobado</th><th class="ui-r">Cobrado</th><th class="ui-r">Pendiente</th><th>Se termina de cobrar</th></tr></thead><tbody>' +
+      L.map(function (it) {
+        var cs = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id; }), cob = cs.filter(function (c) { return c.deposito_fecha; }), cobrado = cob.reduce(function (a, c) { return a + (Number(c.monto_ars) || 0); }, 0);
+        var ganado = esGanado(it.estado), tot = Number(it.total_ars) || 0, cot = (P.f.cotizado || {})[it.id] || (ganado ? 0 : tot), pend = ganado ? Math.max(0, tot - cobrado) : 0;
+        var cuotas = Number(it.cuotas) || 1, faltan = Math.max(0, cuotas - cob.length), anio = String(it.fecha_aprob || it.fecha_est || '').slice(0, 4);
+        return '<tr><td>' + esc(it.titulo || it.id) + '</td><td class="ui-r ui-num">' + esc(anio || '—') + '</td>' + n(cot) + n(ganado ? tot : 0) + n(cobrado) + n(pend) +
+          '<td>' + (!ganado ? '<span class="ui-nota-t">sin aprobar</span>' : pend <= 0 ? '<span class="ui-p-cobrado">Cobrado</span>' : 'en <span class="ui-num">' + faltan + '</span> cuota' + (faltan === 1 ? '' : 's')) + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
   function econDes(it) {
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
@@ -816,7 +831,7 @@
     var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
     // Tres pestañas (16/11/2026): Información con Documentos y Drive adentro; Análisis con lo Económico
     var tabs = [['info', 'Información', function (x) { return tabInfo(x) + tabDocs(x); }],
-                ['analisis', 'Análisis económico', function (x) { return lateral(x) + '<div class="ui-lat-h u-mt10">Análisis del cliente</div>' + tabAnalisis(x); }],
+                ['analisis', 'Análisis económico', function (x) { return lateral(x) + porDesarrollo(x); }],
                 ['desarrollos', 'Desarrollos del proyecto' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
                 ['tickets', 'Tickets', tabTickets]];
     var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
