@@ -106,8 +106,8 @@ async function arrancarPortal() {
 }
 async function cargar() {
   var c = P.como ? { como: P.como } : {};
-  var r = await Promise.all([prpc('portal_inicio', c), prpc('portal_tickets', c), prpc('portal_reportes', c)]);
-  P.ini = r[0]; P.tk = r[1] || []; P.rep = r[2] || [];
+  var r = await Promise.all([prpc('portal_inicio', c), prpc('portal_tickets', c), prpc('portal_reportes', c), prpc('portal_horas_mes', c)]);
+  P.ini = r[0]; P.tk = r[1] || []; P.rep = r[2] || []; P.hm = r[3];   // horas del mes: sólo con mostrar_horas
 }
 
 // ── pintar ─────────────────────────────────────────────────────
@@ -131,7 +131,8 @@ function htmlPedidos() {
   var kpis = '<div class="ui-kpis">' +
     uiKpi('Abiertos', String(ab.length), 'principal') +
     uiKpi('Esperando respuesta', String(ab.filter(function (t) { return t.estado === 'Esperando cliente'; }).length), 'e-detenido', '', '', 'Necesitamos un dato suyo para seguir') +
-    uiKpi('Cerrados este mes', String(P.tk.filter(function (t) { return t.cerrado && String(t.resuelto || '').slice(0, 7) === mes; }).length), 'p-cobrado') + '</div>';
+    uiKpi('Cerrados este mes', String(P.tk.filter(function (t) { return t.cerrado && String(t.resuelto || '').slice(0, 7) === mes; }).length), 'p-cobrado') +
+    (P.hm ? uiKpi('Horas del mes', (pN(P.hm.usadas) ? phs(P.hm.usadas) : '0 h') + ' de ' + phs(P.hm.cupo), 'p-abono', '', '', 'Horas usadas de su mantenimiento en el mes, contra las contratadas') : '') + '</div>';
   var des = [];
   P.tk.forEach(function (t) { if (t.desarrollo_id && !des.some(function (d) { return d[0] === t.desarrollo_id; })) des.push([t.desarrollo_id, t.desarrollo || t.desarrollo_id]); });
   var fil = '<div class="filtros u-mb8" role="group" aria-label="Estado">' + P_FIL.map(function (f) {
@@ -192,7 +193,7 @@ async function verPedido(id) {
     '<div class="sec u-mt10">Conversación</div>' + notas +
     (puede && !cerr ? '<div class="sec u-mt10">Responder</div><textarea class="fc" id="pt-txt" rows="3" placeholder="Escribinos acá"></textarea>' +
       '<div class="u-row8 u-mt6"><input class="fc u-f1" id="pt-arch" type="file" multiple aria-label="Archivos"><button class="btn bp sm" data-pacc="responder">' + ico('chat') + ' Enviar</button></div>' : '');
-  $('m-pt-pie').innerHTML = puede && cerr ? '<span class="u-s11-mt u-f1">¿Volvió a pasar? Abrí un pedido nuevo vinculado a este.</span>' + uiBtn('Volvió a pasar', 'mas', 's', 'data-pacc="volvio"') : '';
+  $('m-pt-pie').innerHTML = puede && !cerr ? uiBtn('Ya está resuelto, cerrar', 'check', 's', 'data-pacc="cerrar"') : puede && cerr ? '<span class="u-s11-mt u-f1">¿Volvió a pasar? Abrí un pedido nuevo vinculado a este.</span>' + uiBtn('Volvió a pasar', 'mas', 's', 'data-pacc="volvio"') : '';
 }
 // archivos: <empresa>/<ticket>/<archivo>; la base valida la carpeta (soporte_puede_subir_archivo) y los registra
 async function subirP(input, tid, notaId) {
@@ -284,6 +285,12 @@ document.addEventListener('click', async function (ev) {
   if (b.hasAttribute('data-padj')) return abrirArchivo(b.getAttribute('data-padj'));
   var a = b.getAttribute('data-pacc'), t = P.t && P.t.ticket;
   if (a === 'volvio') return nuevoPedido(t);
+  if (a === 'cerrar') {
+    if (!(await ask('El ticket queda cerrado y le avisamos al equipo.', '¿Ya está resuelto?', { ok: 'Cerrar' }))) return;
+    try { await prpc('portal_cerrar', { p: { ticket_id: t.id } }); toast('Ticket cerrado', 'ok'); await cargar(); pintar(); verPedido(t.id); }
+    catch (e) { toast(e.message || String(e), 'err'); }
+    return;
+  }
   if (a === 'responder') {
     b.disabled = true;
     try {
