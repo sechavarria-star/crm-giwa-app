@@ -492,12 +492,12 @@
     its.forEach(function (it) {
       var dep = padre(it), ini = _pd(it.fecha_est), fin = _pd(it.fecha_fin || it.fecha_cierre), can = _canonSol(it.estado);
       var arr = !ini && esMant(it) ? mantArranca(p, it) : null;   // abono sin inicio: arranca al terminar la garantía de lo que cubre
-      if (ini) ev.push({ f: ini, t: 'Inicio' + tit(it), n: dep ? 'depende de ' + dep : '', c: 'curso' });
-      if (arr) ev.push({ f: arr, t: 'Arranca (estimado)' + tit(it), n: 'fin de obra + garantía de ' + (dep || 'lo que cubre'), c: 'curso' });
-      if (fin) ev.push({ f: fin, t: (esMant(it) ? 'Fin del abono' : 'Fin de obra') + tit(it), n: can === 'finalizada' ? 'finalizado' : '', c: 'finalizado' });
+      // Todos los hitos aunque falte la fecha: los futuros se ven en gris (18/11/2026)
+      if (esMant(it)) { ev.push({ f: ini || arr, t: 'Arranca' + tit(it), c: 'curso' }); ev.push({ f: fin, t: 'Fin del abono' + tit(it), c: 'finalizado' }); return; }
+      ev.push({ f: ini, t: 'Inicio' + tit(it), c: 'curso' });
+      ev.push({ f: fin, t: 'Fin' + tit(it), c: 'finalizado' });
       var gd = Number(it.garantia_dias) || 0;
-      if (fin && gd && !esMant(it)) ev.push({ f: mCorrerDias(fin, gd), t: 'Fin de garantía' + tit(it), n: gd + ' días', c: 'garantia' });
-      if (!ini && !arr && !fin && can !== 'finalizada') ev.push({ f: null, t: soloId ? 'Sin fechas cargadas' : nom(it), n: (soloId ? '' : 'sin fechas cargadas') + (dep ? (soloId ? '' : ' · ') + 'depende de ' + dep : ''), c: 'prospecto' });
+      if (gd) ev.push({ f: fin ? mCorrerDias(fin, gd) : null, t: 'Fin de garantía' + tit(it), c: 'garantia' });
     });
     if (!ev.length) return '<div class="ui-nota-t">Sin fechas cargadas.</div>';
     ev.sort(function (a, b) { return (a.f ? a.f.getTime() : 9e15) - (b.f ? b.f.getTime() : 9e15); });
@@ -522,13 +522,13 @@
          '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')]]).map(function (x) {   // sólo si falta, para cargarla
         return dato(x[0], x[1]);
       }).join('') + '</div>' +
-      (!cie.firme && cie.faltan ? uiAviso(cie.faltan + ' desarrollo' + (cie.faltan === 1 ? '' : 's') + ' sin fecha de fin: el cierre y la duración se calculan con las fechas que hay.', 'adv') +
+      (false ? '' +   // sin el campo de fecha suelto ni su «Guardar»: las fechas se editan desde el Cronograma (18/11/2026)
         _devsDe(p).filter(function (it) { return !_pd(it.fecha_fin) && !_pd(it.fecha_cierre) && !(_pd(it.fecha_ini || it.fecha_est) && _nFront(it.semanas) > 0); }).map(function (it) {
           return '<div class="ui-linea"><span class="ui-f1">' + esc(it.titulo || it.id) + '</span><input class="fc u-wauto ui-num" type="date" data-ffin="' + esc(it.id) + '" aria-label="Fecha de fin de ' + esc(it.titulo || it.id) + '">' +
             uiBtn('Guardar', 'check', 's', 'data-pm="fin-des" data-id="' + esc(it.id) + '"') + '</div>'; }).join('') : '');
     // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
     var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
-    var h = uiDesp({ t: 'Datos del proyecto', v: editar }, datosB + '<div class="ui-barra u-mt10"><span class="ui-lat-h u-f1">Contactos · ' + esc(p.empresa || '') + '</span>' +
+    var h = uiDesp({ t: 'Datos del proyecto', v: editar }, datosB + cronoProy(p, dur) + '<div class="ui-barra u-mt10"><span class="ui-lat-h u-f1">Contactos · ' + esc(p.empresa || '') + '</span>' +
       (_canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'mas', 's', 'data-pm="contacto"')) + '</div>' +
       (F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
         var tel = telWa(c.telefono), tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
@@ -538,8 +538,31 @@
           (c.email ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + uiIco('mail') + '</a>' : '') + '</div>';
       }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>'));
     // Las acciones de estado (Aprobar, No aceptar, Detener, Finalizar…) van una sola vez, debajo del riel (17/11/2026)
-    h += uiDesp({ t: 'Cronograma', v: dur ? '<span class="ui-nota-t">Duración <span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') + '</span>' : '' }, fechasHTML(p) + '<div class="ui-barra u-mt10">' + accionesYAlerta(p, false, true) + '</div>');
     return h;
+  }
+  // Cronograma dentro de Datos del proyecto (18/11/2026): título, duración, riel y los botones de estado con su nombre
+  function cronoProy(p, dur) {
+    return '<div class="ui-lat-h u-mt10">Cronograma' + (dur ? ' <span class="ui-nota-t">· duración <span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') + '</span>' : '') + '</div>' +
+      fechasHTML(p) + '<div class="ui-barra">' + accionesYAlerta(p, false, true) + '</div>';
+  }
+  // Editar todas las fechas de un desarrollo en una ventana (18/11/2026): las que su estado permite
+  function fechasDes(el, it) {
+    var cerr = desCerrado(it) || _canonSol(it.estado) === 'rechazada';
+    if (cerr) return say('Este desarrollo está cerrado: sus fechas ya no se cambian.', 'Fechas');
+    var m = document.getElementById('m-fdes');
+    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-fdes'; document.body.appendChild(m); }
+    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Fechas · ' + esc(it.titulo || it.id) + '</span><button class="btn bg sm btn-ico" aria-label="Cerrar" data-cerrar="m-fdes">' + ico('cerrar') + '</button></div><div class="mb2">' +
+      '<div class="g2"><div class="fg"><label class="fl" for="fd-ini">Inicio</label><input class="fc" type="date" id="fd-ini" value="' + esc(String(it.fecha_est || '').slice(0, 10)) + '"></div>' +
+      '<div class="fg"><label class="fl" for="fd-fin">Fin</label><input class="fc" type="date" id="fd-fin" value="' + esc(String(it.fecha_fin || '').slice(0, 10)) + '"></div></div>' +
+      '<div class="ui-nota-t">La garantía y el arranque del mantenimiento se calculan desde el fin.</div></div>' +
+      '<div class="mf"><button class="btn bg" data-cerrar="m-fdes">Cancelar</button><button class="btn bp" id="fd-ok">Guardar</button></div></div>';
+    document.getElementById('fd-ok').onclick = async function () {
+      var ini = document.getElementById('fd-ini').value, fin = document.getElementById('fd-fin').value;
+      if (ini !== String(it.fecha_est || '').slice(0, 10)) { var a = await db().rpc('fecha_desarrollo', { did: it.id, campo: 'fecha_ini', fecha: ini || null }); if (a.error) return toast(a.error.message, 'err'); }
+      if (fin && fin !== String(it.fecha_fin || '').slice(0, 10)) { var b = await db().rpc('fecha_desarrollo', { did: it.id, campo: 'fecha_fin', fecha: fin }); if (b.error) return toast(b.error.message, 'err'); }
+      closeM('m-fdes'); toast('Fechas guardadas', 'ok'); await cargarFicha(P.f.id); pintar(el);
+    };
+    openM('m-fdes');
   }
   function mantArranca(p, m) {
     var mejor = null;
@@ -613,7 +636,7 @@
         '<span class="ui-dev-barra ui-e-' + uiClaveEst(it.estado) + '"></span><span class="ui-ch">' + uiIco('derecha') + '</span>' + uiTipo(it, it.estado, det) +
         '<div><div class="ui-dev-n">' + esc(it.titulo || it.descripcion || '—') + '</div></div>' +   // sólo el nombre (17/11/2026)
         '<div class="ui-dev-der"><span>' + uiEstado(it.estado || '—') + (det ? uiMarcaDet(p.detenido ? 'Detenido por el proyecto' : 'Pausado') : '') + '</span>' +
-        (iconos ? '<span class="ui-fila-ic">' + iconos + '</span>' : '') + '</div></div><div class="ui-devc">';
+        '</div></div><div class="ui-devc">';   // las acciones van debajo del cronograma, con su nombre (18/11/2026)
       // Contratado, cobrado y pendiente van sólo en el lateral: acá no se repiten (29/10/2026)
       var l1 = [];
       if (rec) {
@@ -654,7 +677,8 @@
         // Un único recuadro de Información, sin desplegables ni pagos (17/11/2026): descripción, fechas, riel, forma de pago,
         // los recuadros económicos y «Editar» cuando corresponde. Los pagos se ven en Administración.
         (dt === 'mods' ? modulosDe(it.id) : '<div class="card dev-info">' + (econDes(it).btn ? '<div class="ui-barra ui-der">' + econDes(it).btn + '</div>' : '') +
-          inf + '<div class="dev-riel u-mt10">' + fechasHTML(p, it.id) + '</div></div>');
+          inf + '<div class="ui-lat-h u-mt10">Cronograma ' + uiIb('editar', 'Editar las fechas', '', 'data-pm="fechas-des" data-id="' + esc(it.id) + '"') + '</div><div class="dev-riel">' + fechasHTML(p, it.id) + '</div>' +
+          (iconos ? '<div class="ui-barra dev-acc">' + iconos + '</div>' : '') + '</div>');
       return h + '</div>';
     }).join('') + alta;
   }
@@ -1323,6 +1347,7 @@
       if (a === 'nv-abrir') return nvAbrir(el);
       if (a === 'sem-des') { var fs = document.createElement('input'); fs.type = 'number'; fs.min = '1'; fs.className = 'ui-campo ui-num'; fs.style.width = '90px'; fs.placeholder = 'semanas'; fs.setAttribute('data-fsem', b.getAttribute('data-id')); fs.setAttribute('aria-label', 'Duración en semanas');
         b.replaceWith(fs); fs.focus(); return; }
+      if (a === 'fechas-des') { var dx = (proy(P.f.id).items || []).find(function (x) { return x.id === id; }); if (dx) return fechasDes(el, dx); return; }
       if (a === 'ini-des') { var fd = document.createElement('input'); fd.type = 'date'; fd.className = 'ui-campo ui-num'; fd.setAttribute('data-fini', b.getAttribute('data-id')); fd.setAttribute('aria-label', 'Inicio del desarrollo');
         b.replaceWith(fd); fd.focus(); setTimeout(function () { var c = fd.parentNode && fd.parentNode.querySelector('.ui-ib'); if (c) c.click(); }, 60); return; }
       if (a === 'cierre-prob') { var fi = document.createElement('input'); fi.type = 'date'; fi.className = 'ui-campo ui-num'; fi.setAttribute('data-fcierre', b.getAttribute('data-id')); fi.setAttribute('aria-label', 'Cierre probable de negociación');

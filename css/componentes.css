@@ -592,3 +592,9 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-datos > .u-col-todo { grid-column: 1 / -1; }
 /* En todas las vistas de formularios, el nombre del campo en mayúscula (17/11/2026) */
 .fl, label.fl { text-transform: uppercase; letter-spacing: .06em; }
+/* 18/11/2026 · desarrollo: campos en mayúscula, valor al lado, en 3 columnas; estado centrado bajo la flecha; acciones con su nombre */
+.dev-info .ui-datos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dev-info .ui-datos .ui-lbl { display: inline; margin-right: 6px; text-transform: uppercase; letter-spacing: .06em; }
+.tl-nom, .tl-est { text-align: center; padding-left: 0; }
+.dev-acc .ui-ib { width: auto; padding: 0 8px; gap: 4px; }
+.dev-acc .ui-ib::after { content: attr(data-tip); font-size: var(--t-s); }
