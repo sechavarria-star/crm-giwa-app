@@ -538,7 +538,7 @@
           (c.email ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + uiIco('mail') + '</a>' : '') + '</div>';
       }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>'));
     // Las acciones de estado (Aprobar, No aceptar, Detener, Finalizar…) van una sola vez, debajo del riel (17/11/2026)
-    h += uiDesp({ t: 'Cronograma', v: dur ? '<span class="ui-nota-t">Duración <span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') + '</span>' : '' }, fechasHTML(p) + '<div class="ui-barra u-mt10 ui-fila-ic"><span class="ui-lbl">Cambiar estado</span>' + accionesYAlerta(p) + '</div>');
+    h += uiDesp({ t: 'Cronograma', v: dur ? '<span class="ui-nota-t">Duración <span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') + '</span>' : '' }, fechasHTML(p) + '<div class="ui-barra u-mt10">' + accionesYAlerta(p, false, true) + '</div>');
     return h;
   }
   function mantArranca(p, m) {
@@ -815,7 +815,14 @@
   }
   // Acciones del PROYECTO, arriba a la derecha de la ficha: las del estado (botones con su confirmación),
   // Arrancar si hay aprobados, y Tarea y Comentario como íconos (02/11/2026)
-  function accionesYAlerta(p, sinDet) {
+  // Debajo del riel: Detener / Reanudar y Finalizar con su nombre, no sólo el ícono (18/11/2026)
+  function botonesEstado(p) {
+    var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
+    if (can === 'finalizado' || can === 'rechazado') return '';
+    return (p.detenido ? uiBtn('Reanudar', 'play', 's', 'data-pm="det-proy" data-id="' + pid + '"') : uiBtn('Detener', 'pausa', 's', 'data-pm="det-proy" data-id="' + pid + '"')) +
+      (!p.detenido && accionesProy(p).some(function (a) { return a[0] === 'finalizado'; }) ? uiBtn('Finalizar', 'check', 's', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
+  }
+  function accionesYAlerta(p, sinDet, txt) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
     var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
     var viejo = function (txt, tipo) { return '<a class="ui-btn ui-' + tipo + '" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
@@ -825,7 +832,7 @@
           var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
         (aprob && !p.detenido ? uiBtn('Arrancar', 'play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
         ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
-      iconosEstado(p, sinDet);
+      (txt ? botonesEstado(p) : iconosEstado(p, sinDet));
   }
   // C5 · la ficha: motivo en gris y, junto al estado, Detener y Finalizar; botones secundarios; pestañas; lateral de plata
   // C5 · la ficha: el motivo en el color del estado; arriba a la derecha las acciones del proyecto;
