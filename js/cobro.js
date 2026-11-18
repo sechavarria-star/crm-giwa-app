@@ -64,6 +64,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
           '<div class="fg"><label class="fl ft-lbl" for="cb-nro">Número <span class="req">*</span></label><input class="fc" id="cb-nro" placeholder="0001-00000001"></div>' +
           '<div class="fg"><label class="fl ft-lbl" for="cb-fecha">Fecha de la factura</label><input class="fc" type="date" id="cb-fecha"></div></div>' +
         '<div class="fg" id="cb-rs"></div>' +
+        '<div class="fg cb-arca" id="cb-arca" hidden></div>' +
         '<div class="cb-lin cb-lin-h"><span>Proyecto <span class="req">*</span></span><span>Desarrollo <span class="req">*</span></span><span>Concepto</span><span class="u-tr">Cuota</span><span class="u-tr">Monto</span><span></span></div>' +
         '<div id="cb-filas"></div><div><button type="button" class="ui-lnk ui-azul" id="cb-mas">+ Agregar línea</button></div>' +
         '<div class="g3"><div class="fg"><label class="fl ft-lbl" for="cb-mon">Moneda</label><select class="fc" id="cb-mon"><option>ARS</option><option>USD</option></select></div>' +
@@ -87,6 +88,11 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     $('cb-filas').addEventListener('input', tipeoLinea);
     $('cb-filas').addEventListener('click', clicLinea);
     $('cb-mon').onchange = total;
+    $('cb-rs').addEventListener('change', pintarArca);
+    $('cb-arca').addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-copiar]'); if (!b) return;
+      navigator.clipboard.writeText(b.getAttribute('data-copiar')).then(function () { toast('Copiado'); }, function () { toast('No se pudo copiar', 'err'); });
+    });
     $('cb-ok').onclick = function () { guardar(false); };
     $('cb-otra').onclick = function () { guardar(true); };
     var z = $('cb-adj');
@@ -171,7 +177,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
   function tipeoLinea(ev) {
     var fila = ev.target.closest('.cb-lin'); if (!fila) return;
     var l = C.lin[+fila.getAttribute('data-l')], c = ev.target.getAttribute('data-c');
-    if (c === 'concepto') l.concepto = ev.target.value;
+    if (c === 'concepto') { l.concepto = ev.target.value; pintarArca(); }
     if (c === 'cuota') l.cuota = Number(ev.target.value) || 1;
     if (c === 'monto') { l.monto = Number(ev.target.value) || 0; total(); }
   }
@@ -198,8 +204,25 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     var L = razones(), box = $('cb-rs');
     if (!v('cb-emp')) { box.innerHTML = ''; return; }
     box.innerHTML = !L.length ? '<div class="ui-p-pendiente u-s11">Este cliente no tiene razón social cargada.</div>' :
-      L.length === 1 ? '<div class="u-s11">Se factura a <b>' + esc(L[0].nombre) + '</b> · CUIT <span class="ui-num">' + esc(L[0].cuit || '—') + '</span></div>' :
+      L.length === 1 ? '' :   // con una sola, la razón social y el CUIT se ven en Datos para facturar en ARCA
       '<label class="fl ft-lbl" for="cb-razon">Se factura a</label><select class="fc" id="cb-razon">' + L.map(function (x, i) { return '<option value="' + i + '">' + esc(x.nombre) + ' · CUIT ' + esc(x.cuit || '—') + '</option>'; }).join('') + '</select>';
+    pintarArca();
+  }
+  // Datos para facturar en ARCA (18/11/2026): lo que se copia en Comprobantes en línea, con un botón por dato
+  var ARCA_URL = 'https://auth.afip.gob.ar/contribuyente_/login.xhtml';
+  function pintarArca() {
+    var box = $('cb-arca'), rs = razonSel(); if (!box) return;
+    box.hidden = C.modo === 'pago' || !v('cb-emp') || !rs;
+    if (box.hidden) { box.innerHTML = ''; return; }
+    var P = partes(), t = P.reduce(function (a, p) { return a + p.monto; }, 0);
+    var fila = function (lbl, val, num) {
+      return '<div class="ui-linea"><span class="cb-arca-l">' + lbl + '</span><span class="ui-f1' + (num ? ' ui-num' : '') + '">' + esc(val || '—') + '</span>' +
+        (val ? '<button type="button" class="ui-ib" data-copiar="' + esc(val) + '" data-tip="Copiar" aria-label="Copiar ' + lbl + '">' + ico('lista') + '</button>' : '<span class="cb-arca-b"></span>') + '</div>';
+    };
+    box.innerHTML = '<div class="cb-arca-h"><span class="fl ft-lbl">Datos para facturar en ARCA</span><a class="ui-lnk ui-azul" href="' + ARCA_URL + '" target="_blank" rel="noopener">Abrir ARCA</a></div>' +
+      fila('Razón social', rs.nombre) + fila('CUIT', String(rs.cuit || '').replace(/\D/g, ''), true) + fila('Condición fiscal', rs.condicion_fiscal) + fila('Domicilio', rs.direccion) +
+      fila('Concepto', P.map(function (p) { return p.concepto; }).filter(Boolean).join(' / ')) +
+      fila('Importe', t ? t.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false }) : '', true);
   }
   async function elegirPdf(f) {
     if (!f) return;
@@ -247,6 +270,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     var t = partes().reduce(function (a, p) { return a + p.monto; }, 0);
     $('cb-total').textContent = t ? fmt(t, v('cb-mon')) : '—';
     $('cb-usd').textContent = t && C.tc && v('cb-mon') !== 'USD' ? '= ' + fmt(t / C.tc, 'USD') : '';
+    pintarArca();
   }
 
   async function abrir(modo, ctx, opts) {
@@ -352,6 +376,9 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
         '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-madmin">' + ico('cerrar') + '</button></div><div class="mb2">' +
         '<div class="ui-nota-t">De: GIWA {IA} - Administración · administracion@giwa-ia.com</div>' +
         '<div class="fg"><label class="fl" for="ma-para">Para</label><input class="fc" id="ma-para"></div>' +
+        // CC y CCO (18/11/2026): opcionales, varios separados por coma
+        '<div class="g2"><div class="fg"><label class="fl" for="ma-cc">CC</label><input class="fc" id="ma-cc"></div>' +
+          '<div class="fg"><label class="fl" for="ma-cco">CCO</label><input class="fc" id="ma-cco"></div></div>' +
         '<div class="fg"><label class="fl" for="ma-as">Asunto</label><input class="fc" id="ma-as"></div>' +
         '<div class="u-row8 u-mb6">' + bt('bold', 'Negrita', '<b>N</b>') + bt('italic', 'Cursiva', '<i>C</i>') + bt('insertUnorderedList', 'Lista', '•') + bt('createLink', 'Link', 'Link') + '</div>' +
         '<iframe class="sop-rev-mail" id="ma-fr" title="Texto del mail"></iframe>' +
@@ -370,6 +397,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
       });
     }
     document.getElementById('ma-para').value = o.para || '';
+    document.getElementById('ma-cc').value = o.cc || ''; document.getElementById('ma-cco').value = o.cco || '';
     document.getElementById('ma-as').value = o.asunto || '';
     var f = document.getElementById('ma-fr');
     f.onload = function () { try { f.contentDocument.designMode = 'on'; f.style.height = Math.max(320, f.contentDocument.body.scrollHeight + 40) + 'px'; } catch (e) {} };
@@ -380,7 +408,8 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
       if (!para || !as) return toast('Falta el destinatario o el asunto', 'err');
       b.disabled = true;
       try {
-        var e = await puente('mailAdmin', { para: para, asunto: as, html: f.contentDocument.body.innerHTML, adjuntos: MA.adj, pdf_id: MA.pdf_id });
+        var e = await puente('mailAdmin', { para: para, cc: document.getElementById('ma-cc').value.trim(), cco: document.getElementById('ma-cco').value.trim(),
+          asunto: as, html: f.contentDocument.body.innerHTML, adjuntos: MA.adj, pdf_id: MA.pdf_id });
         closeM('m-madmin'); toast('Mail enviado desde administracion@ a ' + (e.enviado_a || para) + (e.aviso ? ' · ' + e.aviso : ''), 'ok');
       } catch (er) { toast(er.message, 'err'); }
       b.disabled = false;

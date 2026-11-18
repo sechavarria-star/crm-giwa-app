@@ -459,6 +459,10 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .cb-lin-h { font-size: var(--t-xs); color: var(--texto2); margin-bottom: var(--e1); }
 .cb-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e1) var(--e4); font-size: var(--t-s); color: var(--texto2); margin: 0 0 var(--e3); }
 .cb-sub.ui-p-pendiente { color: var(--p-pendiente); }
+/* Datos para facturar en ARCA (18/11/2026) */
+.cb-arca-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--e1); }
+.cb-arca .cb-arca-l { flex: none; width: 132px; color: var(--texto2); }
+.cb-arca .cb-arca-b { flex: none; width: 24px; }
 #cb-mas { margin-bottom: var(--e3); }
 .cb-ren .fc { width: 110px; }
 .cb-ren .fl { margin: 0; }
