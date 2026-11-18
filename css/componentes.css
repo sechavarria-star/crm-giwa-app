@@ -598,3 +598,6 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .tl-nom, .tl-est { text-align: center; padding-left: 0; }
 .dev-acc .ui-ib { width: auto; padding: 0 8px; gap: 4px; }
 .dev-acc .ui-ib::after { content: attr(data-tip); font-size: var(--t-s); }
+/* Proyectos: filtros de estado en mayúscula (18/11/2026) */
+[data-pm="prchip"], [data-pm="segchip"] { text-transform: uppercase; letter-spacing: .04em; }
+.ui-btn[data-pm="det-proy"] { color: var(--e-detenido); border-color: var(--e-detenido); }   /* Detener en naranja (18/11/2026) */

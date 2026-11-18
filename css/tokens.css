@@ -31,7 +31,7 @@
   --e-garantia: #14B8A6;
   --e-finalizado: #2BA07A;
   --e-rechazado: #5A6488;
-  --e-detenido: #FACC15;
+  --e-detenido: #FF9F1C;   /* naranja, igual que el botón Detener (18/11/2026) */
 
   /* Plata */
   --p-contratado: #3AB8FF;
@@ -54,7 +54,7 @@
   --suave-brillo: rgba(58, 184, 255, .08);
   --suave-secundaria: rgba(168, 85, 247, .10);
   --suave-cobrado: rgba(43, 226, 138, .08);
-  --suave-detenido: rgba(250, 204, 21, .08);
+  --suave-detenido: rgba(255, 159, 28, .08);
   --suave-error: rgba(255, 77, 109, .08);
   --suave-fila: rgba(58, 184, 255, .03);
   --foco: rgba(58, 184, 255, .15);

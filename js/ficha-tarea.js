@@ -52,6 +52,7 @@
         '<div class="ft-sep"><div class="sec">Comentarios</div>' +
           '<div class="ft-pills u-mb6" id="ftv-qk" role="group" aria-label="Comentarios rápidos" hidden></div>' +
           '<textarea class="fc" id="ftv-txt" rows="2" placeholder="Escribí un comentario… (@ para mencionar)" aria-label="Comentario"></textarea>' +
+          '<label class="btn bg xs u-mt6">' + ico('clip') + ' Adjuntar<input type="file" id="ftv-doc" class="ui-arch-inp" multiple hidden></label> <span class="u-s11-mt" id="ftv-doc-n"></span>' +   // adjuntos en comentarios (18/11/2026)
           '<div class="u-row8 u-mt6 u-mb12"><label class="u-row6" id="ftv-seg-l" hidden><input type="checkbox" id="ftv-seg"> <span id="ftv-seg-t"></span></label>' +
             '<button class="btn bp sm u-mla" data-fta="comentar">' + ico('chat') + ' Comentar</button></div>' +
           '<div id="ftv-coms"></div></div>' +
@@ -115,6 +116,7 @@
     $('fta-alc').onchange = function () { reglaInicio(); };
     ['fta-ini', 'fta-meses', 'fta-frec', 'fta-d1', 'fta-d2'].forEach(function (id) { $(id).addEventListener('change', function () { if (id === 'fta-ini') T.iniTocado = true; reglaResumen(); }); });
     // Comentario rápido: un clic carga el texto para editarlo (botones, no desplegable)
+    $('ftv-doc').onchange = function () { $('ftv-doc-n').textContent = this.files.length ? this.files.length + ' archivo(s) para adjuntar' : ''; };
     $('ftv-qk').onclick = function (e) { var b = e.target.closest('[data-qk]'); if (b) { $('ftv-txt').value = b.getAttribute('data-qk'); $('ftv-txt').focus(); } };
     // Botones de una sola elección (prioridad, para quién, delegar a) y tareas rápidas
     // Uno o más: delegar, participantes y «Para quién»
@@ -280,7 +282,15 @@
   }
 
   async function comentar() {
-    var txt = v('ftv-txt'); if (!txt) return toast('Escribí el comentario', 'err');
+    var txt = v('ftv-txt'), docs = Array.prototype.slice.call(($('ftv-doc') || {}).files || []);
+    if (!txt && !docs.length) return toast('Escribí el comentario o adjuntá un archivo', 'err');
+    if (docs.length) {   // los archivos van a la carpeta de Drive de la empresa y el link queda en el comentario
+      var em = (T.base.clientes || []).find(function (c) { return c.id === (T.t.cliente_id || T.t.cliente); }), sub = [];
+      try { for (var i = 0; i < docs.length; i++) { toast('Subiendo ' + docs[i].name + '…', 'inf'); sub.push(await puente('subirDoc', { archivo: docs[i], empresa: em ? em.nombre : (T.t.empresa || '') })); } }
+      catch (e) { return toast(e.message, 'err'); }
+      txt = (txt ? txt + '\n' : '') + 'Documentos: ' + sub.map(function (d) { return d.nombre + ' ' + d.url; }).join(' · ');
+      $('ftv-doc').value = ''; $('ftv-doc-n').textContent = '';
+    }
     var st = $('ftv-seg').checked && T.base.seguimiento ? T.base.seguimiento : 'Normal';
     var res = await hacer('comentar', { p: { tarea_id: T.t.id, texto: txt, estado: st } }, 'Comentario guardado');
     if (res) { $('ftv-txt').value = ''; $('ftv-seg').checked = false; comentarios(T.t.id); }

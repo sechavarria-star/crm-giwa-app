@@ -32,11 +32,11 @@
   async function cargar() { C.ini = await rpc('cot_inicio'); }
   async function catalogo(tipo) {
     if (!tipo || C.cat[tipo]) return;
-    var r = await db().from('catalogo_modulos').select('id,padre,bloque_comercial,pregunta,nombre,horas_base,factor,es_por_instancia,efecto,nivel,sugerido,etapa,orden')
+    var r = await db().from('catalogo_modulos').select('id,padre,bloque_comercial,pregunta,nombre,horas_base,factor,es_por_instancia,es_replicable,efecto,nivel,sugerido,etapa,orden')
       .eq('tipo_desarrollo_id', tipo).eq('activo', true).order('orden');
     if (r.error) throw new Error(r.error.message);
     C.cat[tipo] = r.data.map(function (m) { return { id: m.id, padre: m.padre || '', bloque: m.bloque_comercial || 'Otros', pregunta: m.pregunta || '', nombre: m.nombre || '',
-      horas: Number(m.horas_base) || 0, factor: Number(m.factor) || 1, instancia: !!m.es_por_instancia, efecto: m.efecto || '', nivel: m.nivel || '',
+      horas: Number(m.horas_base) || 0, factor: Number(m.factor) || 1, instancia: !!m.es_por_instancia, replicable: !!m.es_replicable, efecto: m.efecto || '', nivel: m.nivel || '',
       sugerido: !!m.sugerido, etapa: m.etapa || '' }; });
   }
 
@@ -76,7 +76,7 @@
   function mantTxt(v) { return 'monitoreo, reunión mensual, análisis y ajustes' + (aud(v) ? ', auditoría de conversaciones' : ''); }
   function horasDe(v, id) {
     var m = mod(v, id); if (!m || !si(v, id) || v.etapa[id] === 'futura') return 0;
-    return m.horas * m.factor * (m.instancia ? (v.cant[id] || 1) : 1) + hijas(v, id).reduce(function (s, x) { return s + horasDe(v, x.id); }, 0);
+    return hMod(v, m) + hijas(v, id).reduce(function (s, x) { return s + horasDe(v, x.id); }, 0);
   }
   // Pendiente = Por definir, o una madre en Sí con opciones sin contestar
   function pend(v) { return mods(v).filter(function (m) { if (v.r[m.id] === 'Pendiente') return true; var hs = hijas(v, m.id); return si(v, m.id) && hs.length && !hs.some(function (x) { return est(v, x.id); }); }); }
@@ -294,7 +294,9 @@
   // Estado de pantalla del cuestionario (no se guarda): qué pregunta está abierta, qué notas se ven, filtro
   var UI = { abre: {}, nota: {}, solo: false };
   function h1(n) { return String(Math.round((Number(n) || 0) * 10) / 10).replace('.', ','); }
-  function hMod(v, m) { return m.horas * m.factor * (m.instancia ? (v.cant[m.id] || 1) : 1); }
+  // Horas de una funcionalidad con la misma cuenta del motor: lo repetible va con la reutilización (evolución)
+  function hMod(v, m) { var r = m.replicable && v.est ? Number(v.est.reutilizacion) || 1 : 1;
+    return Math.round(m.horas * m.factor * (m.instancia ? (v.cant[m.id] || 1) : 1) * r * 100) / 100; }
   function esDe(v, x, id) { var m = x; while (m && m.padre) { if (m.padre === id) return true; m = mod(v, m.padre); } return false; }
   // Lo tildado debajo de una madre, hasta la última opción tildada (sin etapa futura)
   function tildadas(v, id, fut) {
@@ -335,8 +337,7 @@
     var pctH = V.giwa ? Math.round((1 - (V.costo || 0) / V.giwa) * 100) : 0;
     h += '<div class="cot-int"><div class="ui-lat-h u-mt10">Análisis interno</div>' +
       '<div class="ui-kv"><span>Valor interno de la hora<span class="cot-sub"><span class="cot-n">' + pctH + ' %</span> menos que la hora de venta (<span class="cot-n">' + fmt(V.giwa) + '</span>)</span></span><span class="ui-num">' + fmt(V.costo) + '</span></div>' +
-      kv('Costo interno · <span class="cot-n">' + h1(e.horas) + '</span> h', fmt(e.costo_ars)) +
-      kv('Costo por mes' + (propio(v) ? ' · <span class="cot-n">' + h1(v.mant.hs) + '</span> h' : ''), fmt(cMes)) +
+      kv('Costo interno · <span class="cot-n">' + h1(e.horas) + '</span> h', fmt(e.costo_ars)) +      kv('Costo por mes' + (propio(v) ? ' · <span class="cot-n">' + h1(v.mant.hs) + '</span> h' : ''), fmt(cMes)) +
       kv('Margen a <span class="cot-n">12</span> meses', fmt(m12), m12 >= 0 ? 'ui-e-finalizado' : 'ui-p-error') +
       '<div class="ui-kv"><span>Recupero del costo</span><span class="' + (falta <= 0 || mMes > 0 ? 'ui-e-finalizado' : 'ui-p-error') + '">' +
         (falta <= 0 ? 'con la implementación' : mMes > 0 ? 'en <span class="cot-n">' + Math.ceil(falta / mMes) + '</span> meses' : 'no se recupera') + '</span></div>' +
@@ -366,7 +367,9 @@
     var b = document.getElementById('fun-b'), v = dev(); if (!b || !v) return;
     var ab = {}; b.querySelectorAll('[data-bl]').forEach(function (d) { ab[d.getAttribute('data-bl')] = d.classList.contains('open'); });
     var bus = (document.getElementById('fun-bus') || {}).value || '';
-    var base = raices(v).filter(esBase), hB = base.reduce(function (s, m) { return s + (si(v, m.id) ? m.horas * m.factor : 0); }, 0);
+    // Base del agente con las horas del motor (completo, sencillo o evolución)
+    var HB = hEst(v), hb = function (m) { return HB[m.id] != null ? HB[m.id] : m.horas * m.factor; };
+    var base = raices(v).filter(esBase), hB = base.reduce(function (s, m) { return s + (si(v, m.id) ? hb(m) : 0); }, 0);
     var bl = bloques(v), primero = bl.filter(function (x) { return faltan(v, x).length; })[0];
     var falta = function (m) { var s = est(v, m.id), hs = hijas(v, m.id); return !s || s === 'Pendiente' || (si(v, m.id) && hs.length && !hs.some(function (x) { return est(v, x.id); })); };
     var preg = '<div class="ui-lat-h cot-t-az">Preguntas</div>' +
@@ -374,7 +377,7 @@
         '<label class="u-row6 u-s11"><input type="checkbox" id="fun-solo"' + (UI.solo ? ' checked' : '') + '> Ver solo lo que falta definir</label></div>' +
       uiDesp({ t: 'Base del agente · siempre incluida', n: h1(hB) + ' h', attrs: 'data-bl="__base"', open: !!ab.__base },
         base.map(function (m) { return '<div class="ui-linea"><label class="u-row6 ui-f1"><input type="checkbox"' + (si(v, m.id) ? ' checked' : '') + ' data-resp="' + esc(m.id) + '" data-k="base"> ' + esc(nom(m)) + '</label>' +
-          '<span class="ui-num ui-nota-t">' + h1(m.horas * m.factor) + ' h</span></div>'; }).join('')) +
+          '<span class="ui-num ui-nota-t">' + h1(hb(m)) + ' h</span></div>'; }).join('')) +
       bl.map(function (x, i) {
         if (v.na[x]) return '<div class="cot-omit"><span class="ui-f1">' + (i + 1) + '. ' + esc(x) + ' · omitido</span><button type="button" class="ui-lnk ui-gris" data-fun="reabrir" data-b="' + esc(x) + '">Reabrir</button></div>';
         var ms = madresDe(v, x), f = faltan(v, x), vis = UI.solo ? ms.filter(falta) : ms;
@@ -403,7 +406,7 @@
         (sii && v.est ? '<span class="ui-num">' + h1(horasDe(v, m.id)) + ' h</span>' : '') + '</button>'; }
     var fut = sii && !hs0.length ? uiIb('calendario', s === 'Futura' ? 'Volver a la 1ª etapa' : 'Pasar a etapa futura', s === 'Futura' ? 'vio' : '', 'data-fun="futura" data-id="' + q + '"') : '';
     return '<div class="cot-q" data-txt="' + esc(((m.pregunta || '') + ' ' + m.nombre).toLowerCase()) + '"><div class="cot-q-t"><span class="ui-f1' + (s === 'Futura' ? ' ui-p-abono' : '') + '">' + esc(m.pregunta || m.nombre) +
-      (m.horas ? ' <span class="ui-num ui-nota-t">' + h1(m.horas * m.factor) + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') + '</span>' +
+      (m.horas ? ' <span class="ui-num ui-nota-t">' + h1(hMod(v, m)) + ' h</span>' : '') + (m.sugerido && !s ? ' <span class="ui-nota-t">· sugerido</span>' : '') + '</span>' +
       fut + '<button type="button" class="ui-lnk ui-gris" data-fun="nota" data-id="' + q + '">Nota</button>' + seg + '</div>' +
       (sii && (abierta || !hs0.length) ? extras(v, m) : '') + cuerpo + (UI.nota[m.id] || v.notas[m.id] ? nota(v, m) : '') + '</div>';
   }
@@ -439,7 +442,7 @@
     return h;
   }
   function opciones(v, id, niv) {
-    return hijas(v, id).map(function (m) { var on = si(v, m.id), fu = v.etapa[m.id] === 'futura', hh = m.horas * m.factor;
+    return hijas(v, id).map(function (m) { var on = si(v, m.id), fu = v.etapa[m.id] === 'futura', hh = hMod(v, m);
       return '<div class="cot-op" style="--niv:' + niv + '"><div class="cot-op-l"><label class="u-row6 ui-f1"><input type="checkbox"' + (on ? ' checked' : '') + ' data-resp="' + esc(m.id) + '" data-k="op"> ' +
         '<span class="ui-f1' + (fu ? ' ui-p-abono' : '') + '">' + esc(m.pregunta || m.nombre) + '</span></label>' + (hh ? '<span class="ui-num ui-nota-t">' + h1(hh) + ' h</span>' : '') +
         (on ? uiIb('calendario', fu ? 'Volver a la 1ª etapa' : 'Pasar a etapa futura', fu ? 'vio' : '', 'data-fun="futura" data-id="' + esc(m.id) + '"') : '') + '</div>' +
