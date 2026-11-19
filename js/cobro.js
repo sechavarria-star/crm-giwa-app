@@ -50,7 +50,7 @@ function htmlLeido(L, extra) {
 window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
 
 (function () {
-  var C = { modo: 'factura', lin: [], devs: {}, proys: [], mens: {}, cob: {}, ipc: {}, onSave: null, rs: [], archivo: null, emp: {}, tc: 0, leido: null };
+  var C = { modo: 'factura', lin: [], ed: { proy: '', item: '', concepto: '', cuota: 1, monto: 0, ren: false }, devs: {}, proys: [], mens: {}, cob: {}, ipc: {}, onSave: null, rs: [], archivo: null, emp: {}, tc: 0, leido: null };
   function $(id) { return document.getElementById(id); }
   function v(id) { return String(($(id) || {}).value || '').trim(); }
 
@@ -65,8 +65,8 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
           '<div class="fg"><label class="fl ft-lbl" for="cb-fecha">Fecha de la factura</label><input class="fc" type="date" id="cb-fecha"></div></div>' +
         '<div class="fg" id="cb-rs"></div>' +
         '<div class="fg cb-arca" id="cb-arca" hidden></div>' +
-        '<div class="cb-lin cb-lin-h"><span>Proyecto <span class="req">*</span></span><span>Desarrollo <span class="req">*</span></span><span>Concepto</span><span class="u-tr">Cuota</span><span class="u-tr">Monto</span><span></span></div>' +
-        '<div id="cb-filas"></div><div><button type="button" class="ui-lnk ui-azul" id="cb-mas">+ Agregar línea</button></div>' +
+        '<div class="cb-lin cb-lin-h"><span>Proyecto <span class="req">*</span></span><span>Desarrollo <span class="req">*</span></span><span class="u-tr">Cuota</span><span class="u-tr">Monto</span><span></span></div>' +
+        '<div id="cb-filas"></div>' +
         '<div class="g3"><div class="fg"><label class="fl ft-lbl" for="cb-mon">Moneda</label><select class="fc" id="cb-mon"><option>ARS</option><option>USD</option></select></div>' +
           '<div class="fg" id="cb-dep-w"><label class="fl ft-lbl" for="cb-dep" id="cb-dep-l">Fecha del pago</label><input class="fc" type="date" id="cb-dep"></div>' +
           '<div class="fg"><span class="fl ft-lbl">Total</span><div class="m cb-total" id="cb-total">—</div><div class="ui-num ui-p-usd u-s11" id="cb-usd"></div></div></div>' +
@@ -82,8 +82,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
   document.addEventListener('DOMContentLoaded', function () {
     var d = document.createElement('div'); d.innerHTML = HTML;
     while (d.firstChild) document.body.appendChild(d.firstChild);
-    $('cb-emp').onchange = function () { C.lin = [nueva()]; pintarRs(); pintarFilas(); };
-    $('cb-mas').onclick = function () { C.lin.push(nueva()); pintarFilas(); };
+    $('cb-emp').onchange = function () { C.lin = []; C.ed = nueva(); pintarRs(); pintarFilas(); };
     $('cb-filas').addEventListener('change', cambioLinea);
     $('cb-filas').addEventListener('input', tipeoLinea);
     $('cb-filas').addEventListener('click', clicLinea);
@@ -138,53 +137,63 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
   function sugerir(l) {
     var d = C.devs[l.item], m = C.mens[l.item], cob = C.cob[l.item] || { max: 0, ultimo: 0 }; if (!d) return;
     var cuota = Number(d.cuota) || 0, saldo = Math.max(0, Number(d.saldo) || 0), cuotas = Number(d.cuotas) || 0;
-    l.cuota = cob.max + 1;
+    l.cuota = cob.max + 1 + C.lin.filter(function (x) { return x.item === l.item; }).length;   // ya agregado en la lista: la cuota siguiente
     l.monto = m ? Number(m.monto) || 0 : cuota > 0 ? cuota : saldo > 0 ? saldo : cob.ultimo;   // la cuota, si no el saldo, si no lo último
     l.concepto = (d.es_mantenimiento ? 'Mantenimiento mensual — ' + d.titulo + (m && m.periodo ? ' — ' + m.periodo : '') : 'Desarrollo — ' + d.titulo) + (cuotas > 1 ? ' · cuota ' + l.cuota + ' de ' + cuotas : '');
-    if (C.leido && C.leido.datos.total > 0 && C.lin.length === 1) l.monto = C.leido.datos.total;   // una sola línea: el total leído
+    if (C.leido && C.leido.datos.total > 0 && !C.lin.length) l.monto = C.leido.datos.total;   // el primer concepto: el total leído
   }
   function opcion(val, txt, sel) { return '<option value="' + esc(val) + '"' + (val === sel ? ' selected' : '') + '>' + esc(txt) + '</option>'; }
   function pintarFilas() {
     var id = C.emp[v('cb-emp')], ps = C.proys.filter(function (p) { return p.empresa_id === id; });
     if (!id) { $('cb-filas').innerHTML = '<div class="ui-nota-t u-mb6">Elegí el cliente.</div>'; total(); return; }
-    $('cb-filas').innerHTML = C.lin.map(function (l, i) {
-      var sols = l.proy ? desarrollosDe(l.proy) : [], d = C.devs[l.item];
-      var datos = !d ? '' : '<span>Contratado <span class="ui-num">' + fmt(Number(d.total_ars) || 0) + '</span></span><span>Facturado <span class="ui-num">' + fmt(Number(d.facturado) || 0) + '</span></span>' +
-        '<span>Saldo <span class="ui-num">' + fmt(Math.max(0, Number(d.saldo) || 0)) + '</span></span>' + (renovable(d) ? '<button type="button" class="ui-lnk ui-azul" data-acc="ren" data-l="' + i + '">Renovar mantenimiento</button>' : '');
-      var ipc = C.ipc[l.item];
-      return '<div class="cb-lin" data-l="' + i + '">' +
-          '<select class="fc" data-c="proy" aria-label="Proyecto"><option value="">— Proyecto —</option>' + ps.map(function (p) { return opcion(p.id, p.nombre || p.id, l.proy); }).join('') + '</select>' +
-          '<select class="fc" data-c="item" aria-label="Desarrollo"' + (l.proy ? '' : ' disabled') + '><option value="">' + (l.proy && !sols.length ? '— Ninguno arrancó todavía —' : '— Desarrollo —') + '</option>' + sols.map(function (x) { return opcion(x.id, x.titulo || x.id, l.item); }).join('') + '</select>' +
-          '<input class="fc" data-c="concepto" value="' + esc(l.concepto) + '" aria-label="Concepto">' +
-          '<input class="fc u-tr ui-num" type="number" min="1" data-c="cuota" value="' + esc(l.cuota) + '" aria-label="Número de cuota">' +
-          '<input class="fc u-tr ui-num" type="number" min="0" data-monto data-c="monto" value="' + (l.monto || '') + '" aria-label="Monto">' +
-          (C.lin.length > 1 ? '<button type="button" class="ui-ib ui-bor" data-acc="quitar" data-l="' + i + '" data-tip="Quitar la línea" aria-label="Quitar la línea">' + ico('cerrar') + '</button>' : '<span></span>') +
-        '</div>' +
-        (datos ? '<div class="cb-sub">' + datos + '</div>' : '') +
-        (ipc ? '<div class="cb-sub ui-p-pendiente">Corresponde ajuste por IPC: <span class="ui-num">' + String(ipc.pct).replace('.', ',') + ' %</span> · cuota sugerida <span class="ui-num">' + fmt(ipc.cuota_sugerida) + '</span></div>' : '') +
-        (l.ren && d ? '<div class="cb-sub cb-ren"><label class="fl" for="cb-ren-d">Meses</label><input class="fc u-tr ui-num" type="number" min="1" id="cb-ren-d" value="' + (Number(d.cuotas) || 12) + '">' +
-          '<label class="fl" for="cb-ren-c">Cuota</label><input class="fc u-tr ui-num" type="number" min="0" data-monto id="cb-ren-c" value="' + Math.round((ipc && ipc.cuota_sugerida) || d.cuota || 0) + '">' +
-          '<button type="button" class="ui-btn ui-p" data-acc="ren-ok" data-l="' + i + '">Renovar</button></div>' : '');
-    }).join('');
+    // Fila de carga (C.ed): se elige, se ve el monto y se agrega a la lista de abajo (19/11/2026)
+    var l = C.ed, sols = l.proy ? desarrollosDe(l.proy) : [], d = C.devs[l.item], ipc = C.ipc[l.item];
+    var datos = !d ? '' : '<span>Contratado <span class="ui-num">' + fmt(Number(d.total_ars) || 0) + '</span></span><span>Facturado <span class="ui-num">' + fmt(Number(d.facturado) || 0) + '</span></span>' +
+      '<span>Saldo <span class="ui-num">' + fmt(Math.max(0, Number(d.saldo) || 0)) + '</span></span>' + (renovable(d) ? '<button type="button" class="ui-lnk ui-azul" data-acc="ren">Renovar mantenimiento</button>' : '');
+    var tot = C.lin.reduce(function (a, x) { return a + x.monto; }, 0);
+    $('cb-filas').innerHTML = '<div class="cb-ed"><div class="cb-lin">' +
+        '<select class="fc" data-c="proy" aria-label="Proyecto"><option value="">— Proyecto —</option>' + ps.map(function (p) { return opcion(p.id, p.nombre || p.id, l.proy); }).join('') + '</select>' +
+        '<select class="fc" data-c="item" aria-label="Desarrollo"' + (l.proy ? '' : ' disabled') + '><option value="">' + (l.proy && !sols.length ? '— Ninguno arrancó todavía —' : '— Desarrollo —') + '</option>' + sols.map(function (x) { return opcion(x.id, x.titulo || x.id, l.item); }).join('') + '</select>' +
+        '<input class="fc u-tr ui-num" type="number" min="1" data-c="cuota" value="' + esc(l.cuota) + '" aria-label="Número de cuota">' +
+        '<input class="fc u-tr ui-num" type="number" min="0" data-monto data-c="monto" value="' + (l.monto || '') + '" aria-label="Monto">' +
+        '<button type="button" class="btn bg sm" data-acc="agregar">Agregar</button>' +
+      '</div>' +
+      (d ? '<input class="fc u-mb6" data-c="concepto" value="' + esc(l.concepto) + '" aria-label="Concepto" placeholder="Concepto">' : '') +
+      (datos ? '<div class="cb-sub">' + datos + '</div>' : '') +
+      (ipc ? '<div class="cb-sub ui-p-pendiente">Corresponde ajuste por IPC: <span class="ui-num">' + String(ipc.pct).replace('.', ',') + ' %</span> · cuota sugerida <span class="ui-num">' + fmt(ipc.cuota_sugerida) + '</span></div>' : '') +
+      (l.ren && d ? '<div class="cb-sub cb-ren"><label class="fl" for="cb-ren-d">Meses</label><input class="fc u-tr ui-num" type="number" min="1" id="cb-ren-d" value="' + (Number(d.cuotas) || 12) + '">' +
+        '<label class="fl" for="cb-ren-c">Cuota</label><input class="fc u-tr ui-num" type="number" min="0" data-monto id="cb-ren-c" value="' + Math.round((ipc && ipc.cuota_sugerida) || d.cuota || 0) + '">' +
+        '<button type="button" class="ui-btn ui-p" data-acc="ren-ok">Renovar</button></div>' : '') +
+      '</div>' +
+      // Lista de lo agregado: el concepto entero, la cuota, el monto y el total que se va sumando
+      (C.lin.length ? '<div class="cb-lista">' + C.lin.map(function (x, i) {
+        return '<div class="ui-linea"><span class="cb-lista-c">' + esc(x.concepto || (C.devs[x.item] || {}).titulo || '—') + '</span>' +
+          '<span class="ui-num u-nw">cuota ' + esc(x.cuota) + '</span><span class="ui-num u-nw cb-lista-m">' + fmt(x.monto, v('cb-mon')) + '</span>' +
+          '<button type="button" class="ui-ib" data-acc="quitar" data-l="' + i + '" data-tip="Quitar" aria-label="Quitar">' + ico('cerrar') + '</button></div>';
+      }).join('') + '<div class="ui-linea cb-lista-t"><span class="cb-lista-c">Total</span><span class="ui-num u-nw cb-lista-m">' + fmt(tot, v('cb-mon')) + '</span><span class="cb-arca-b"></span></div></div>' : '');
     total();
   }
   function cambioLinea(ev) {
-    var fila = ev.target.closest('.cb-lin'); if (!fila) return;
-    var l = C.lin[+fila.getAttribute('data-l')], c = ev.target.getAttribute('data-c');
+    if (!ev.target.closest('.cb-ed')) return;
+    var l = C.ed, c = ev.target.getAttribute('data-c');
     if (c === 'proy') { l.proy = ev.target.value; l.item = ''; l.concepto = ''; l.monto = 0; l.cuota = 1; l.ren = false; var s = desarrollosDe(l.proy); if (s.length === 1) { l.item = s[0].id; sugerir(l); } return pintarFilas(); }
     if (c === 'item') { l.item = ev.target.value; l.concepto = ''; l.monto = 0; l.cuota = 1; l.ren = false; sugerir(l); return pintarFilas(); }
   }
   function tipeoLinea(ev) {
-    var fila = ev.target.closest('.cb-lin'); if (!fila) return;
-    var l = C.lin[+fila.getAttribute('data-l')], c = ev.target.getAttribute('data-c');
-    if (c === 'concepto') { l.concepto = ev.target.value; pintarArca(); }
+    if (!ev.target.closest('.cb-ed')) return;
+    var l = C.ed, c = ev.target.getAttribute('data-c');
+    if (c === 'concepto') l.concepto = ev.target.value;
     if (c === 'cuota') l.cuota = Number(ev.target.value) || 1;
-    if (c === 'monto') { l.monto = Number(ev.target.value) || 0; total(); }
+    if (c === 'monto') l.monto = Number(ev.target.value) || 0;
   }
   async function clicLinea(ev) {
     var b = ev.target.closest('[data-acc]'); if (!b) return;
-    var a = b.getAttribute('data-acc'), l = C.lin[+b.getAttribute('data-l')];
-    if (a === 'quitar') { C.lin.splice(C.lin.indexOf(l), 1); return pintarFilas(); }
+    var a = b.getAttribute('data-acc'), l = C.ed;
+    if (a === 'quitar') { C.lin.splice(+b.getAttribute('data-l'), 1); return pintarFilas(); }
+    if (a === 'agregar') {
+      if (!l.item || !(l.monto > 0)) return toast('Elegí el proyecto, el desarrollo y poné el monto', 'err');
+      C.lin.push({ proy: l.proy, item: l.item, concepto: l.concepto.trim(), cuota: l.cuota, monto: l.monto }); C.ed = nueva(); return pintarFilas();
+    }
     if (a === 'ren') { l.ren = !l.ren; return pintarFilas(); }
     if (a === 'ren-ok') {
       var dur = Number($('cb-ren-d').value) || 0, cu = Number($('cb-ren-c').value) || 0, d = C.devs[l.item];
@@ -246,7 +255,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     var rz = d.receptor_cuit ? C.rs.filter(function (x) { return String(x.cuit || '').replace(/\D/g, '') === d.receptor_cuit; })[0] : null;
     var emp = rz && Object.keys(C.emp).find(function (e) { return C.emp[e] === rz.empresa_id; });
     if (emp) {
-      $('cb-emp').value = emp; C.lin = [nueva()]; pintarRs();
+      $('cb-emp').value = emp; C.lin = []; C.ed = nueva(); pintarRs();
       var i = razones().indexOf(rz); if ($('cb-razon') && i >= 0) $('cb-razon').value = String(i);
     } else if (d.receptor_cuit) extra.push('El receptor (CUIT ' + d.receptor_cuit + ') no es un cliente cargado: si es de un proveedor, va en Gastos');
     C.leido.extra = extra;
@@ -279,8 +288,8 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
       await cargar();
       var emps = Object.keys(C.emp).sort(function (a, b) { return a.localeCompare(b, 'es'); }), d0 = C.devs[ctx.item_id], p0 = d0 && C.proys.find(function (p) { return p.id === d0.proyecto_id; });
       var e0 = ctx.empresa || (p0 && emps.find(function (e) { return C.emp[e] === p0.empresa_id; })) || '';
-      C.lin = [nueva()];
-      if (d0) { C.lin[0].proy = d0.proyecto_id; C.lin[0].item = d0.id; sugerir(C.lin[0]); }
+      C.lin = []; C.ed = nueva();
+      if (d0) { C.ed.proy = d0.proyecto_id; C.ed.item = d0.id; sugerir(C.ed); }
       $('cb-emp').innerHTML = '<option value="">— Elegí el cliente —</option>' + emps.map(function (e) { return '<option' + (e === e0 ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('');
       var pago = modo === 'pago';
       $('cb-tit').textContent = pago ? 'Registrar pago' : 'Nueva factura';
@@ -313,8 +322,8 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
   async function guardar(otra) {
     var pago = C.modo === 'pago', P = partes(), nc = !pago && /nota de cr/i.test(v('cb-tipo'));
     if (!v('cb-emp')) return toast('Elegí el cliente', 'err');
-    if (C.lin.some(function (l) { return l.monto > 0 && !l.item; })) return toast('Elegí el proyecto y el desarrollo de cada línea', 'err');
-    if (!P.length) return toast('Poné el monto en al menos una línea', 'err');
+    if (C.ed.item) return toast('Agregá la línea o vaciala', 'err');
+    if (!P.length) return toast('Agregá al menos un concepto', 'err');
     if (pago && !v('cb-dep')) return toast('Falta la fecha del pago', 'err');
     if (!pago && !v('cb-nro')) return toast('Falta el número de la factura', 'err');
     var total = P.reduce(function (a, p) { return a + p.monto; }, 0), rs = razonSel();
@@ -338,7 +347,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
       toast(pago ? 'Pago registrado' : 'Factura guardada · ' + r.data.filas + ' fila(s)', 'ok');
       if (C.onSave) C.onSave();
       if (!pago && !nc) await ofrecerMail(P, total, rs, pdfId);
-      if (otra) { $('cb-nro').value = ''; C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = FC_TXT; $('cb-adj-b').textContent = 'elegí el archivo'; C.leido = null; $('cb-leido').hidden = true; await cargar(); C.lin = [nueva()]; pintarFilas(); }
+      if (otra) { $('cb-nro').value = ''; C.archivo = null; $('cb-file').value = ''; $('cb-adj-t').textContent = FC_TXT; $('cb-adj-b').textContent = 'elegí el archivo'; C.leido = null; $('cb-leido').hidden = true; await cargar(); C.lin = []; C.ed = nueva(); pintarFilas(); }
       else closeM('m-cobro');
     } catch (e) { toast(e.message, 'err'); }
     fin();

@@ -455,10 +455,17 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 #m-cobro .fc { border-color: var(--marco); }
 #m-cobro .fc:hover:not(:disabled) { border-color: var(--texto2); }
 #m-cobro .fc:focus { border-color: var(--brillo); box-shadow: 0 0 0 2px var(--suave-brillo); }
-.cb-lin { display: grid; grid-template-columns: 1.4fr 1.6fr 1.8fr 56px 124px 24px; gap: var(--e2); align-items: center; margin-bottom: var(--e2); }
+.cb-lin { display: grid; grid-template-columns: 1.4fr 1.6fr 64px 124px auto; gap: var(--e2); align-items: center; margin-bottom: var(--e2); }
 .cb-lin-h { font-size: var(--t-xs); color: var(--texto2); margin-bottom: var(--e1); }
 .cb-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e1) var(--e4); font-size: var(--t-s); color: var(--texto2); margin: 0 0 var(--e3); }
 .cb-sub.ui-p-pendiente { color: var(--p-pendiente); }
+/* Nueva factura: lista de conceptos agregados (19/11/2026) */
+.cb-lista { margin: var(--e2) 0 var(--e3); }
+.cb-lista .ui-linea { align-items: flex-start; }
+.cb-lista-c { flex: 1; min-width: 0; color: var(--texto); }
+.cb-lista-m { width: 124px; text-align: right; }
+.cb-lista-t .cb-lista-c { color: var(--texto2); }
+.cb-lista-t > span:last-child { flex: none; width: 24px; }
 /* Datos para facturar en ARCA (18/11/2026) */
 .cb-arca-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--e1); }
 .cb-arca .cb-arca-l { flex: none; width: 132px; color: var(--texto2); }
