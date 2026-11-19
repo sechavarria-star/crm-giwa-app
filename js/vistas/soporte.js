@@ -459,22 +459,18 @@
     } catch (x) { toast(x.message || String(x), 'err'); t.checked = !t.checked; }
   }
 
-  // «Marcar facturado»: atado a la línea de horas de soporte (SOP) del CRM
+  // «Marcar facturado»: crea en el CRM la línea de horas de soporte (SOP, en Nuevo) y ata el mes a ella
   async function marcarFacturado(k) {
-    var r = await db().from('v_soporte_desarrollos').select('id,titulo').eq('empresa_id', k.e).eq('tipo_id', 'SOP').order('id', { ascending: false });
-    if (r.error) return toast(r.error.message, 'err');
-    if (!r.data.length) return toast('La empresa no tiene una línea de horas de soporte (SOP) en el CRM. Creala en Proyectos.', 'err');
     var m = $('m-sopf');
     if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-sopf'; document.body.appendChild(m); }
     m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Marcar facturado · ' + esc(nomMes(S.per)) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-sopf">' + ico('cerrar') + '</button></div>' +
-      '<div class="mb2"><p class="u-s11-mt">' + esc(k.n) + '</p>' +
-      '<div class="fg"><label class="fl" for="sopf-sop">Línea de horas de soporte del CRM</label><select class="fc" id="sopf-sop">' + opts(r.data.map(function (d) { return [d.id, d.id + ' · ' + d.titulo]; }), r.data[0].id) + '</select></div>' +
+      '<div class="mb2"><p class="u-s11-mt">' + esc(k.n) + ' · se crea en el CRM la línea de horas de soporte en Nuevo, con estas horas por el valor de la hora de soporte.</p>' +
       '<div class="g2"><div class="fg"><label class="fl" for="sopf-h">Horas</label><input class="fc u-tr" id="sopf-h" type="number" min="0" step="0.25" value="' + N(k.h) + '"></div>' +
       '<div class="fg"><label class="fl" for="sopf-n">Nota</label><input class="fc" id="sopf-n" placeholder="Opcional (n.º de factura…)"></div></div></div>' +
       '<div class="mf"><button class="btn bg" data-cerrar="m-sopf">Cancelar</button><button class="btn bp" id="sopf-ok">' + ico('check') + ' Marcar facturado</button></div></div>';
     $('sopf-ok').onclick = async function () {
-      try { await rpc('soporte_marcar_facturado', { p: { empresa_id: k.e, desarrollo_id: k.d, periodo: S.per, sop_id: v('sopf-sop'), horas: v('sopf-h'), nota: v('sopf-n') } });
-        closeM('m-sopf'); toast('Marcado como facturado', 'ok'); await cargar(); pintar($('vista')); }
+      try { var res = await rpc('soporte_marcar_facturado', { p: { empresa_id: k.e, desarrollo_id: k.d, periodo: S.per, horas: v('sopf-h'), nota: v('sopf-n') } });
+        closeM('m-sopf'); toast('Marcado como facturado · ' + ((res && res.sop_id) || '') + ' creado en Nuevo', 'ok'); await cargar(); pintar($('vista')); }
       catch (e) { toast(e.message, 'err'); }
     };
     openM('m-sopf');
@@ -697,7 +693,7 @@
       if (b.hasAttribute('data-sfac')) return marcarFacturado(JSON.parse(b.getAttribute('data-sfac')));
       if (b.hasAttribute('data-sdesfac')) {
         var k = JSON.parse(b.getAttribute('data-sdesfac'));
-        return ask('Se borra la marca de facturado de ' + k.n + ' en ' + nomMes(S.per) + '.', '¿Desmarcar?', { ok: 'Desmarcar' }).then(async function (ok) {
+        return ask('Se borra la marca de facturado de ' + k.n + ' en ' + nomMes(S.per) + ' y su línea de horas de soporte pasa a Rechazado en el CRM (sólo si sigue en Nuevo).', '¿Desmarcar?', { ok: 'Desmarcar' }).then(async function (ok) {
           if (!ok) return;
           try { await rpc('soporte_marcar_facturado', { p: { empresa_id: k.e, desarrollo_id: k.d, periodo: S.per, desmarcar: true } }); await cargar(); pintar(el); }
           catch (e) { toast(e.message, 'err'); }
