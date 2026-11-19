@@ -953,10 +953,7 @@
   }
   // El modal de la app (.mo/.md), con su título, cuerpo y pie
   function modal(id, tit, cuerpo, pie, cls) {
-    var m = document.getElementById(id); if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = id; document.body.appendChild(m); }
-    m.innerHTML = '<div class="md ' + (cls || 'md-sm') + '"><div class="mh"><span class="mt2">' + esc(tit) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="' + id + '">' + ico('cerrar') + '</button></div>' +
-      '<div class="mb2">' + cuerpo + '</div><div class="mf">' + pie + '</div></div>';
-    m.onclick = m.onchange = m.oninput = null; openM(id); return m;
+    var m = armarModal(id, tit, cuerpo, pie, cls || 'md-sm'); openM(id); return m;   // el armador único (util.js)
   }
 
   VISTAS.cot = async function (el, op) {

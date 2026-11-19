@@ -21,10 +21,8 @@
     return '<div class="fg"><label class="fl" for="' + id + '">' + label + '</label><input class="fc u-tr" id="' + id + '" ' + (attrs || 'type="number" min="0"') + '></div>';
   }
 
+  // El cuerpo y el pie van al armador único (util.js, 19/11/2026)
   var HTML =
-    '<div class="mo" id="m-fdes"><div class="md">' +
-      '<div class="mh"><span class="mt2" id="fd-tit">Desarrollo</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-fdes">' + ico('cerrar') + '</button></div>' +
-      '<div class="mb2">' +
         '<div class="ft-info u-c-wa u-mb12" id="fd-bloq" hidden></div>' +
         '<div class="g2"><div class="fg"><label class="fl" for="fd-titulo">Título <span class="req">*</span></label><input class="fc" id="fd-titulo"></div>' +
           '<div class="fg"><label class="fl" for="fd-tipo">Tipo</label><select class="fc" id="fd-tipo"></select></div></div>' +
@@ -40,14 +38,11 @@
           '<div class="fg"><label class="fl" for="fd-ajuste">Ajuste</label><select class="fc" id="fd-ajuste"><option value="Sin Ajuste">Sin Ajuste</option><option value="Ajuste">Con Ajuste IPC</option></select></div></div>' +
         '<div class="g3">' + campo('fd-garantia', 'Días de garantía') + campo('fd-sop-ars', 'Soporte · valor hora ARS', 'type="number" min="0" data-monto') + campo('fd-sop-usd', 'Soporte · valor hora USD', 'type="number" min="0" data-monto') + '</div>' +
         '<div class="sec u-mt10">Módulos</div>' +
-        '<div id="fd-mods"></div>' +
-      '</div>' +
-      '<div class="mf"><button class="btn bg" data-cerrar="m-fdes">Cancelar</button><button class="btn bp" id="fd-ok">Guardar</button></div>' +
-    '</div></div>';
+        '<div id="fd-mods"></div>';
+  var PIE = '<button class="btn bg" data-cerrar="m-fdes">Cancelar</button><button class="btn bp" id="fd-ok">Guardar</button>';
 
   document.addEventListener('DOMContentLoaded', function () {
-    var d = document.createElement('div'); d.innerHTML = HTML;
-    while (d.firstChild) document.body.appendChild(d.firstChild);
+    armarModal('m-fdes', 'Desarrollo', HTML, PIE, '').querySelector('.mt2').id = 'fd-tit';
     $('fd-ok').onclick = guardar;
     $('fd-tipo').onchange = async function () { await cargarCatalogo(this.value, []); F.modsTocados = true; sugerir(); };
     $('fd-mods').addEventListener('change', function (ev) {

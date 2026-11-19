@@ -612,3 +612,22 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 /* Proyectos: filtros de estado en mayúscula (18/11/2026) */
 [data-pm="prchip"], [data-pm="segchip"] { text-transform: uppercase; letter-spacing: .04em; }
 .ui-btn[data-pm="det-proy"] { color: var(--e-detenido); border-color: var(--e-detenido); }   /* Detener en naranja (18/11/2026) */
+/* ── Formularios de los modales (19/11/2026, diseño aprobado de Editar proyecto) ──
+   ui-sec-h: título de sección · ui-filas: fila que se acomoda al ancho de cada campo · ui-rep: la fila se reparte en todo el ancho
+   ui-w-*: ancho según el dato · ui-li: fila de una lista compacta (persona, importe, desarrollo) · ui-cols3: tres listas lado a lado */
+.ui-sec-h { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto); font-weight: 600;
+  padding-bottom: 6px; border-bottom: 1px solid var(--marco); margin: 18px 0 var(--e3); }
+.ui-sec-h:first-child { margin-top: 0; }
+.ui-filas { display: flex; flex-wrap: wrap; gap: var(--e3) 16px; align-items: flex-start; }
+.ui-filas > .fg { margin-bottom: var(--e3); }
+.ui-filas.ui-rep { flex-wrap: nowrap; justify-content: space-between; }
+.ui-filas.ui-rep > .fg { flex: 1 1 0; min-width: 0; }
+.ui-filas.ui-rep > .ui-w2 { flex: 2 1 0; }
+.ui-w-xs { flex: 0 0 80px; } .ui-w-s { flex: 0 0 120px; } .ui-w-m { flex: 0 0 190px; } .ui-w-l { flex: 0 0 200px; } .ui-w-f { flex: 1 1 220px; min-width: 0; } .ui-w-a { flex: 0 1 auto; }
+.ui-filas .ui-fecha { width: 170px; max-width: 100%; }
+.ui-li { display: flex; align-items: center; gap: var(--e3); padding: 6px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.ui-li .ui-f1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ui-li-sub { color: var(--texto2); font-size: var(--t-s); }
+.ui-li .ui-ib .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
+.ui-li .ui-ib { padding: 2px; }
+.ui-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 var(--e5); }

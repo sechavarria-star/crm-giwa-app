@@ -548,15 +548,13 @@
   // Alta del abono mensual (MMR) del proyecto (18/11/2026): cuota, meses, ajuste e inicio; uno solo activo
   function altaAbono(el, p) {
     var devs = (p.items || []).filter(function (it) { return !esMant(it) && _canonSol(it.estado) !== 'rechazada'; });
-    var m = document.getElementById('m-abono');
-    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-abono'; document.body.appendChild(m); }
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Abono mensual · ' + esc(p.nombre || '') + '</span><button class="btn bg sm btn-ico" aria-label="Cerrar" data-cerrar="m-abono">' + ico('cerrar') + '</button></div><div class="mb2">' +
+    armarModal('m-abono', 'Abono mensual · ' + (p.nombre || ''),
       '<div class="fg"><label class="fl" for="ab-padre">Mantiene</label><select class="fc" id="ab-padre">' + devs.map(function (d) { return '<option value="' + esc(d.id) + '">' + esc(d.titulo || d.id) + '</option>'; }).join('') + '</select></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="ab-cuota">Cuota mensual</label><input class="fc u-tr" type="number" min="0" id="ab-cuota" data-monto></div>' +
       '<div class="fg"><label class="fl" for="ab-meses">Meses</label><input class="fc u-tr ui-num" type="number" min="1" id="ab-meses" value="12"></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="ab-aj">Ajuste por IPC</label><select class="fc" id="ab-aj"><option value="1">Sí</option><option value="0">No</option></select></div>' +
-      '<div class="fg"><label class="fl" for="ab-ini">Inicio</label><input class="fc" type="date" id="ab-ini"><div class="u-s11-mt">Vacío: arranca al terminar lo que mantiene.</div></div></div></div>' +
-      '<div class="mf"><button class="btn bg" data-cerrar="m-abono">Cancelar</button><button class="btn bp" id="ab-ok">Crear abono</button></div></div>';
+      '<div class="fg"><label class="fl" for="ab-ini">Inicio</label><input class="fc" type="date" id="ab-ini"><div class="u-s11-mt">Vacío: arranca al terminar lo que mantiene.</div></div></div>',
+      '<button class="btn bg" data-cerrar="m-abono">Cancelar</button><button class="btn bp" id="ab-ok">Crear abono</button>');
     document.getElementById('ab-ok').onclick = async function () {
       var r = await db().rpc('alta_abono', { pid: p.id, padre: document.getElementById('ab-padre').value, cuota: Number(document.getElementById('ab-cuota').value), meses: Number(document.getElementById('ab-meses').value),
         ajuste: document.getElementById('ab-aj').value === '1', inicio: document.getElementById('ab-ini').value || null });
@@ -569,22 +567,21 @@
   function fechasDes(el, it) {
     var cerr = desCerrado(it) || _canonSol(it.estado) === 'rechazada';
     if (cerr) return say('Este desarrollo está cerrado: sus fechas ya no se cambian.', 'Fechas');
-    var m = document.getElementById('m-fdes');
-    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-fdes'; document.body.appendChild(m); }
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Fechas · ' + esc(it.titulo || it.id) + '</span><button class="btn bg sm btn-ico" aria-label="Cerrar" data-cerrar="m-fdes">' + ico('cerrar') + '</button></div><div class="mb2">' +
-      (esGanado(it.estado) ? '<div class="fg"><label class="fl" for="fd-apr">Aprobado</label><input class="fc" type="date" id="fd-apr" value="' + esc(String(it.fecha_aprob || '').slice(0, 10)) + '"></div>' : '') +
-      '<div class="g2"><div class="fg"><label class="fl" for="fd-ini">Inicio</label><input class="fc" type="date" id="fd-ini" value="' + esc(String(it.fecha_est || '').slice(0, 10)) + '"></div>' +
-      '<div class="fg"><label class="fl" for="fd-fin">Fin</label><input class="fc" type="date" id="fd-fin" value="' + esc(String(it.fecha_fin || '').slice(0, 10)) + '"></div></div>' +
-      '<div class="ui-nota-t">La garantía y el arranque del mantenimiento se calculan desde el fin.</div></div>' +
-      '<div class="mf"><button class="btn bg" data-cerrar="m-fdes">Cancelar</button><button class="btn bp" id="fd-ok">Guardar</button></div></div>';
-    document.getElementById('fd-ok').onclick = async function () {
-      var ini = document.getElementById('fd-ini').value, fin = document.getElementById('fd-fin').value;
+    // Contenedor e ids propios (19/11/2026): con m-fdes y fd-* pisaba la ventana Desarrollo
+    armarModal('m-fechas', 'Fechas · ' + (it.titulo || it.id),
+      (esGanado(it.estado) ? '<div class="fg"><label class="fl" for="fe-apr">Aprobado</label><input class="fc" type="date" id="fe-apr" value="' + esc(String(it.fecha_aprob || '').slice(0, 10)) + '"></div>' : '') +
+      '<div class="g2"><div class="fg"><label class="fl" for="fe-ini">Inicio</label><input class="fc" type="date" id="fe-ini" value="' + esc(String(it.fecha_est || '').slice(0, 10)) + '"></div>' +
+      '<div class="fg"><label class="fl" for="fe-fin">Fin</label><input class="fc" type="date" id="fe-fin" value="' + esc(String(it.fecha_fin || '').slice(0, 10)) + '"></div></div>' +
+      '<div class="ui-nota-t">La garantía y el arranque del mantenimiento se calculan desde el fin.</div>',
+      '<button class="btn bg" data-cerrar="m-fechas">Cancelar</button><button class="btn bp" id="fe-ok">Guardar</button>');
+    document.getElementById('fe-ok').onclick = async function () {
+      var ini = document.getElementById('fe-ini').value, fin = document.getElementById('fe-fin').value;
       if (ini !== String(it.fecha_est || '').slice(0, 10)) { var a = await db().rpc('fecha_desarrollo', { did: it.id, campo: 'fecha_ini', fecha: ini || null }); if (a.error) return toast(a.error.message, 'err'); }
       if (fin && fin !== String(it.fecha_fin || '').slice(0, 10)) { var b = await db().rpc('fecha_desarrollo', { did: it.id, campo: 'fecha_fin', fecha: fin }); if (b.error) return toast(b.error.message, 'err'); }
-      var ap = document.getElementById('fd-apr'); if (ap && ap.value && ap.value !== String(it.fecha_aprob || '').slice(0, 10)) { var c = await db().rpc('fecha_aprobado_desarrollo', { did: it.id, fecha: ap.value }); if (c.error) return toast(c.error.message, 'err'); }
-      closeM('m-fdes'); toast('Fechas guardadas', 'ok'); await cargarFicha(P.f.id); pintar(el);
+      var ap = document.getElementById('fe-apr'); if (ap && ap.value && ap.value !== String(it.fecha_aprob || '').slice(0, 10)) { var c = await db().rpc('fecha_aprobado_desarrollo', { did: it.id, fecha: ap.value }); if (c.error) return toast(c.error.message, 'err'); }
+      closeM('m-fechas'); toast('Fechas guardadas', 'ok'); await cargarFicha(P.f.id); pintar(el);
     };
-    openM('m-fdes');
+    openM('m-fechas');
   }
   function mantArranca(p, m) {
     var mejor = null;
@@ -935,13 +932,9 @@
   }
   // El mismo formulario de carga rápida, en un modal (02/11/2026): se abre desde «+ Nuevo proyecto rápido»
   function nvAbrir(el) {
-    var m = document.getElementById('m-nv');
-    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-nv'; document.body.appendChild(m); }
     NV.moneda = 'ARS'; NV.std = null;
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Carga rápida</span>' +
-      '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-nv">' + ico('cerrar') + '</button></div>' +
-      '<div class="mb2">' + htmlNuevo() + '</div>' +
-      '<div class="mf"><span class="u-s11-mt u-f1">Se guarda como Prospecto.</span><button class="btn bg" data-cerrar="m-nv">Cancelar</button><button class="btn bp" data-pm="nv-ok">Guardar</button></div></div>';
+    var m = armarModal('m-nv', 'Carga rápida', htmlNuevo(),
+      '<span class="u-s11-mt u-f1">Se guarda como Prospecto.</span><button class="btn bg" data-cerrar="m-nv">Cancelar</button><button class="btn bp" data-pm="nv-ok">Guardar</button>');
     m.onclick = function (ev) {
       var b = ev.target.closest('[data-pm]'); if (!b) return;
       if (b.getAttribute('data-pm') === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); m.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
@@ -1034,17 +1027,11 @@
   // ── editar el proyecto (saveProyecto · crm_giwa.editar_proyecto) ──
   // El estado sólo ofrece a los que puede pasar hoy (la misma guarda que la barra).
   async function abrirEditarProy(p) {
-    var m = document.getElementById('m-eproy');
-    if (!m) {
-      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-eproy';
-      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Editar proyecto</span>' +
-        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-eproy">' + ico('cerrar') + '</button></div><div class="mb2">' +
-        '<div class="g2"><div class="fg"><label class="fl" for="ep-sp">Sponsor</label><select class="fc" id="ep-sp"></select></div>' +
-          '<div class="fg"><label class="fl" for="ep-prob">Probabilidad (%)</label><input class="fc u-tr" type="number" min="0" max="100" id="ep-prob"></div></div>' +
-        '<div class="fg"><label class="fl" for="ep-cierre">Fecha probable de cierre de negociación</label><input class="fc" type="date" id="ep-cierre"></div>' +
-        '</div><div class="mf"><button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button></div></div>';
-      document.body.appendChild(m);
-    }
+    armarModal('m-eproy', 'Editar proyecto',
+      '<div class="g2"><div class="fg"><label class="fl" for="ep-sp">Sponsor</label><select class="fc" id="ep-sp"></select></div>' +
+        '<div class="fg"><label class="fl" for="ep-prob">Probabilidad (%)</label><input class="fc u-tr" type="number" min="0" max="100" id="ep-prob"></div></div>' +
+      '<div class="fg"><label class="fl" for="ep-cierre">Fecha probable de cierre de negociación</label><input class="fc" type="date" id="ep-cierre"></div>',
+      '<button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button>');
     var $e = function (id) { return document.getElementById(id); };
     var sponsors = async function (eid, sel) {
       var c = await db().from('contactos').select('id,nombre,apellido').eq('empresa_id', eid || '-').order('nombre');
@@ -1072,15 +1059,9 @@
   function abrirAprobar(p) {
     var nuevas = (p.items || []).filter(function (it) { return _canonSol(it.estado || '') === 'nueva'; });
     if (!nuevas.length) return say('Este proyecto no tiene desarrollos en Nuevo para aprobar.', 'Aprobar propuesta');
-    var m = document.getElementById('m-aprob');
-    if (!m) {
-      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-aprob';
-      m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Aprobar propuesta</span>' +
-        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-aprob">' + ico('cerrar') + '</button></div>' +
-        '<div class="mb2"><div class="fg"><label class="fl" for="ap-fecha">Fecha de aprobación</label><input class="fc u-wauto" type="date" id="ap-fecha"></div><div class="u-s11-mt u-mb10" id="ap-n"></div><div id="ap-list"></div></div>' +
-        '<div class="mf"><button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button></div></div>';
-      document.body.appendChild(m);
-    }
+    armarModal('m-aprob', 'Aprobar propuesta',
+      '<div class="fg"><label class="fl" for="ap-fecha">Fecha de aprobación</label><input class="fc u-wauto" type="date" id="ap-fecha"></div><div class="u-s11-mt u-mb10" id="ap-n"></div><div id="ap-list"></div>',
+      '<button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button>', '');
     document.getElementById('ap-fecha').value = isoMas(0);
     document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar. Si no, queda Aprobado sin facturar.';
     document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
@@ -1196,9 +1177,7 @@
     var proy = function (id) { return P.proys.find(function (x) { return x.id === id; }); };
     // Un modal simple (C14 de la app: .mo/.md): cuerpo + Cancelar / Confirmar; resuelve true al confirmar
     var modal = function (tit, cuerpo, okTxt, valida) {
-      var m = document.getElementById('m-pm'); if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-pm'; document.body.appendChild(m); }
-      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + esc(tit) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-pm">' + ico('cerrar') + '</button></div>' +
-        '<div class="mb2">' + cuerpo + '</div><div class="mf"><button class="btn bg" data-cerrar="m-pm">Cancelar</button><button class="btn bp" id="m-pm-ok">' + esc(okTxt) + '</button></div></div>';
+      armarModal('m-pm', tit, cuerpo, '<button class="btn bg" data-cerrar="m-pm">Cancelar</button><button class="btn bp" id="m-pm-ok">' + esc(okTxt) + '</button>');
       openM('m-pm');
       return new Promise(function (res) {
         document.getElementById('m-pm-ok').onclick = function () { var e = valida ? valida() : ''; if (e) return toast(e, 'err'); closeM('m-pm'); res(true); };
