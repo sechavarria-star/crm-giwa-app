@@ -993,10 +993,8 @@
     var box = $n('nv-std');
     if (box) {
       box.hidden = !NV.std;
-      if (NV.std) box.innerHTML = '<div class="ui-kv">Horas estándar del catálogo<span class="ui-num">' + NV.std.horas + ' h</span></div>' +
-        '<div class="ui-kv">Tu hora con este monto<span class="ui-num">' + (ars ? fmt(ars / NV.std.horas) + (tc ? ' <span class="ui-p-usd">' + fmt(ars / NV.std.horas / tc, 'USD') + '</span>' : '') : '—') + '</span></div>' +
-        '<div class="u-s11-mt">Es la base de ' + esc(NV.std.tipo) + ': ' + esc(NV.std.base.join(', ')) + '. Para cotizar por funcionalidad, usá Nuevo proyecto ' +
-        '(por ahora, <a class="ui-azul" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">en el CRM actual</a>).</div>';
+      // Carga rápida no carga horas (19/11/2026): se avisa en lugar de mostrar las horas estándar
+      if (NV.std) box.innerHTML = '<div class="ui-nota-t">Carga rápida no carga horas: no hay comparación con el mercado ni con el costo. Para cotizar por funcionalidad, usá Nuevo proyecto en el Cotizador.</div>';
     }
     var tit = String(($n('nv-tit') || {}).value || '').trim() || String(($n('nv-nom') || {}).value || '').trim() || 'El desarrollo';
     var crea = $n('nv-crea');
