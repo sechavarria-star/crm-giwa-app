@@ -22,7 +22,7 @@
   var ETAPAS = ['Diseño', 'Configuración', 'Pruebas', 'Producción'];
   var MIN = [['problema', 'Problema'], ['situacion', 'Situación actual'], ['objetivo', 'Objetivo'], ['acuerdos', 'Acuerdos'],
              ['pendientes', 'Pendientes'], ['proximos', 'Próximos pasos'], ['decision', 'Fecha de decisión']];
-  // Costos que paga GIWA (12/11/2026): infraestructura, consumo de IA y, si se ofrece, Meta (se traslada en el abono)
+  // Costos que paga GIWA (12/11/2026): infraestructura, consumo de IA y, si se ofrece, Meta (la absorbe GIWA: es costo, 19/11/2026)
   var TER_CAT = ['Canales', 'Consumo (IA)', 'Infraestructura'];
   // Respuestas en íconos chicos (12/11/2026): Sí verde · Por definir ámbar · No gris
   var RESP = [['Sí', 'check', 'Sí', 'si'], ['Pendiente', 'arena', 'Por definir', 'pe'], ['No', 'cerrar', 'No', 'no']];
@@ -94,9 +94,6 @@
       items(x).forEach(function (y) { if (pagaDe(x, y) === P) t += itemMes(y); }); });
     return Math.round(t);
   }
-  // Meta que paga GIWA y traslada en el abono (Canales dentro de los costos que paga GIWA)
-  function metaGiwa(v) { var x = v.ext._terceros; if (!x) return 0;
-    return Math.round(items(x).reduce(function (s, y) { var c = contr(y.cid); return s + (c && c.categoria === 'Canales' && pagaDe(x, y) === 'GIWA' ? itemMes(y) : 0); }, 0)); }
   function empresa() { return (C.ini.empresas || []).filter(function (e) { return e.id === CN.empresa; })[0] || null; }
   function tipoNom(id) { var t = (C.ini.tipos || []).filter(function (x) { return x.id === id; })[0]; return t ? t.nombre : id; }
 
@@ -326,12 +323,13 @@
         : '<span class="ui-num ui-p-contratado">' + fmt(total(v)) + '</span>') + usd(total(v)) + '</div>' +
       '<div class="cot-sec">' + kv('Sugerido · <span class="cot-n">' + h1(e.horas) + '</span> h', fmt(sugerido(v))) + '</div>';
     // Análisis del abono
-    var ab = propio(v) ? v.mant.abono || 0 : 0, meta = metaGiwa(v), cMes = Math.round((propio(v) ? v.mant.hs : 0) * (V.costo || 0) + extMes(v, 'GIWA'));
-    var mMes = ab + meta - cMes, m12 = total(v) - (e.costo_ars || 0) + 12 * mMes, falta = (e.costo_ars || 0) - total(v);
+    // Meta que paga GIWA es costo (19/11/2026): la absorbe GIWA, va sólo en el costo por mes
+    var ab = propio(v) ? v.mant.abono || 0 : 0, cMes = Math.round((propio(v) ? v.mant.hs : 0) * (V.costo || 0) + extMes(v, 'GIWA'));
+    var mMes = ab - cMes, m12 = total(v) - (e.costo_ars || 0) + 12 * mMes, falta = (e.costo_ars || 0) - total(v);
     h += '<div class="ui-lat-h u-mt10">Análisis del abono</div>';
     if (!propio(v)) h += '<div class="ui-nota-t">' + (v.mant.on ? 'El mantenimiento es compartido con otro desarrollo.' : 'Sin mantenimiento: no hay abono mensual.') + '</div>';
-    else h += kv('Abono · <span class="cot-n">' + h1(v.mant.hs) + '</span> h por mes', fmt(ab), 'ui-p-abono') + (meta ? kv('Meta a cargo de GIWA, se traslada', fmt(meta) + '/mes', 'ui-p-abono') : '');
-    h += kv('Relación a <span class="cot-n">12</span> meses', fmt(total(v) + 12 * (ab + meta)));
+    else h += kv('Abono · <span class="cot-n">' + h1(v.mant.hs) + '</span> h por mes', fmt(ab), 'ui-p-abono');
+    h += kv('Relación a <span class="cot-n">12</span> meses', fmt(total(v) + 12 * ab));
     if (CN.devs.filter(function (d) { return d.tipo; }).length > 1) h += kv('Total del proyecto', fmt(CN.devs.reduce(function (s, d) { return s + (d.tipo ? total(d) : 0); }, 0)), 'ui-p-contratado');
     // Análisis interno, en gris
     var pctH = V.giwa ? Math.round((1 - (V.costo || 0) / V.giwa) * 100) : 0;
