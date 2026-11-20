@@ -910,7 +910,7 @@
   async function abrirCot(pid) {
     var r = await rpc('cot_leer', { pid: pid });
     var x = nuevo(); x.pid = r.pid; x.estado = r.estado; x.empresa = r.empresa; x.nombre = r.nombre; x.fecha_cierre = r.fecha_cierre || ''; x.minuta = r.minuta || {};
-    x.sponsors = String(r.contactos || r.sponsor || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    x.sponsors = String(r.sponsors || r.sponsor || '')   /* sponsors en su campo; «contactos» = Contactos del cliente (20/11/2026) */.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     x.owners = (x.minuta.responsables && x.minuta.responsables.length ? x.minuta.responsables : [r.owner]).filter(Boolean);
     var idx = {}; r.devs.forEach(function (d, i) { idx[d.id] = i; });
     x.devs = r.devs.map(function (d) { var v = vacio(); Object.keys(d).forEach(function (k) { if (d[k] != null && k !== 'mant') v[k] = d[k]; });

@@ -1030,7 +1030,7 @@
     // Vista aprobada el 19/11/2026: Proyecto · Negociación · Resumen ejecutivo · Sponsors | Contactos del cliente | Responsables
     var $e = function (id) { return document.getElementById(id); };
     var r = await Promise.all([
-      db().from('proyectos').select('creado,fecha_aprobacion,fecha_cierre_probable,minuta,resumen_ejecutivo,contactos,sponsor_id').eq('id', p.id).maybeSingle(),
+      db().from('proyectos').select('creado,fecha_aprobacion,fecha_cierre_probable,minuta,resumen_ejecutivo,contactos,sponsors,sponsor_id').eq('id', p.id).maybeSingle(),
       db().from('empresas').select('tier_id').eq('id', p.empresa_id || '-').maybeSingle(),
       db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre'),
       db().from('desarrollos').select('id,mantenimiento_horas').eq('proyecto_id', p.id)
@@ -1039,19 +1039,21 @@
     var d = r[0].data || {}, cons = r[2].data || [], min = {}, mhs = {};
     (r[3].data || []).forEach(function (x) { mhs[x.id] = Number(x.mantenimiento_horas) || 0; });
     try { min = d.minuta ? JSON.parse(d.minuta) : {}; } catch (e) { min = {}; }
-    // Sponsors como los lee el Cotizador: «contactos» cuando incluye al sponsor. Los proyectos viejos (contactos con otra gente) muestran sólo el sponsor.
-    var lc = crmLista(d.contactos), sps0 = d.sponsor_id && lc.indexOf(d.sponsor_id) < 0 ? [d.sponsor_id] : (lc.length ? lc : (d.sponsor_id ? [d.sponsor_id] : []));
+    // Sponsors en su propio campo (opción A, 20/11/2026); «contactos» = Contactos del cliente, la ★ de la ficha
+    var sps0 = crmLista(d.sponsors).length ? crmLista(d.sponsors) : (d.sponsor_id ? [d.sponsor_id] : []), con0 = crmLista(d.contactos);
     var rsp0 = (min.responsables && min.responsables.length ? min.responsables : [p.owner]).filter(Boolean).map(function (m) { return String(m).trim().toLowerCase(); });
-    var E = { sps: sps0.slice(), rsp: rsp0.slice() };
+    var E = { sps: sps0.slice(), con: con0.slice(), rsp: rsp0.slice() };
     var nomC = function (c) { return ((c.nombre || '') + ' ' + (c.apellido || '')).trim(); };
     var dato = function (cls, l, v) { return '<div class="fg ' + cls + '"><span class="fl">' + l + '</span><div>' + v + '</div></div>'; };
     var fijo = ['aprobado', 'activo'].indexOf(_canonProy(p.estado_proyecto)) >= 0;   // Aprobado o activo: la probabilidad queda fija (29/10/2026)
+    var filaC = function (id, k, q) { var c = cons.filter(function (x) { return x.id === id; })[0] || { nombre: id }, t = telWa(c.telefono);
+      return '<div class="ui-li"><span class="ui-f1">' + esc(nomC(c)) + ((c.puesto || c.area_trabajo) ? '<div class="ui-li-sub">' + esc(c.puesto || c.area_trabajo) + '</div>' : '') + '</span>' +
+        (t ? '<a class="ui-ib ui-wa" href="https://wa.me/' + t + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
+        (c.email ? '<a class="ui-ib" href="mailto:' + esc(c.email) + '" data-tip="Correo" aria-label="Correo">' + uiIco('mail') + '</a>' : '') +
+        uiIb('cerrar', 'Quitar', '', 'data-ep="' + q + '" data-i="' + k + '"') + '</div>'; };
     var lista = function () {
-      $e('ep-sps').innerHTML = E.sps.map(function (id, k) { var c = cons.filter(function (x) { return x.id === id; })[0] || { nombre: id }, t = telWa(c.telefono);
-        return '<div class="ui-li"><span class="ui-f1">' + esc(nomC(c)) + ((c.puesto || c.area_trabajo) ? '<div class="ui-li-sub">' + esc(c.puesto || c.area_trabajo) + '</div>' : '') + '</span>' +
-          (t ? '<a class="ui-ib ui-wa" href="https://wa.me/' + t + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
-          (c.email ? '<a class="ui-ib" href="mailto:' + esc(c.email) + '" data-tip="Correo" aria-label="Correo">' + uiIco('mail') + '</a>' : '') +
-          uiIb('cerrar', 'Quitar', '', 'data-ep="sp-quitar" data-i="' + k + '"') + '</div>'; }).join('');
+      $e('ep-sps').innerHTML = E.sps.map(function (id, k) { return filaC(id, k, 'sp-quitar'); }).join('');
+      $e('ep-con').innerHTML = E.con.map(function (id, k) { return filaC(id, k, 'co-quitar'); }).join('');
       $e('ep-rsp').innerHTML = E.rsp.map(function (m, k) {
         return '<div class="ui-li"><span class="ui-f1">' + esc(nombre(m)) + '</span>' + uiIb('cerrar', 'Quitar', '', 'data-ep="ow-quitar" data-i="' + k + '"') + '</div>'; }).join('');
     };
@@ -1068,7 +1070,7 @@
       '<textarea class="fc" rows="4" id="ep-res" aria-label="Resumen ejecutivo">' + esc(d.resumen_ejecutivo || '') + '</textarea>' +
       '<div class="ui-cols3">' +
         '<div><div class="ui-sec-h">Sponsors</div><div id="ep-sps"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="sp-agregar">+ Agregar sponsor</button></div>' +
-        '<div><div class="ui-sec-h">Contactos del cliente</div><div class="ui-nota-t">Se habilita cuando tenga su campo propio.</div></div>' +
+        '<div><div class="ui-sec-h">Contactos del cliente</div><div id="ep-con"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="co-agregar">+ Agregar contacto</button></div>' +
         '<div><div class="ui-sec-h">Responsables</div><div id="ep-rsp"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="ow-agregar">+ Agregar responsable</button></div>' +
       '</div><div id="ep-econ"></div>',
       '<button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button>');
@@ -1185,19 +1187,22 @@
       };
       openM('m-mmr');
     };
-    var sponsor = async function () {
-      var v = await elegirVarios('Agregar sponsor · ' + (p.empresa || ''), cons.map(function (c) { return { v: c.id, t: nomC(c), sub: c.puesto || c.area_trabajo || '' }; }),
-        { ya: E.sps, nuevo: { txt: 'Nuevo contacto', fn: function () {
+    var elegirContacto = async function (k, tit) {   // k: 'sps' (sponsors) o 'con' (contactos del cliente)
+      var v = await elegirVarios(tit + ' · ' + (p.empresa || ''), cons.map(function (c) { return { v: c.id, t: nomC(c), sub: c.puesto || c.area_trabajo || '' }; }),
+        { ya: E[k], nuevo: { txt: 'Nuevo contacto', fn: function () {
           window.abrirContacto(null, { empresa: p.empresa_id, onSave: async function () {
             var c = await db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre');
-            if (!c.error) cons = c.data || []; sponsor(); } }); } } });
-      if (v && v.length) { E.sps = E.sps.concat(v); m.dataset.sucio = '1'; lista(); }
+            if (!c.error) cons = c.data || []; elegirContacto(k, tit); } }); } } });
+      if (v && v.length) { E[k] = E[k].concat(v); m.dataset.sucio = '1'; lista(); }
     };
+    var sponsor = function () { return elegirContacto('sps', 'Agregar sponsor'); };
     m.onclick = async function (ev) {
       var b = ev.target.closest('[data-ep]'); if (!b) return; var a = b.getAttribute('data-ep');
       if (a === 'sp-quitar') { E.sps.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
       if (a === 'ow-quitar') { E.rsp.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
       if (a === 'sp-agregar') return sponsor();
+      if (a === 'co-agregar') return elegirContacto('con', 'Agregar contacto');
+      if (a === 'co-quitar') { E.con.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
       if (a === 'dev-agregar') return altaDesarrollo();
       if (a === 'mmr-agregar') return mmrModal(null);
       if (a === 'mmr-editar') return mmrModal((p.items || []).find(function (x) { return x.id === b.getAttribute('data-id'); }));
@@ -1230,8 +1235,9 @@
       $e('ep-ok').onclick = function () {
         if (!$e('ep-cierre').value) return toast('Falta la fecha probable de aprobación', 'err');
         var datos = { id: p.id, owner: E.rsp[0] || p.owner, probabilidad: $e('ep-prob').value, fecha_cierre: $e('ep-cierre').value, descripcion: $e('ep-res').value };
-        // Las listas van sólo si cambiaron: así un proyecto viejo no pierde sus contactos si no se tocan sus sponsors
+        // Las listas van sólo si cambiaron (sponsors → «sponsors», contactos del cliente → «contactos»)
         if (E.sps.join(',') !== sps0.join(',')) datos.sponsors = E.sps; else datos.sponsor = sps0[0] || '';
+        if (E.con.join(',') !== con0.join(',')) datos.contactos_cliente = E.con;
         if (E.rsp.join(',') !== rsp0.join(',')) datos.responsables = E.rsp;
         closeM('m-eproy'); res(datos);
       };
