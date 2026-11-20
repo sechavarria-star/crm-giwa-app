@@ -139,7 +139,7 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     var cuota = Number(d.cuota) || 0, saldo = Math.max(0, Number(d.saldo) || 0), cuotas = Number(d.cuotas) || 0;
     l.cuota = cob.max + 1 + C.lin.filter(function (x) { return x.item === l.item; }).length;   // ya agregado en la lista: la cuota siguiente
     l.monto = m ? Number(m.monto) || 0 : cuota > 0 ? cuota : saldo > 0 ? saldo : cob.ultimo;   // la cuota, si no el saldo, si no lo último
-    l.concepto = (d.es_mantenimiento ? 'Mantenimiento mensual — ' + d.titulo + (m && m.periodo ? ' — ' + m.periodo : '') : 'Desarrollo — ' + d.titulo) + (cuotas > 1 ? ' · cuota ' + l.cuota + ' de ' + cuotas : '');
+    l.concepto = (d.es_mantenimiento ? (/^MMR\b/.test(d.titulo || '') ? d.titulo : 'MMR de ' + d.titulo) + (m && m.periodo ? ' — ' + m.periodo : '')   /* «MMR de …» (20/11/2026) */ : 'Desarrollo — ' + d.titulo) + (cuotas > 1 ? ' · cuota ' + l.cuota + ' de ' + cuotas : '');
     if (C.leido && C.leido.datos.total > 0 && !C.lin.length) l.monto = C.leido.datos.total;   // el primer concepto: el total leído
   }
   function opcion(val, txt, sel) { return '<option value="' + esc(val) + '"' + (val === sel ? ' selected' : '') + '>' + esc(txt) + '</option>'; }
