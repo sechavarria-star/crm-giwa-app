@@ -646,3 +646,23 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ap-ic .ap-entro { color: var(--p-contratado); } .ap-ic .ap-rechazado { color: var(--p-error); } .ap-ic .ap-espera { color: var(--e-prospecto); }
 .ap-ic .ap-in { color: var(--e-curso); } .ap-ic .ap-po { color: var(--texto2); }
 .ap-fila3 .ui-fecha { width: 150px; }
+/* Nuevo / Editar proyecto (20/11/2026): secciones plegables sin recuadro, grillas, riel del cronograma e historial */
+.md.ep-md { width: 92vw; max-width: 980px; }
+.ep-md .ui-d { border: 0; border-bottom: 1px solid var(--marco); border-radius: 0; background: none; padding: 8px 0; margin: 0; }
+.ep-md .ui-d .ui-d-t { font-size: var(--t-xs); font-weight: 600; }
+.ep-md .ui-cuerpo { border: 0; background: none; box-shadow: none; border-radius: 0; padding: 10px 0 6px; }
+.ui-g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 16px; margin-bottom: var(--e3); }
+.ui-g3 .ui-s2 { grid-column: span 2; }
+.ui-g3 .ui-fecha { width: 170px; max-width: 100%; }
+.ui-g4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 16px; padding-top: var(--e3); border-top: 1px solid var(--marco); }
+.ui-acc-der { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ui-btn-det { color: var(--e-detenido); border-color: var(--e-detenido); }
+.ui-cr { display: flex; gap: 2px; margin: 6px 0 4px; overflow-x: auto; }
+.ui-cr-p { flex: 1 1 0; min-width: 92px; display: flex; flex-direction: column; gap: 4px; text-align: center; }
+.ui-cr-f { height: 26px; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid currentColor; border-radius: 3px; font-family: var(--f-num); font-size: var(--t-s); }
+.ui-cr-p.prev .ui-cr-f { border-style: dashed; opacity: .75; } .ui-cr-p.nada .ui-cr-f { opacity: .35; }
+.ui-cr-f .ui-ib { padding: 0; } .ui-cr-f .ui-ib .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
+.ui-cr-n { font-size: var(--t-s); color: var(--texto); } .ui-cr-e { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--texto2); }
+.ui-cr-l { display: flex; gap: 16px; font-size: var(--t-s); color: var(--texto2); margin-bottom: 6px; }
+.ui-cr-l i { display: inline-block; width: 18px; height: 9px; border: 1px solid var(--texto2); border-radius: 2px; margin-right: 5px; vertical-align: -1px; } .ui-cr-l i.d { border-style: dashed; }
+.ui-hi { display: grid; grid-template-columns: 92px 180px 1fr 90px; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }

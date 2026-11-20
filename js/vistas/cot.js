@@ -123,7 +123,7 @@
                       C.sub === 'ver' ? 'lista' : C.sub);
     var cuerpo = C.sub === 'nuevo' ? htmlEditor() : C.sub === 'ver' ? htmlVer() : C.sub === 'reunion' ? htmlReunion() : htmlLista();
     el.innerHTML = uiHd('Cotizador', 'Cotizar un proyecto por funcionalidad, guardarlo como borrador y crearlo como prospecto.',
-      uiBtn('Reutilizar proyecto', 'repetir', 's', 'data-cot="reutilizar"') + uiBtn('Carga rápida', 'mas', 's', 'data-cot="rapida"')) + tabs + '<div id="cot-c">' + cuerpo + '</div>';
+      uiBtn('Reutilizar proyecto', 'repetir', 's', 'data-cot="reutilizar"') + uiBtn('Nuevo proyecto sin cotizar', 'mas', 's', 'data-cot="rapida"')) + tabs + '<div id="cot-c">' + cuerpo + '</div>';
   }
   function repintar() { var c = document.getElementById('cot-c'); if (!c || C.sub !== 'nuevo') return; edGuardar(); c.innerHTML = htmlEditor(); if (abierto('m-fun')) funPintar(); if (abierto('m-cor')) corPintar(); }
   // Qué desplegables de la ventana de edición están abiertos (se conserva al repintar)
@@ -969,7 +969,7 @@
       var a = b.getAttribute('data-cot'), id = b.getAttribute('data-id');
       if (a === 'reutilizar') return reutilizar(el);
       if (a === 'sub') { C.sub = b.getAttribute('data-s'); if (C.sub === 'nuevo' && !CN) CN = recuperar() || nuevo(); pintar(el); if (C.sub === 'nuevo') CN.devs.forEach(function (v, i) { if (v.tipo) catalogo(v.tipo).then(function () { estimar(i); }); }); return; }
-      if (a === 'rapida') return typeof window.abrirCargaRapida === 'function' ? window.abrirCargaRapida() : (location.hash = '#/pm/nuevo');
+      if (a === 'rapida') return typeof window.abrirNuevoProyecto === 'function' ? window.abrirNuevoProyecto() : (location.hash = '#/pm');   // el modal único de Proyectos (20/11/2026)
       if (a === 'ver') { C.sub = 'ver'; C.ver = null; pintar(el);
         try { var o = await abrirCot(id); C.ver = Object.assign(o.r, { _cn: o.cn, empresa_nombre: (C.ini.empresas.filter(function (e) { return e.id === o.r.empresa; })[0] || {}).nombre }); } catch (e) { aviso(e.message); }
         return pintar(el); }
