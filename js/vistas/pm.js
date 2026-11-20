@@ -993,7 +993,7 @@
     var crea = $n('nv-crea');
     if (crea) crea.innerHTML = '<div class="ui-lat-h">' + (abono > 0 ? 'Se crean dos desarrollos' : 'Se crea un desarrollo') + '</div>' +
       '<div class="ui-kv">' + esc(tit) + '<span class="ui-num">' + (ars ? fmt(ars) : '—') + '</span></div>' +
-      (abono > 0 ? '<div class="ui-kv"><span class="ui-p-abono">Mantenimiento — ' + esc(tit) + '</span><span class="ui-num">' + fmt(abono) + ' × 12</span></div>' : '');
+      (abono > 0 ? '<div class="ui-kv"><span class="ui-p-abono">MMR de ' + esc(tit) + '</span><span class="ui-num">' + fmt(abono) + ' × 12</span></div>' : '');
   }
   async function nvGuardar(el) {
     var v = function (id) { return String(document.getElementById(id).value || '').trim(); };

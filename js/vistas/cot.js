@@ -204,7 +204,7 @@
         '<div class="ui-sub-t">' + esc(d.objetivo || 'Sin alcance') + '</div></div>' +
       '<div class="ui-dev-der"><span class="ui-num">' + (d.est ? fmt(total(d)) : '…') + '</span><span class="ui-fila-ic">' + uiAcc('editar', 'data-cot="dev-editar" data-i="' + i + '"') + '</span></div></div>';
     if (on) h += '<div class="ui-devc">' + incluye(d) + '</div>';
-    if (propio(d)) h += '<div class="cot-mant-f"><span class="ui-f1"><span class="ui-num">' + (n + 1) + '</span>. <span class="ui-p-abono">Mantenimiento</span> · ' + esc(d.titulo || tipoNom(d.tipo)) +
+    if (propio(d)) h += '<div class="cot-mant-f"><span class="ui-f1"><span class="ui-num">' + (n + 1) + '</span>. <span class="ui-p-abono">MMR de ' + esc(d.titulo || tipoNom(d.tipo)) + '</span>' +
       ' <span class="ui-nota-t">· <span class="ui-num">' + h1(d.mant.hs) + '</span> h por mes · ' + mantTxt(d) + ' · IPC cada <span class="ui-num">3</span> meses</span></span>' +
       '<span class="ui-num ui-p-abono">' + fmt(d.mant.abono || 0) + '/mes</span><span class="ui-fila-ic">' + uiIb('editar', 'Editar el mantenimiento', 'edi', 'data-cot="mant-i" data-i="' + i + '"') +
       uiIb('borrar', 'Quitar el mantenimiento', 'bor', 'data-cot="mant-quitar" data-i="' + i + '"') + '</span></div>';
@@ -559,7 +559,7 @@
   function mantPop() {
     var v = dev(), mt = v.mant, sop = soporte();
     var otros = CN.devs.map(function (d, i) { return d.tipo && i !== CN.i && propio(d) ? '<option value="' + i + '"' + (String(mt.comparte) === String(i) ? ' selected' : '') + '>' + esc(tipoNom(d.tipo)) + ' · ' + esc(d.titulo || 'Sin título') + '</option>' : ''; }).join('');
-    var m = modal('m-mant', 'Mantenimiento · ' + (v.titulo || tipoNom(v.tipo)),
+    var m = modal('m-mant', 'MMR de ' + (v.titulo || tipoNom(v.tipo)),
       '<div class="g2"><div class="fg"><label class="fl" for="mt-hs">Horas por mes · sugerido <span class="ui-num">' + mantHs(v) + '</span> h</label><input class="fc u-tr" type="number" min="1" step="0.5" id="mt-hs" value="' + mt.hs + '"></div>' +
       '<div class="fg"><label class="fl" for="mt-ab">Abono mensual · <span id="mt-sug"></span></label><input class="fc u-tr" type="number" min="0" id="mt-ab" data-monto value="' + (mt.abono || 0) + '"></div></div>' +
       '<div class="u-s11-mt">Incluye ' + mantTxt(v) + '. Hora de soporte <span class="ui-num">' + fmt(sop) + '</span>. Ajuste por IPC cada <span class="ui-num">3</span> meses. El monto es tuyo: cambialo si querés.</div>' +
