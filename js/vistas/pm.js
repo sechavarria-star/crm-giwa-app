@@ -1402,7 +1402,12 @@
         (L.length ? '<label class="u-row6 u-mb6"><input type="radio" name="pm-alc" value="algunos"> Sólo estos desarrollos</label><div class="u-mb10">' + L.map(function (it) {
           return '<label class="u-row6 rowb"><input type="checkbox" data-cor="' + esc(it.id) + '"> ' + esc(it.titulo || it.id) + ' <span class="u-s10-mt">· ' + esc(uiNombreEst(it.estado)) + '</span></label>'; }).join('') + '</div>'
           : '<div class="u-s11-mt u-mb10">' + (rech ? 'No hay desarrollos para marcar como no aceptados por separado.' : 'Sólo se pausan por separado las mejoras, soportes y mantenimientos que dependen de otro.') + '</div>') +
-        '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>', tit,
+        '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>' +
+        // Detener: fecha de recontacto opcional → una tarea ese día (20/11/2026)
+        (rech ? '' : '<div class="ui-filas ui-rep"><div class="fg"><label class="fl" for="pm-recon">Fecha de recontacto</label><input class="fc" type="date" id="pm-recon"></div>' +
+          '<div class="fg"><label class="fl" for="pm-recon-q">Responsable de la tarea</label><select class="fc" id="pm-recon-q">' +
+            Object.keys(P.users).map(function (k) { return '<option value="' + esc(k) + '"' + (k === String(p.owner || '').trim().toLowerCase() ? ' selected' : '') + '>' + esc(P.users[k]) + '</option>'; }).join('') + '</select></div></div>' +
+          '<div class="ui-nota-t">Con fecha, se crea la tarea «Recontactar a ' + esc(p.empresa || 'el cliente') + '» para ese día, vinculada al proyecto. Sin fecha, sólo se detiene.</div>'), tit,
         function () {
           var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value;
           if (alc === 'algunos' && !document.querySelector('#m-pm [data-cor]:checked')) return 'Marcá al menos un desarrollo';
@@ -1410,6 +1415,7 @@
         });
       if (!ok) return;
       var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value, txt = document.getElementById('pm-com').value.trim();
+      var recon = !rech && document.getElementById('pm-recon') ? document.getElementById('pm-recon').value : '', reconQ = recon ? document.getElementById('pm-recon-q').value : '';
       var ids = Array.prototype.filter.call(document.querySelectorAll('#m-pm [data-cor]'), function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-cor'); });
       var r;
       if (alc === 'todo') r = await db().rpc(rech ? 'rechazar_proyecto' : 'detener_proyecto', rech ? { pid: p.id } : { pid: p.id, detener: true });
@@ -1418,6 +1424,10 @@
       if (r && r.error) return toast(r.error.message, 'err');
       var nombres = ids.map(function (x) { var it = itemDe(x); return it ? (it.titulo || x) : x; });
       await db().rpc('comentar', { p: { proyecto_id: p.id, texto: (rech ? 'No aceptado' : 'Detenido') + (alc === 'todo' ? ' (proyecto completo)' : ': ' + nombres.join(', ')) + '. ' + txt } });
+      if (recon) {   // la misma alta de tareas del CRM (nueva_tarea)
+        var tk = await db().rpc('nueva_tarea', { p: { title: 'Recontactar a ' + (p.empresa || p.nombre || p.id), detail: txt, clientId: p.empresa_id, projectId: p.id, priority: 'Media', assignees: reconQ, due: recon } });
+        if (tk.error) toast('Se detuvo, pero no se creó la tarea de recontacto: ' + tk.error.message, 'err'); else toast('Tarea de recontacto para el ' + ff(recon), 'ok');
+      }
       toast(rech ? 'No aceptado' : 'Detenido', 'ok'); if (rech) toast(AVISO_ALERTAS, 'inf'); refrescar();
     };
     // Nueva mejora / Nuevo soporte: una línea simple en Nuevo, que depende del desarrollo elegido
