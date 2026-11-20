@@ -612,3 +612,57 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 /* Proyectos: filtros de estado en mayúscula (18/11/2026) */
 [data-pm="prchip"], [data-pm="segchip"] { text-transform: uppercase; letter-spacing: .04em; }
 .ui-btn[data-pm="det-proy"] { color: var(--e-detenido); border-color: var(--e-detenido); }   /* Detener en naranja (18/11/2026) */
+/* ── Formularios de los modales (19/11/2026, diseño aprobado de Editar proyecto) ──
+   ui-sec-h: título de sección · ui-filas: fila que se acomoda al ancho de cada campo · ui-rep: la fila se reparte en todo el ancho
+   ui-w-*: ancho según el dato · ui-li: fila de una lista compacta (persona, importe, desarrollo) · ui-cols3: tres listas lado a lado */
+.ui-sec-h { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-xs); letter-spacing: var(--espaciado); text-transform: uppercase; color: var(--texto); font-weight: 600;
+  padding-bottom: 6px; border-bottom: 1px solid var(--marco); margin: 18px 0 var(--e3); }
+.ui-sec-h:first-child { margin-top: 0; }
+.ui-filas { display: flex; flex-wrap: wrap; gap: var(--e3) 16px; align-items: flex-start; }
+.ui-filas > .fg { margin-bottom: var(--e3); }
+.ui-filas.ui-rep { flex-wrap: nowrap; justify-content: space-between; }
+.ui-filas.ui-rep > .fg { flex: 1 1 0; min-width: 0; }
+.ui-filas.ui-rep > .ui-w2 { flex: 2 1 0; }
+.ui-w-xs { flex: 0 0 80px; } .ui-w-s { flex: 0 0 120px; } .ui-w-m { flex: 0 0 190px; } .ui-w-l { flex: 0 0 200px; } .ui-w-f { flex: 1 1 220px; min-width: 0; } .ui-w-a { flex: 0 1 auto; }
+.ui-filas .ui-fecha { width: 170px; max-width: 100%; }
+.ui-li { display: flex; align-items: center; gap: var(--e3); padding: 6px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.ui-li .ui-f1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ui-li-sub { color: var(--texto2); font-size: var(--t-s); }
+.ui-li .ui-ib .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
+.ui-li .ui-ib { padding: 2px; }
+.ui-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 var(--e5); }
+.ui-vio input[type=checkbox] { accent-color: var(--secundaria); }   /* MMR e IPC: el violeta del abono */
+.ui-li .ui-p-abono .ui-ico { width: var(--ico-xs); height: var(--ico-xs); vertical-align: -1px; }
+.ui-fecha > input:first-child { text-align: center; }   /* fechas centradas en toda la app (20/11/2026) */
+/* Aprobar propuesta (20/11/2026): una fila por desarrollo, decisión e inicio con los íconos de los estados */
+.md.ap-ancho { max-width: 1000px; }
+.ap-fila3 { display: grid; grid-template-columns: minmax(0, 1.3fr) 115px 170px 112px 200px; gap: var(--e3) 16px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.ap-fila3.ap-h { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: var(--espaciado); color: var(--texto2); padding-top: 0; }
+.ap-off { opacity: .3; }
+.ap-pesos { display: inline-flex; align-items: center; gap: 6px; } .ap-pesos .fc { width: 125px; }
+.ap-ic { display: inline-flex; gap: 4px; }
+.ap-ic .ui-ib { border: 1px solid var(--marco); border-radius: var(--r); padding: 4px; opacity: .55; }
+.ap-ic .ui-ib.on { opacity: 1; border-color: currentColor; }
+.ap-ic .ap-entro { color: var(--p-contratado); } .ap-ic .ap-rechazado { color: var(--p-error); } .ap-ic .ap-espera { color: var(--e-prospecto); }
+.ap-ic .ap-in { color: var(--e-curso); } .ap-ic .ap-po { color: var(--texto2); }
+.ap-fila3 .ui-fecha { width: 150px; }
+/* Nuevo / Editar proyecto (20/11/2026): secciones plegables sin recuadro, grillas, riel del cronograma e historial */
+.md.ep-md { width: 92vw; max-width: 980px; }
+.ep-md .ui-d { border: 0; border-bottom: 1px solid var(--marco); border-radius: 0; background: none; padding: 8px 0; margin: 0; }
+.ep-md .ui-d .ui-d-t { font-size: var(--t-xs); font-weight: 600; }
+.ep-md .ui-cuerpo { border: 0; background: none; box-shadow: none; border-radius: 0; padding: 10px 0 6px; }
+.ui-g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 16px; margin-bottom: var(--e3); }
+.ui-g3 .ui-s2 { grid-column: span 2; }
+.ui-g3 .ui-fecha { width: 170px; max-width: 100%; }
+.ui-g4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 16px; padding-top: var(--e3); border-top: 1px solid var(--marco); }
+.ui-acc-der { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ui-btn-det { color: var(--e-detenido); border-color: var(--e-detenido); }
+.ui-cr { display: flex; gap: 2px; margin: 6px 0 4px; overflow-x: auto; }
+.ui-cr-p { flex: 1 1 0; min-width: 92px; display: flex; flex-direction: column; gap: 4px; text-align: center; }
+.ui-cr-f { height: 26px; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid currentColor; border-radius: 3px; font-family: var(--f-num); font-size: var(--t-s); }
+.ui-cr-p.prev .ui-cr-f { border-style: dashed; opacity: .75; } .ui-cr-p.nada .ui-cr-f { opacity: .35; }
+.ui-cr-f .ui-ib { padding: 0; } .ui-cr-f .ui-ib .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
+.ui-cr-n { font-size: var(--t-s); color: var(--texto); } .ui-cr-e { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--texto2); }
+.ui-cr-l { display: flex; gap: 16px; font-size: var(--t-s); color: var(--texto2); margin-bottom: 6px; }
+.ui-cr-l i { display: inline-block; width: 18px; height: 9px; border: 1px solid var(--texto2); border-radius: 2px; margin-right: 5px; vertical-align: -1px; } .ui-cr-l i.d { border-style: dashed; }
+.ui-hi { display: grid; grid-template-columns: 92px 180px 1fr 90px; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }

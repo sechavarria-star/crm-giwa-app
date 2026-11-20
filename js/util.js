@@ -17,6 +17,42 @@ function openM(id) {
   el.classList.add('open');
   delete el.dataset.sucio;                         // recién abierto: sin cambios
 }
+// El armador único de modales (19/11/2026): título con ✕, cuerpo y pie. Arma, no abre: cada pantalla llama openM.
+// cls: 'md-sm' por defecto · '' el ancho normal · 'md-xl' el ancho grande
+function armarModal(id, tit, cuerpo, pie, cls) {
+  var m = document.getElementById(id); if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = id; document.body.appendChild(m); }
+  m.innerHTML = '<div class="md ' + (cls == null ? 'md-sm' : cls) + '"><div class="mh"><span class="mt2">' + esc(tit) + '</span>' +
+    '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="' + id + '">' + ico('cerrar') + '</button></div>' +
+    '<div class="mb2">' + cuerpo + '</div><div class="mf">' + pie + '</div></div>';
+  m.onclick = m.onchange = m.oninput = null;
+  return m;
+}
+// Elegir uno o varios (19/11/2026): se abre encima, con buscador que filtra la lista; resuelve con los valores tildados.
+// items: [{ v, t, sub }] · op: { ya: [valores que ya están], ok: 'Agregar', nuevo: { txt, fn } }
+function elegirVarios(tit, items, op) {
+  op = op || {};
+  var ya = op.ya || [], L = items.filter(function (x) { return ya.indexOf(x.v) < 0; });
+  var m = armarModal('m-elegir', tit,
+    '<input class="fc u-mb10" id="eg-bus" placeholder="Buscar" aria-label="Buscar">' +
+    (L.length ? L.map(function (x) { return '<label class="ui-li" data-txt="' + esc(String(x.t + ' ' + (x.sub || '')).toLowerCase()) + '"><input type="checkbox" value="' + esc(x.v) + '">' +
+      '<span class="ui-f1">' + esc(x.t) + (x.sub ? ' <span class="ui-li-sub">· ' + esc(x.sub) + '</span>' : '') + '</span></label>'; }).join('') : '<div class="ui-nota-t">No hay más para agregar.</div>') +
+    (op.nuevo ? '<div class="ui-nota-t u-mt10">' + (ya.length ? 'No aparecen los que ya están en la lista. ' : '') + '¿No está el que buscás?</div>' +
+      '<button type="button" class="ui-lnk ui-azul u-mt6" data-eg="nuevo">+ ' + esc(op.nuevo.txt) + '</button>' : ''),
+    '<button class="btn bg" data-cerrar="m-elegir">Cancelar</button><button class="btn bp" data-eg="ok">' + esc(op.ok || 'Agregar') + '</button>');
+  m.oninput = function (ev) {
+    if (ev.target.id !== 'eg-bus') return; var t = ev.target.value.trim().toLowerCase();
+    m.querySelectorAll('[data-txt]').forEach(function (x) { x.hidden = !!t && x.getAttribute('data-txt').indexOf(t) < 0; });
+  };
+  openM('m-elegir');
+  return new Promise(function (res) {
+    m.onclick = function (ev) {
+      var b = ev.target.closest('[data-eg]'); if (!b) return;
+      if (b.getAttribute('data-eg') === 'nuevo') { closeM('m-elegir'); return op.nuevo.fn(); }
+      var v = Array.prototype.map.call(m.querySelectorAll('input[type=checkbox]:checked'), function (x) { return x.value; });
+      closeM('m-elegir'); res(v);
+    };
+  });
+}
 function closeM(id) { var el = document.getElementById(id); if (el) { el.classList.remove('open', 'n2'); delete el.dataset.sucio; } }
 // Lo que se tipea en un modal lo marca «con cambios» (29/10/2026)
 ['input', 'change'].forEach(function (t) {

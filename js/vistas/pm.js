@@ -115,7 +115,7 @@
       var v = vivosDe(p); if (!v.length) return 'Activo, pero ningún desarrollo está en curso';
       return 'Activo porque ' + v.map(function (it) { return nom(it) + (_canonSol(it.estado) === 'garantia' ? ' está en garantía' : ' está en curso'); }).join(' y ');
     }
-    if (can === 'negociacion') { var f = _pd(p.fecha_propuesta); return f ? 'En negociación porque la propuesta se envió el ' + ff(f) : 'En negociación'; }
+    if (can === 'negociacion') { var f = _pd(p.fecha_propuesta); return f ? 'Negociación: la propuesta se envió el ' + ff(f) : 'Negociación'; }
     if (can === 'prospecto') return 'Prospecto porque todavía no se envió la propuesta';
     if (can === 'aprobado') { var a = (p.items || []).filter(function (it) { return _canonSol(it.estado) === 'aprobada'; }).map(nom); return a.length ? 'Aprobado: falta arrancar ' + a.join(', ') : 'Aprobado'; }
     if (can === 'finalizado') return 'Finalizado: todos los desarrollos están cerrados';
@@ -132,25 +132,25 @@
   // ══ ACCIONES (5c) · las tablas de Estados.gs, en espejo ══════
   // El backend (crm_giwa.accion_desarrollo…) valida siempre; esto sólo decide
   // qué botón mostrar. Si cambia una, cambia la otra.
-  var RECH = ['rechazar', 'No aceptar', 'cerrar', 'El cliente no lo aceptó. Se puede recotizar'];
-  var ACC_DES = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó el trabajo'], RECH],
-                  curso: [['entregar', 'Deployar', 'subir', 'Sale a producción y empieza a correr la garantía']],
-                  garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplió la garantía. Acá arranca el mantenimiento']] };
-  var ACC_MANT = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó a facturar'], RECH],
-                   curso: [['cerrar', 'Finalizar', 'check', 'Se cumplieron las cuotas']], garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplieron las cuotas']] };
+  var RECH = ['rechazar', 'No aceptar', 'e_cruz', 'El cliente no lo aceptó. Se puede recotizar'];
+  var ACC_DES = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'e_play', 'Empezó el trabajo'], RECH],
+                  curso: [['entregar', 'Deployar', 'e_trebol', 'Sale a producción y empieza a correr la garantía']],
+                  garantia: [['cerrar', 'Finalizar', 'e_cuadrado', 'Se cumplió la garantía. Acá arranca el mantenimiento']] };
+  var ACC_MANT = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'e_play', 'Empezó a facturar'], RECH],
+                   curso: [['cerrar', 'Finalizar', 'e_cuadrado', 'Se cumplieron las cuotas']], garantia: [['cerrar', 'Finalizar', 'e_cuadrado', 'Se cumplieron las cuotas']] };
   function accionesDes(it) { return ((esMant(it) ? ACC_MANT : ACC_DES)[_canonSol(it.estado || '')] || []); }
   function botonesDes(it, soloPrincipal) {
     var acc = accionesDes(it); if (soloPrincipal) acc = acc.filter(function (a) { return a[0] !== 'rechazar'; }).slice(0, 1);
-    var hov = { check: 'fin', cerrar: 'bor' };   // C11: el hover dice el resultado
+    var hov = { check: 'fin', cerrar: 'bor', e_cuadrado: 'fin', e_cruz: 'bor' };   // C11: el hover dice el resultado
     return acc.map(function (a) { return uiIb(a[2], a[1] + ': ' + a[3], hov[a[2]] || '', 'data-pm="acc-des" data-id="' + esc(it.id) + '" data-acc="' + a[0] + '"'); }).join('');
   }
   // La próxima acción del proyecto según dónde está (Activo sale solo al arrancar un desarrollo)
   function accionesProy(p) {
     if (p.detenido) return [];
     switch (_canonProy(p.estado_proyecto)) {
-      case 'prospecto': return [['negociacion', 'Enviar propuesta', 'mail']];
-      case 'negociacion': return [['aprobado', 'Aprobar', 'check'], ['rechazado', 'No aceptar', 'cerrar']];
-      case 'activo': return [['finalizado', 'Finalizar', 'check']];
+      case 'prospecto': return [['negociacion', 'Enviar propuesta', 'e_flechas']];
+      case 'negociacion': return [['aprobado', 'Aprobar', 'e_check'], ['rechazado', 'No aceptar', 'e_cruz']];
+      case 'activo': return [['finalizado', 'Finalizar', 'e_cuadrado']];
     }
     return [];
   }
@@ -221,12 +221,12 @@
     var h = '<div class="ui-tarjeta' + (p.detenido || rev ? ' ui-apagada' : '') + '"><span class="ui-tarjeta-barra ui-e-' + uiClaveEst(e, p.detenido) + '"></span>';
     h += '<div class="ui-tarjeta-top">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + uiBtn('Ver proyecto', 'documento', 's', 'data-pm="ficha" data-id="' + pid + '"') + '</div>';
     // Las acciones del estado, como íconos con su tooltip (todas con confirmación)
-    var ICO = { negociacion: ['mail', 'Enviar la propuesta', ''], aprobado: ['check', 'Aprobar', 'fin'], rechazado: ['cerrar', 'No aceptar', 'bor'], finalizado: ['e_cuadrado', 'Finalizar', 'fin'] };
+    var ICO = { negociacion: ['e_flechas', 'Enviar la propuesta', ''], aprobado: ['e_check', 'Aprobar', 'fin'], rechazado: ['e_cruz', 'No aceptar', 'bor'], finalizado: ['e_cuadrado', 'Finalizar', 'fin'] };
     var iconos = (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('play', 'Reanudar el proyecto', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
+        (p.detenido ? uiIb('e_play', 'Reanudar el proyecto', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiIb('e_pausa', 'Detener', 'det', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       acc.map(function (a) { var k = ICO[a[0]] || [a[2], a[1], '']; return uiIb(k[0], k[1], k[2], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('');
     h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div><div class="ui-sub-t">' + esc(p.empresa || '') + '</div></div>' +
-      '<div class="ui-tarjeta-der"><div>' + uiEstado(e) + (p.detenido ? ' ' + uiEstado('Detenido', { detenido: true }) : '') + '</div>' +
+      '<div class="ui-tarjeta-der"><div>' + uiEstado(e, { detenido: p.detenido }) + '</div>' +
         (iconos ? '<div class="ui-fila-ic ui-tarjeta-acc">' + iconos + '</div>' : '') + '</div></div>';
     var pq = porQue(p, can); if (pq) h += '<div class="ui-motivo"><span class="ui-e-' + uiClaveEst(e, p.detenido) + '">' + esc(pq) + '</span></div>';
     var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
@@ -548,15 +548,13 @@
   // Alta del abono mensual (MMR) del proyecto (18/11/2026): cuota, meses, ajuste e inicio; uno solo activo
   function altaAbono(el, p) {
     var devs = (p.items || []).filter(function (it) { return !esMant(it) && _canonSol(it.estado) !== 'rechazada'; });
-    var m = document.getElementById('m-abono');
-    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-abono'; document.body.appendChild(m); }
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Abono mensual · ' + esc(p.nombre || '') + '</span><button class="btn bg sm btn-ico" aria-label="Cerrar" data-cerrar="m-abono">' + ico('cerrar') + '</button></div><div class="mb2">' +
+    armarModal('m-abono', 'Abono mensual · ' + (p.nombre || ''),
       '<div class="fg"><label class="fl" for="ab-padre">Mantiene</label><select class="fc" id="ab-padre">' + devs.map(function (d) { return '<option value="' + esc(d.id) + '">' + esc(d.titulo || d.id) + '</option>'; }).join('') + '</select></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="ab-cuota">Cuota mensual</label><input class="fc u-tr" type="number" min="0" id="ab-cuota" data-monto></div>' +
       '<div class="fg"><label class="fl" for="ab-meses">Meses</label><input class="fc u-tr ui-num" type="number" min="1" id="ab-meses" value="12"></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="ab-aj">Ajuste por IPC</label><select class="fc" id="ab-aj"><option value="1">Sí</option><option value="0">No</option></select></div>' +
-      '<div class="fg"><label class="fl" for="ab-ini">Inicio</label><input class="fc" type="date" id="ab-ini"><div class="u-s11-mt">Vacío: arranca al terminar lo que mantiene.</div></div></div></div>' +
-      '<div class="mf"><button class="btn bg" data-cerrar="m-abono">Cancelar</button><button class="btn bp" id="ab-ok">Crear abono</button></div></div>';
+      '<div class="fg"><label class="fl" for="ab-ini">Inicio</label><input class="fc" type="date" id="ab-ini"><div class="u-s11-mt">Vacío: arranca al terminar lo que mantiene.</div></div></div>',
+      '<button class="btn bg" data-cerrar="m-abono">Cancelar</button><button class="btn bp" id="ab-ok">Crear abono</button>');
     document.getElementById('ab-ok').onclick = async function () {
       var r = await db().rpc('alta_abono', { pid: p.id, padre: document.getElementById('ab-padre').value, cuota: Number(document.getElementById('ab-cuota').value), meses: Number(document.getElementById('ab-meses').value),
         ajuste: document.getElementById('ab-aj').value === '1', inicio: document.getElementById('ab-ini').value || null });
@@ -569,22 +567,21 @@
   function fechasDes(el, it) {
     var cerr = desCerrado(it) || _canonSol(it.estado) === 'rechazada';
     if (cerr) return say('Este desarrollo está cerrado: sus fechas ya no se cambian.', 'Fechas');
-    var m = document.getElementById('m-fdes');
-    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-fdes'; document.body.appendChild(m); }
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Fechas · ' + esc(it.titulo || it.id) + '</span><button class="btn bg sm btn-ico" aria-label="Cerrar" data-cerrar="m-fdes">' + ico('cerrar') + '</button></div><div class="mb2">' +
-      (esGanado(it.estado) ? '<div class="fg"><label class="fl" for="fd-apr">Aprobado</label><input class="fc" type="date" id="fd-apr" value="' + esc(String(it.fecha_aprob || '').slice(0, 10)) + '"></div>' : '') +
-      '<div class="g2"><div class="fg"><label class="fl" for="fd-ini">Inicio</label><input class="fc" type="date" id="fd-ini" value="' + esc(String(it.fecha_est || '').slice(0, 10)) + '"></div>' +
-      '<div class="fg"><label class="fl" for="fd-fin">Fin</label><input class="fc" type="date" id="fd-fin" value="' + esc(String(it.fecha_fin || '').slice(0, 10)) + '"></div></div>' +
-      '<div class="ui-nota-t">La garantía y el arranque del mantenimiento se calculan desde el fin.</div></div>' +
-      '<div class="mf"><button class="btn bg" data-cerrar="m-fdes">Cancelar</button><button class="btn bp" id="fd-ok">Guardar</button></div></div>';
-    document.getElementById('fd-ok').onclick = async function () {
-      var ini = document.getElementById('fd-ini').value, fin = document.getElementById('fd-fin').value;
+    // Contenedor e ids propios (19/11/2026): con m-fdes y fd-* pisaba la ventana Desarrollo
+    armarModal('m-fechas', 'Fechas · ' + (it.titulo || it.id),
+      (esGanado(it.estado) ? '<div class="fg"><label class="fl" for="fe-apr">Aprobado</label><input class="fc" type="date" id="fe-apr" value="' + esc(String(it.fecha_aprob || '').slice(0, 10)) + '"></div>' : '') +
+      '<div class="g2"><div class="fg"><label class="fl" for="fe-ini">Inicio</label><input class="fc" type="date" id="fe-ini" value="' + esc(String(it.fecha_est || '').slice(0, 10)) + '"></div>' +
+      '<div class="fg"><label class="fl" for="fe-fin">Fin</label><input class="fc" type="date" id="fe-fin" value="' + esc(String(it.fecha_fin || '').slice(0, 10)) + '"></div></div>' +
+      '<div class="ui-nota-t">La garantía y el arranque del mantenimiento se calculan desde el fin.</div>',
+      '<button class="btn bg" data-cerrar="m-fechas">Cancelar</button><button class="btn bp" id="fe-ok">Guardar</button>');
+    document.getElementById('fe-ok').onclick = async function () {
+      var ini = document.getElementById('fe-ini').value, fin = document.getElementById('fe-fin').value;
       if (ini !== String(it.fecha_est || '').slice(0, 10)) { var a = await db().rpc('fecha_desarrollo', { did: it.id, campo: 'fecha_ini', fecha: ini || null }); if (a.error) return toast(a.error.message, 'err'); }
       if (fin && fin !== String(it.fecha_fin || '').slice(0, 10)) { var b = await db().rpc('fecha_desarrollo', { did: it.id, campo: 'fecha_fin', fecha: fin }); if (b.error) return toast(b.error.message, 'err'); }
-      var ap = document.getElementById('fd-apr'); if (ap && ap.value && ap.value !== String(it.fecha_aprob || '').slice(0, 10)) { var c = await db().rpc('fecha_aprobado_desarrollo', { did: it.id, fecha: ap.value }); if (c.error) return toast(c.error.message, 'err'); }
-      closeM('m-fdes'); toast('Fechas guardadas', 'ok'); await cargarFicha(P.f.id); pintar(el);
+      var ap = document.getElementById('fe-apr'); if (ap && ap.value && ap.value !== String(it.fecha_aprob || '').slice(0, 10)) { var c = await db().rpc('fecha_aprobado_desarrollo', { did: it.id, fecha: ap.value }); if (c.error) return toast(c.error.message, 'err'); }
+      closeM('m-fechas'); toast('Fechas guardadas', 'ok'); await cargarFicha(P.f.id); pintar(el);
     };
-    openM('m-fdes');
+    openM('m-fechas');
   }
   function mantArranca(p, m) {
     var mejor = null;
@@ -649,7 +646,7 @@
       if (rec) { var cubre = (it.mant_de_ids || []).map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? (d.titulo || d.id) : ''; }).filter(Boolean); if (cubre.length) sub += ' · cubre ' + cubre.join(', '); }
       var abierto = P.fAb[it.id] !== undefined ? P.fAb[it.id] : (lista.length === 1 || can === 'curso' || can === 'garantia');
       // Pausar se decide en el botón general del proyecto; acá sólo se reanuda lo que ya está pausado (06/11/2026)
-      var iconos = (it.detenido && !p.detenido && can !== 'rechazada' && can !== 'finalizada' ? uiIb('play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : '') +
+      var iconos = (it.detenido && !p.detenido && can !== 'rechazada' && can !== 'finalizada' ? uiIb('e_play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : '') +
         (puedeRenovar(it) ? uiBtn('Renovar', 'repetir', 's', 'data-pm="ren-mant" data-id="' + esc(it.id) + '"') : '') +
         (det ? '' : botonesDes(it, false));
       var plata = '', tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
@@ -858,7 +855,7 @@
   function iconosEstado(p, sinDet) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id), acc = p.detenido ? [] : accionesProy(p);
     return (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : sinDet ? '' : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
+        (p.detenido ? uiIb('e_play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : sinDet ? '' : uiIb('e_pausa', 'Detener', 'det', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
   }
   // Acciones del PROYECTO, arriba a la derecha de la ficha: las del estado (botones con su confirmación),
@@ -872,13 +869,13 @@
   }
   function accionesYAlerta(p, sinDet, txt) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
-    var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
+    var bAcc = { negociacion: ['p', 'e_flechas'], aprobado: ['p', 'e_check'], rechazado: ['s', 'e_cruz'] };
     var viejo = function (txt, tipo) { return '<a class="ui-btn ui-' + tipo + '" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
     var aprob = (p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; });
     return (can === 'rechazado' ? viejo('Volver a cotizar', 'p') :
         (p.detenido ? '' : accionesProy(p).filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
           var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
-        (aprob && !p.detenido ? uiBtn('Arrancar', 'play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
+        (aprob && !p.detenido ? uiBtn('Arrancar', 'e_play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
         ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
       (txt ? botonesEstado(p) : iconosEstado(p, sinDet));
   }
@@ -899,124 +896,13 @@
     var cab = enLista
       ? '<div class="ui-ficha-hd"><span class="u-f1">' + (av || '') + '</span>' + acc + '</div>'
       : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
-        '<span>' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</span>' + av + acc + '</div>' + motivo + riel(p);
+        '<span>' + uiEstado(e, { detenido: p.detenido }) + '</span>' + av + acc + '</div>' + motivo + riel(p);
     // Tareas a la altura de las pestañas, con su mismo formato (17/11/2026)
     var cuerpo = cab + '<div class="ui-cols ui-cols-ficha"><div>' + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
       t[2](p) + '</div><div>' + tabTareas(p) + novedadesProy() + '</div></div>';
     return enLista ? cuerpo : '<div class="ui-ficha ui-ficha-sola">' + cuerpo + '</div>';
   }
-  // ══ NUEVO PROYECTO · Carga rápida (= «Carga rápida» del Cotizador, 29/10/2026) ══
-  // Empresa, sponsor, desarrollo y plata. Guarda alta_proyecto_rapido (= altaCotizacion
-  // con rapido): el proyecto como Prospecto, su desarrollo y, si hay, su mantenimiento.
-  // El Cotizador completo (funcionalidades, horas, costos) sigue en el CRM actual.
-  // Carga rápida del Cotizador (03/11/2026): debajo del monto, las horas estándar del catálogo para ese tipo
-  // (la base: lo que lleva cualquier desarrollo de ese tipo, sale de estimar_desarrollo sin tildar nada) y a
-  // cuánto queda la hora; debajo del mantenimiento, qué incluye; al pie, los dos desarrollos que se crean.
-  var NV = { moneda: 'ARS', std: null };
-  function htmlNuevo() {
-    var mon = function (m) { return '<button type="button" class="ui-mon-b ui-mon-' + m.toLowerCase() + (NV.moneda === m ? ' on' : '') + '" data-pm="nv-mon" data-m="' + m + '">' + m + '</button>'; };
-    return '<div class="g2"><div class="fg"><label class="fl" for="nv-emp">Empresa <span class="req">*</span></label><select class="fc" id="nv-emp"><option value="">Cargando…</option></select></div>' +
-        '<div class="fg"><label class="fl" for="nv-sp">Sponsor</label><select class="fc" id="nv-sp"><option value="">Elegí la empresa</option></select></div></div>' +
-      '<div class="g2"><div class="fg"><label class="fl" for="nv-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="nv-nom"></div>' +
-        '<div class="fg"><label class="fl" for="nv-cierre">Fecha probable de cierre de negociación <span class="req">*</span></label><input class="fc" type="date" id="nv-cierre"></div></div>' +
-      '<div class="g2"><div class="fg"><label class="fl" for="nv-tipo">Desarrollo <span class="req">*</span></label><select class="fc" id="nv-tipo"></select></div>' +
-        '<div class="fg"><label class="fl" for="nv-fp">Modo de pago <span class="req">*</span></label><select class="fc" id="nv-fp"></select></div></div>' +
-      '<div class="g2"><div class="fg"><label class="fl" for="nv-tit">Título del desarrollo</label><input class="fc" id="nv-tit" placeholder="Vacío = el título del proyecto"></div>' +
-        '<div class="fg"><label class="fl" for="nv-sem">Duración en semanas <span class="req">*</span></label><input class="fc u-tr ui-num" type="number" min="1" id="nv-sem"></div></div>' +
-      '<div class="fg"><label class="fl" for="nv-aj">Ajuste por IPC</label><select class="fc u-wauto" id="nv-aj"><option value="0">No</option><option value="1">Sí</option></select></div>' +   // 18/11/2026   // 16/11/2026
-      '<div class="fg"><div class="u-row8"><label class="fl u-f1" for="nv-monto">Monto del desarrollo <span class="req">*</span></label>' +
-          '<span class="ui-mon" role="group" aria-label="Moneda">' + mon('ARS') + mon('USD') + '</span></div>' +
-        '<input class="fc u-tr m" type="number" min="0" id="nv-monto" data-monto><div class="u-s11-mt" id="nv-eq"></div></div>' +
-      '<div class="nv-std" id="nv-std" hidden></div>' +
-      '<div class="fg"><label class="fl" for="nv-mm">Mantenimiento por mes (opcional)</label><input class="fc u-tr m" type="number" min="0" id="nv-mm" data-monto>' +
-        '<div class="u-s11-mt" id="nv-mm-eq"></div><div class="u-s11-mt">Incluye: monitoreo, reunión mensual, análisis y ajustes.</div></div>' +
-      '<div class="nv-crea" id="nv-crea"></div>' +
-      '<div class="u-c-rd u-s11" id="nv-err"></div>';
-  }
-  // El mismo formulario de carga rápida, en un modal (02/11/2026): se abre desde «+ Nuevo proyecto rápido»
-  function nvAbrir(el) {
-    var m = document.getElementById('m-nv');
-    if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-nv'; document.body.appendChild(m); }
-    NV.moneda = 'ARS'; NV.std = null;
-    m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Carga rápida</span>' +
-      '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-nv">' + ico('cerrar') + '</button></div>' +
-      '<div class="mb2">' + htmlNuevo() + '</div>' +
-      '<div class="mf"><span class="u-s11-mt u-f1">Se guarda como Prospecto.</span><button class="btn bg" data-cerrar="m-nv">Cancelar</button><button class="btn bp" data-pm="nv-ok">Guardar</button></div></div>';
-    m.onclick = function (ev) {
-      var b = ev.target.closest('[data-pm]'); if (!b) return;
-      if (b.getAttribute('data-pm') === 'nv-mon') { NV.moneda = b.getAttribute('data-m'); m.querySelectorAll('[data-pm="nv-mon"]').forEach(function (x) { x.classList.toggle('on', x === b); }); return nvEq(); }
-      if (b.getAttribute('data-pm') === 'nv-ok') return nvGuardar(el);
-    };
-    openM('m-nv'); nvCargar();
-  }
-  async function nvCargar() {
-    var r = await Promise.all([
-      db().from('empresas').select('id,nombre').order('nombre'),
-      db().from('tipos_desarrollo').select('id,nombre').order('orden'),
-      db().from('modelos_pago').select('id,nombre').order('orden')
-    ]);
-    var err = r.find(function (x) { return x.error; }); if (err) return toast(err.error.message, 'err');
-    var o = function (L, ph) { return '<option value="">' + ph + '</option>' + L.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>'; }).join(''); };
-    var $n = function (id) { return document.getElementById(id); };
-    if (!$n('nv-emp')) return;
-    $n('nv-emp').innerHTML = o(r[0].data, 'Elegí la empresa');
-    $n('nv-tipo').innerHTML = o(r[1].data.filter(function (t) { return !/mantenimiento/i.test(t.nombre); }), 'Tipo');
-    $n('nv-fp').innerHTML = o(r[2].data, 'Elegí');
-    $n('nv-emp').onchange = async function () {
-      var c = await db().from('contactos').select('id,nombre,apellido').eq('empresa_id', this.value || '-').order('nombre');
-      $n('nv-sp').innerHTML = '<option value="">' + (this.value ? 'Sponsor' : 'Elegí la empresa') + '</option>' + (c.data || []).map(function (x) {
-        return '<option value="' + esc(x.id) + '">' + esc(((x.nombre || '') + ' ' + (x.apellido || '')).trim()) + '</option>'; }).join('');
-    };
-    $n('nv-tipo').onchange = nvStd;
-    ['nv-monto', 'nv-mm', 'nv-nom', 'nv-tit'].forEach(function (id) { $n(id).oninput = nvEq; });
-    nvEq();
-  }
-  // Horas estándar del tipo: la base del catálogo (lo sugerido, sin preguntas) · estimar_desarrollo sin tildar nada
-  async function nvStd() {
-    var tipo = (document.getElementById('nv-tipo') || {}).value; NV.std = null;
-    if (tipo) {
-      var r = await db().rpc('estimar_desarrollo', { tipo: tipo, empresa_id: '', opts: {} });
-      if (!r.error && r.data && r.data.ok && Number(r.data.horas) > 0) {
-        var t = document.getElementById('nv-tipo');
-        NV.std = { horas: Number(r.data.horas), tipo: t.options[t.selectedIndex].text,
-                   base: (r.data.detalle || []).map(function (m) { var x = String(m.nombre || ''); return x.charAt(0).toLowerCase() + x.slice(1); }) };
-      }
-    }
-    nvEq();
-  }
-  function nvEq() {
-    var tc = window.TC || 0, usd = NV.moneda === 'USD', $n = function (id) { return document.getElementById(id); };
-    var n = Number(($n('nv-monto') || {}).value) || 0, mm = Number(($n('nv-mm') || {}).value) || 0;
-    var ars = usd ? n * tc : n, abono = usd ? mm * tc : mm;
-    set('nv-eq', n && tc ? '= <span class="ui-num ui-p-usd">' + (usd ? fmt(ars) : fmt(n / tc, 'USD')) + '</span>' : '');
-    set('nv-mm-eq', mm && tc ? '= <span class="ui-num ui-p-usd">' + (usd ? fmt(abono) : fmt(mm / tc, 'USD')) + '</span> por mes · ajuste por IPC cada <span class="ui-num">3</span> meses' : '');
-    var box = $n('nv-std');
-    if (box) {
-      box.hidden = !NV.std;
-      // Carga rápida no carga horas (19/11/2026): se avisa en lugar de mostrar las horas estándar
-      if (NV.std) box.innerHTML = '<div class="ui-nota-t">Carga rápida no carga horas: no hay comparación con el mercado ni con el costo. Para cotizar por funcionalidad, usá Nuevo proyecto en el Cotizador.</div>';
-    }
-    var tit = String(($n('nv-tit') || {}).value || '').trim() || String(($n('nv-nom') || {}).value || '').trim() || 'El desarrollo';
-    var crea = $n('nv-crea');
-    if (crea) crea.innerHTML = '<div class="ui-lat-h">' + (abono > 0 ? 'Se crean dos desarrollos' : 'Se crea un desarrollo') + '</div>' +
-      '<div class="ui-kv">' + esc(tit) + '<span class="ui-num">' + (ars ? fmt(ars) : '—') + '</span></div>' +
-      (abono > 0 ? '<div class="ui-kv"><span class="ui-p-abono">Mantenimiento — ' + esc(tit) + '</span><span class="ui-num">' + fmt(abono) + ' × 12</span></div>' : '');
-  }
-  async function nvGuardar(el) {
-    var v = function (id) { return String(document.getElementById(id).value || '').trim(); };
-    var falta = [!v('nv-emp') && 'la empresa', !v('nv-nom') && 'el título del proyecto', !v('nv-tipo') && 'el tipo de desarrollo',
-                 !(Number(v('nv-monto')) > 0) && 'el monto', !v('nv-fp') && 'el modo de pago', !v('nv-cierre') && 'la fecha probable de cierre', !(Number(v('nv-sem')) > 0) && 'la duración en semanas'].filter(Boolean);
-    if (falta.length) return set('nv-err', 'Falta ' + falta.join(', ') + '.');
-    var b = document.querySelector('#m-nv [data-pm="nv-ok"]'); b.disabled = true;
-    var r = await db().rpc('alta_proyecto_rapido', { p: { empresa_id: v('nv-emp'), sponsor_id: v('nv-sp'), nombre: v('nv-nom'), tipo: v('nv-tipo'), fecha_cierre: v('nv-cierre'),
-      titulo: v('nv-tit') || v('nv-nom'), moneda: NV.moneda, monto: v('nv-monto'), forma_pago: v('nv-fp'), mant: v('nv-mm') } });
-    b.disabled = false;
-    if (r.error) return set('nv-err', esc(r.error.message));
-    if (r.data.did) await db().rpc('desarrollo_ajuste', { did: r.data.did, si: v('nv-aj') === '1' });
-    if (r.data.did) { var rs = await db().rpc('desarrollo_semanas', { did: r.data.did, semanas: Number(v('nv-sem')) }); if (rs.error) toast('La duración no se guardó: ' + rs.error.message, 'err'); }
-    closeM('m-nv'); toast(r.data.pid + ' cargado como Prospecto', 'ok');
-    await cargar(); P.sub = 'proy'; abrirFicha(el, r.data.pid);
-  }
+  // Carga rápida desapareció (20/11/2026): Nuevo proyecto usa el mismo modal que Editar proyecto (abrirEditarProy sin proyecto).
 
   async function abrirFicha(el, id, desde) {
     var desdeLista = !desde;                      // con «desde» viene de las flechitas: la lista ya está
@@ -1033,97 +919,429 @@
 
   // ── editar el proyecto (saveProyecto · crm_giwa.editar_proyecto) ──
   // El estado sólo ofrece a los que puede pasar hoy (la misma guarda que la barra).
-  async function abrirEditarProy(p) {
-    var m = document.getElementById('m-eproy');
-    if (!m) {
-      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-eproy';
-      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">Editar proyecto</span>' +
-        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-eproy">' + ico('cerrar') + '</button></div><div class="mb2">' +
-        '<div class="g2"><div class="fg"><label class="fl" for="ep-sp">Sponsor</label><select class="fc" id="ep-sp"></select></div>' +
-          '<div class="fg"><label class="fl" for="ep-prob">Probabilidad (%)</label><input class="fc u-tr" type="number" min="0" max="100" id="ep-prob"></div></div>' +
-        '<div class="fg"><label class="fl" for="ep-cierre">Fecha probable de cierre de negociación</label><input class="fc" type="date" id="ep-cierre"></div>' +
-        '</div><div class="mf"><button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button></div></div>';
-      document.body.appendChild(m);
-    }
+  async function abrirEditarProy(p0) {
+    // Nuevo y Editar proyecto, un solo modal (diseño aprobado 20/11/2026). Secciones plegables:
+    // PROYECTO (con fecha probable, probabilidad e importes) · RESUMEN EJECUTIVO · CONTACTOS · ESTADO Y CRONOGRAMA · DESARROLLOS · MMR · HISTORIAL
     var $e = function (id) { return document.getElementById(id); };
-    var sponsors = async function (eid, sel) {
-      var c = await db().from('contactos').select('id,nombre,apellido').eq('empresa_id', eid || '-').order('nombre');
-      $e('ep-sp').innerHTML = '<option value="">— Sponsor —</option>' + (c.data || []).map(function (x) {
-        return '<option value="' + esc(x.id) + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(((x.nombre || '') + ' ' + (x.apellido || '')).trim()) + '</option>'; }).join('');
+    var alta = !p0, p = p0 || { id: '', items: [], empresa: '', empresa_id: '', nombre: '', owner: yo(), probabilidad: 50, estado_proyecto: 'Prospecto' };
+    var LOC = { devs: [], mmr: null, docs: [] };   // en el alta, lo que se carga antes de crear el proyecto
+    var r = await Promise.all([
+      alta ? Promise.resolve({ data: {} }) : db().from('proyectos').select('creado,fecha_aprobacion,fecha_cierre_probable,fecha_propuesta_enviada,fecha_inicio,fecha_finalizado,minuta,resumen_ejecutivo,contactos,sponsors,sponsor_id').eq('id', p.id).maybeSingle(),
+      db().from('empresas').select('id,nombre,tier_id').order('nombre'),
+      db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre'),
+      alta ? Promise.resolve({ data: [] }) : db().from('desarrollos').select('id,mantenimiento_horas').eq('proyecto_id', p.id),
+      alta ? Promise.resolve({ data: [] }) : db().from('historial_proyecto').select('evento,fecha,prevista,detalle,quien').eq('proyecto_id', p.id).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(60),
+      alta ? Promise.resolve({ data: [] }) : db().from('entregables').select('titulo,tipo,accesos,creado').eq('proyecto_id', p.id).order('creado', { ascending: false })
+    ]);
+    var err = r.find(function (x) { return x.error; }); if (err) return toast(err.error.message, 'err');
+    var d = r[0].data || {}, emps = r[1].data || [], cons = r[2].data || [], min = {}, mhs = {}, hist = r[4].data || [], docs = r[5].data || [];
+    (r[3].data || []).forEach(function (x) { mhs[x.id] = Number(x.mantenimiento_horas) || 0; });
+    try { min = d.minuta ? JSON.parse(d.minuta) : {}; } catch (e) { min = {}; }
+    // Sponsors en su propio campo (opción A, 20/11/2026); «contactos» = Contactos del cliente, la ★ de la ficha
+    var sps0 = crmLista(d.sponsors).length ? crmLista(d.sponsors) : (d.sponsor_id ? [d.sponsor_id] : []), con0 = crmLista(d.contactos);
+    var rsp0 = (min.responsables && min.responsables.length ? min.responsables : [p.owner]).filter(Boolean).map(function (m) { return String(m).trim().toLowerCase(); });
+    var E = { sps: sps0.slice(), con: con0.slice(), rsp: rsp0.slice() };
+    var nomC = function (c) { return ((c.nombre || '') + ' ' + (c.apellido || '')).trim(); };
+    var dato = function (cls, l, v) { return '<div class="fg ' + cls + '"><span class="fl">' + l + '</span><div>' + v + '</div></div>'; };
+    var tier = function () { var e = emps.filter(function (x) { return x.id === p.empresa_id; })[0]; return e && e.tier_id ? '<div class="u-mt4">' + uiTier(e.tier_id) + '</div>' : ''; };
+    var fijo = ['aprobado', 'activo'].indexOf(_canonProy(p.estado_proyecto)) >= 0;   // Aprobado o activo: la probabilidad queda fija (29/10/2026)
+    var filaC = function (id, k, q) { var c = cons.filter(function (x) { return x.id === id; })[0] || { nombre: id }, t = telWa(c.telefono);
+      return '<div class="ui-li"><span class="ui-f1">' + esc(nomC(c)) + ((c.puesto || c.area_trabajo) ? '<div class="ui-li-sub">' + esc(c.puesto || c.area_trabajo) + '</div>' : '') + '</span>' +
+        (t ? '<a class="ui-ib ui-wa" href="https://wa.me/' + t + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
+        (c.email ? '<a class="ui-ib" href="mailto:' + esc(c.email) + '" data-tip="Correo" aria-label="Correo">' + uiIco('mail') + '</a>' : '') +
+        uiIb('cerrar', 'Quitar', '', 'data-ep="' + q + '" data-i="' + k + '"') + '</div>'; };
+    var lista = function () {
+      $e('ep-sps').innerHTML = E.sps.map(function (id, k) { return filaC(id, k, 'sp-quitar'); }).join('');
+      $e('ep-con').innerHTML = E.con.map(function (id, k) { return filaC(id, k, 'co-quitar'); }).join('');
+      $e('ep-rsp').innerHTML = E.rsp.map(function (m, k) {
+        return '<div class="ui-li"><span class="ui-f1">' + esc(nombre(m)) + '</span>' + uiIb('cerrar', 'Quitar', '', 'data-ep="ow-quitar" data-i="' + k + '"') + '</div>'; }).join('');
+      var nc = document.querySelector('#m-eproy [data-sec="con"] .ui-d-n'); if (nc) nc.textContent = String(E.sps.length + E.con.length + E.rsp.length);   // el número del encabezado
     };
-    await sponsors(p.empresa_id, p.sponsor_id);
-    var act = p.estado_proyecto;
-    $e('ep-prob').value = p.probabilidad || 50;
-    var fc = await db().from('proyectos').select('fecha_cierre_probable').eq('id', p.id).maybeSingle();
-    $e('ep-cierre').value = (fc.data && fc.data.fecha_cierre_probable) || '';
-    // Aprobado o activo: nombre, empresa y lo comercial quedan fijos (29/10/2026). IPC y fechas van por su lado.
-    var fijo = ['aprobado', 'activo'].indexOf(_canonProy(act)) >= 0;
-    $e('ep-prob').disabled = fijo;
+    var sec = function (t, open, cuerpo, n, v, k) { return uiDesp({ t: t, open: open, n: n, v: v, attrs: 'data-sec="' + k + '"' }, cuerpo); };
+    var m = armarModal('m-eproy', alta ? 'Nuevo proyecto' : 'Editar proyecto · ' + (p.empresa || '') + ' · ' + (p.nombre || ''),
+      sec('Proyecto', true,
+        '<div class="ui-g3">' +
+          (alta ? '<div class="fg"><label class="fl" for="ep-emp">Empresa <span class="req">*</span></label><select class="fc" id="ep-emp"><option value="">Elegí la empresa</option>' +
+                    emps.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>'; }).join('') + '</select><div id="ep-tier"></div></div>' +
+                  '<div class="fg ui-s2"><label class="fl" for="ep-nom">Título del proyecto <span class="req">*</span></label><input class="fc" id="ep-nom"></div>'
+                : dato('', 'Empresa', esc(p.empresa || '') + tier()) + dato('ui-s2', 'Título del proyecto', esc(p.nombre || ''))) +
+          (alta ? '' : dato('', 'Creado', d.creado ? '<span class="ui-num">' + ff(String(d.creado).slice(0, 10)) + '</span>' : '—') + dato('', 'Creado por', '—') +
+                       dato('', 'Aprobado el', d.fecha_aprobacion ? '<span class="ui-num">' + ff(d.fecha_aprobacion) + '</span>' : '—')) +
+          '<div class="fg"><label class="fl" for="ep-cierre">Fecha probable de aprobación <span class="req">*</span></label><input class="fc" type="date" id="ep-cierre" value="' + esc(d.fecha_cierre_probable || '') + '"></div>' +
+          '<div class="fg"><label class="fl" for="ep-prob">Probabilidad de aprobación (%)</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="0" max="100" id="ep-prob" value="' + esc(p.probabilidad || 50) + '"' + (fijo ? ' disabled' : '') + '></div><div></div>' +
+        '</div><div id="ep-imp" class="ui-g4"></div>', '', '', 'proy') +
+      sec('Resumen ejecutivo', alta,
+        '<div class="u-row8 u-mb6"><span class="ui-f1"></span>' + uiIb('buscar', 'Buscar una minuta guardada', '', 'data-ep="minuta"') +
+          '<label class="ui-lnk ui-azul">' + uiIco('clip') + ' Adjuntar .md o propuesta<input type="file" class="ui-arch-inp" id="ep-doc" accept=".md,.txt,.pdf,.doc,.docx,.ppt,.pptx" hidden></label></div>' +
+        '<textarea class="fc" rows="4" id="ep-res" aria-label="Resumen ejecutivo">' + esc(d.resumen_ejecutivo || '') + '</textarea><div id="ep-docs"></div>', '', '', 'res') +
+      sec('Contactos', alta,
+        '<div class="ui-cols3">' +
+          '<div><div class="ui-li-sub">SPONSORS</div><div id="ep-sps"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="sp-agregar">+ Agregar sponsor</button></div>' +
+          '<div><div class="ui-li-sub">CONTACTOS DEL CLIENTE</div><div id="ep-con"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="co-agregar">+ Agregar contacto</button></div>' +
+          '<div><div class="ui-li-sub">RESPONSABLES</div><div id="ep-rsp"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="ow-agregar">+ Agregar responsable</button></div></div>',
+        '', '', 'con') +
+      (alta ? '' : sec('Estado y cronograma', false, '<div id="ep-estado"></div>', '', '<span id="ep-v-est"></span>', 'est')) +
+      sec('Desarrollos', alta, '<div id="ep-devs"></div>', '', '<span id="ep-v-devm"></span>', 'devs') +
+      sec('Mantenimiento mensual · MMR', alta, '<div id="ep-mmr"></div>', '', '<span id="ep-v-mmr"></span>', 'mmr') +
+      (alta ? '' : sec('Historial', false, '<div id="ep-hist"></div>', String(hist.length), '', 'hist')),
+      '<button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">' + (alta ? 'Crear proyecto' : 'Guardar') + '</button>', 'ep-md');
+    lista();
+    // Adjuntos del resumen: se suben al Drive de la empresa (puente subirDoc) y quedan en «Documentos, Drive y propuestas»
+    var pintarDocs = function () {
+      set('ep-docs', docs.map(function (x) { var u = ((x.accesos || [])[0] || {}).url;
+          return '<div class="ui-li">' + uiIco('documento') + '<span class="ui-f1">' + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(x.titulo) + '</a>' : esc(x.titulo)) +
+            '<div class="ui-li-sub">' + esc(x.tipo || '') + (x.creado ? ' · <span class="ui-num">' + ff(String(x.creado).slice(0, 10)) + '</span>' : '') + '</div></span></div>'; }).join('') +
+        LOC.docs.map(function (f, k) { return '<div class="ui-li">' + uiIco('documento') + '<span class="ui-f1">' + esc(f.name) + '<div class="ui-li-sub">Se sube al crear el proyecto</div></span>' + uiIb('cerrar', 'Quitar', '', 'data-ep="doc-quitar" data-i="' + k + '"') + '</div>'; }).join(''));
+    };
+    var subirDoc = async function (f, pid, emp) {
+      toast('Subiendo ' + f.name + '…', 'inf');
+      var up = await puente('subirDoc', { archivo: f, empresa: emp }); if (!up || !up.url) throw new Error('No se pudo subir ' + f.name);
+      var tipo = /\.(md|txt)$/i.test(f.name) ? 'Minuta' : 'Propuesta comercial';
+      var ri = await db().from('entregables').insert({ proyecto_id: pid, titulo: f.name, tipo: tipo, estado: 'activo', accesos: [{ tipo: tipo, nombre: f.name, url: up.url }] });
+      if (ri.error) throw new Error(ri.error.message);
+      return { titulo: f.name, tipo: tipo, accesos: [{ url: up.url }], creado: new Date().toISOString() };
+    };
+    pintarDocs();
+    // ── Desarrollos, MMR e importes (sale de p.items; en el alta, de lo cargado en el modal) ──
+    var vivo = function (it) { return _canonSol(it.estado) !== 'rechazada'; };
+    var monto = function (it) { return it.moneda === 'USD' && Number(it.total_usd) ? fmt(it.total_usd, 'USD') : fmt(it.total_ars); };
+    var cuota = function (it) { return Number(it.cuota_act) || Number(it.valor_cuota) || 0; };
+    var items = function () { return alta ? LOC.devs.concat(LOC.mmr ? [LOC.mmr] : []) : (p.items || []); };
+    var econ = function () {
+      var all = items(), its = all.filter(vivo), devs = all.filter(function (it) { return !esMant(it); }), mants = its.filter(esMant);
+      var aprob = 0, neg = 0, mes = 0, grupo = function (k) { return devs.filter(function (it) { var c = _canonSol(it.estado);
+        return k === 'c' ? esGanado(it.estado) : k === 'p' ? c === 'nueva' : c === 'rechazada'; }); };
+      devs.forEach(function (it) { if (esGanado(it.estado)) aprob += Number(it.total_ars) || 0; else if (_canonSol(it.estado) === 'nueva') neg += Number(it.total_ars) || 0; });
+      mants.forEach(function (it) { if (!desCerrado(it)) mes += cuota(it); });
+      var fila = function (it) { var nuevo = _canonSol(it.estado) === 'nueva', k = it._loc != null ? 'data-loc="' + it._loc + '"' : 'data-id="' + esc(it.id) + '"';
+        return '<div class="ui-li"><span class="ui-f1">' + esc(it.titulo || it.id) + '<div class="ui-li-sub">' + esc(it.tipo_nombre || it.tipo || '') + (it.fecha_aprob ? ' · aprobado <span class="ui-num">' + ff(it.fecha_aprob) + '</span>' : '') + '</div></span>' +
+          '<span class="ui-num' + (esGanado(it.estado) ? ' ui-p-contratado' : '') + '">' + monto(it) + '</span><span class="ui-li-sub ui-num">' + (it.moneda === 'USD' ? 'USD' : 'ARS') + '</span>' +
+          '<span>' + uiEstado(uiNombreEst(it.estado), { detenido: it.detenido }) + '</span>' + (it._loc != null ? '' : uiIb('editar', 'Editar', '', 'data-ep="dev-editar" ' + k)) +
+          (nuevo ? uiIb('e_cruz', it._loc != null ? 'Quitar' : 'No aceptar', 'bor', 'data-ep="dev-quitar" ' + k) : '') + '</div>'; };
+      var gc = grupo('c'), gp = grupo('p'), gr = grupo('r');
+      set('ep-devs', (devs.length ? '' : '<div class="ui-nota-t">Sin desarrollos.</div>') +
+        (gc.length ? '<div class="ui-li-sub u-mb6">CONTRATADOS</div>' + gc.map(fila).join('') : '') +
+        (gp.length ? '<div class="ui-li-sub u-mb6' + (gc.length ? ' u-mt10' : '') + '">' + (alta ? 'A COTIZAR' : 'PENDIENTES DE APROBAR') + '</div>' + gp.map(fila).join('') : '') +
+        (gr.length ? '<details class="u-mt10"><summary class="ui-li-sub">NO ACEPTADOS · <span class="ui-num">' + gr.length + '</span></summary>' + gr.map(fila).join('') + '</details>' : '') +
+        '<div class="u-row8"><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="dev-agregar">+ Agregar desarrollo</button>' +
+        (alta ? '' : '<button type="button" class="ui-lnk ui-azul u-mt6" data-ep="cotizar">Cotizar por funcionalidad</button>') + '</div>');
+      var nd = document.querySelector('#m-eproy [data-sec="devs"] .ui-d-n'); if (nd) nd.textContent = String(devs.length); set('ep-v-devm', '<span class="ui-num">' + fmt(aprob + neg) + '</span>');
+      set('ep-mmr', '<label class="u-row6 u-mb6 ui-vio"><input type="checkbox" data-ep="mmr-check"' + (mants.length ? ' checked' : '') + '> Incluye mantenimiento</label>' +
+        mants.map(function (it) { var ipc = !/sin/i.test(it.inflacion || '') && !!it.inflacion, nuevo = _canonSol(it.estado) === 'nueva', hs = it._hs || mhs[it.id];
+          return '<div class="ui-li"><span class="ui-f1"><span class="ui-p-abono">' + esc(it.titulo || it.id) + '</span><div class="ui-li-sub"><span class="ui-num">' + (Number(it.duracion) || 12) + '</span> meses' +
+            (ipc ? ' · <span class="ui-p-abono">' + uiIco('check') + ' Ajuste por IPC</span>' : ' · sin ajuste por IPC') + (hs ? ' · <span class="ui-num">' + String(hs).replace('.', ',') + '</span> h por mes' : '') +
+            ' · ' + esc(uiNombreEst(it.estado)) + '</div></span><span class="ui-num ui-p-abono">' + fmt(cuota(it)) + '/mes</span><span class="ui-li-sub ui-num">ARS</span>' +
+            (it._loc != null ? '' : uiIb('editar', 'Editar', '', 'data-ep="mmr-editar" data-id="' + esc(it.id) + '"')) +
+            (nuevo ? uiIb('e_cruz', it._loc != null ? 'Quitar' : 'No aceptar', 'bor', it._loc != null ? 'data-ep="mmr-quitar" data-loc="mmr"' : 'data-ep="mmr-quitar" data-id="' + esc(it.id) + '"') : '') + '</div>'; }).join('') +
+        (mants.some(function (it) { return !desCerrado(it); }) ? '' : '<button type="button" class="ui-lnk ui-azul u-mt6" data-ep="mmr-agregar">+ Agregar MMR</button>'));
+      set('ep-v-mmr', mes ? '<span class="ui-num ui-p-abono">' + fmt(mes) + '/mes</span>' : '');
+      var imp = function (l, v, cls) { return '<div class="fg"><span class="fl">' + l + '</span><div class="ui-num ' + (cls || '') + '">' + v + '</div></div>'; };
+      set('ep-imp', imp('Contratado', fmt(aprob), 'ui-p-contratado') + imp('Proyectado · en Nuevo', fmt(neg)) + imp('MMR por mes', fmt(mes), 'ui-p-abono') + imp('Total a 12 meses', fmt(aprob + neg + 12 * mes)));
+    };
+    // ── Estado y cronograma: el estado sale de los desarrollos; sólo las acciones que la regla permite ──
+    var estado = function () {
+      if (alta) return;
+      var can = _canonProy(p.estado_proyecto), devs = (p.items || []).filter(function (it) { return vivo(it) && !esMant(it); });
+      var fIni = devs.map(function (it) { return it.fecha_est || it.fecha_ini; }).filter(Boolean).sort()[0], fFin = devs.map(function (it) { return it.fecha_fin; }).filter(Boolean).sort().reverse()[0];
+      var ultimo = function (ev) { var x = hist.filter(function (h) { return h.evento === ev; })[0]; return x && x.fecha; };
+      var paso = function (cls, color, f, nom, est, edit) { return '<div class="ui-cr-p ' + cls + ' ui-e-' + color + '"><div class="ui-cr-f">' + (f ? ff(f).slice(0, 5) : '—') +
+        (edit ? uiIb('editar', 'Cambiar la fecha prevista', '', 'data-ep="' + edit + '"') : '') + '</div><div class="ui-cr-n">' + nom + '</div><div class="ui-cr-e">' + est + '</div></div>'; };
+      var arrancado = !!d.fecha_inicio || can === 'activo' || can === 'finalizado';
+      var riel = paso('', 'prospecto', String(d.creado || '').slice(0, 10), 'Creado', 'Prospecto') +
+        paso(d.fecha_propuesta_enviada ? '' : 'nada', 'negociacion', d.fecha_propuesta_enviada, 'Propuesta enviada', 'Negociación') +
+        (d.fecha_aprobacion ? '' : paso('prev', 'aprobado', d.fecha_cierre_probable, 'Aprobación prevista', 'previsto', 'ed-cierre')) +
+        paso(d.fecha_aprobacion ? '' : 'nada', 'aprobado', d.fecha_aprobacion, 'Aprobado', '') +
+        (arrancado ? paso('', 'curso', d.fecha_inicio || fIni, 'Inicio', 'Activo') : paso('prev', 'curso', fIni, 'Inicio previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
+        (can === 'finalizado' ? '' : paso('prev', 'garantia', fFin, 'Fin previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
+        (p.detenido ? paso('', 'detenido', ultimo('Detenido'), 'Detenido', '') : '') +
+        (can === 'rechazado' ? paso('', 'rechazado', ultimo('No aceptado'), 'No aceptado', '') : paso(d.fecha_finalizado ? '' : 'nada', 'finalizado', d.fecha_finalizado, 'Finalizado', ''));
+      var acc = (p.detenido || can === 'finalizado' || can === 'rechazado' ? [] : accionesProy(p)).map(function (a) {
+          return uiBtn(a[1], a[2], 's', 'data-ep="acc" data-a="' + a[0] + '"'); }).join('') +
+        ((p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; }) && !p.detenido ? uiBtn('Arrancar', 'e_play', 's', 'data-ep="acc" data-a="arrancar"') : '') +
+        (can === 'finalizado' || can === 'rechazado' ? '' : p.detenido ? uiBtn('Reanudar', 'e_play', 's', 'data-ep="acc" data-a="reanudar"')
+          : '<button type="button" class="ui-btn ui-s ui-btn-det" data-ep="acc" data-a="detener">' + uiIco('e_pausa') + 'Detener</button>');
+      set('ep-estado', '<div class="ui-li-sub u-mb6">' + esc(porQue(p, can) || deDondeSale(p) || '') + '</div>' +
+        '<div class="ui-cr-l"><span><i></i>Ocurrió</span><span><i class="d"></i>Previsto · se puede cambiar</span></div><div class="ui-cr">' + riel + '</div>' +
+        (acc ? '<div class="ui-acc-der">' + acc + '</div>' : ''));
+      set('ep-v-est', uiEstado(p.estado_proyecto, { detenido: p.detenido }));
+      set('ep-hist', hist.length ? hist.map(function (h) { return '<div class="ui-hi"><span class="ui-num' + (h.prevista ? ' ui-li-sub' : '') + '">' + ff(h.fecha) + '</span><span>' + esc(h.evento) + '</span>' +
+          '<span class="ui-li-sub">' + esc(h.detalle || '') + '</span><span class="ui-li-sub">' + esc(h.quien ? nombre(h.quien) : '') + '</span></div>'; }).join('') : '<div class="ui-nota-t">Sin movimientos.</div>');
+    };
+    var recargar = async function () {
+      if (alta) return econ();
+      await cargar(); p = P.proys.find(function (x) { return x.id === p.id; }) || p;
+      var rr = await Promise.all([db().from('desarrollos').select('id,mantenimiento_horas').eq('proyecto_id', p.id),
+        db().from('historial_proyecto').select('evento,fecha,prevista,detalle,quien').eq('proyecto_id', p.id).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(60),
+        db().from('proyectos').select('creado,fecha_aprobacion,fecha_cierre_probable,fecha_propuesta_enviada,fecha_inicio,fecha_finalizado').eq('id', p.id).maybeSingle()]);
+      (rr[0].data || []).forEach(function (x) { mhs[x.id] = Number(x.mantenimiento_horas) || 0; }); hist = rr[1].data || hist; Object.assign(d, rr[2].data || {});
+      econ(); estado();
+    };
+    econ(); estado();
+    // Agregar desarrollo suelto (alta_desarrollo · clase desarrollo), sin horas. En el alta queda en el modal hasta crear el proyecto.
+    var altaDesarrollo = async function () {
+      var L = await Promise.all([db().from('tipos_desarrollo').select('id,nombre').order('orden'), db().from('modelos_pago').select('id,nombre').order('orden')]);
+      var o = function (X, ph) { return '<option value="">' + ph + '</option>' + (X.data || []).map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>'; }).join(''); };
+      var mon = 'ARS';
+      var md = armarModal('m-adev', 'Agregar desarrollo' + (p.nombre ? ' · ' + p.nombre : ''),
+        '<div class="ui-filas"><div class="fg ui-w-l"><label class="fl" for="ad2-tipo">Tipo de desarrollo <span class="req">*</span></label><select class="fc" id="ad2-tipo">' +
+          o({ data: (L[0].data || []).filter(function (t) { return !/mantenimiento/i.test(t.nombre); }) }, 'Elegí') + '</select></div>' +
+          '<div class="fg ui-w-f"><label class="fl" for="ad2-tit">Título <span class="req">*</span></label><input class="fc" id="ad2-tit"></div></div>' +
+        '<div class="fg"><label class="fl" for="ad2-alc">Alcance</label><textarea class="fc" rows="2" id="ad2-alc"></textarea></div>' +
+        '<div class="ui-filas"><div class="fg ui-w-s"><span class="fl">Moneda</span><span class="ui-mon" role="group" aria-label="Moneda"><button type="button" class="ui-mon-b ui-mon-ars on" data-ad2="ARS">ARS</button><button type="button" class="ui-mon-b ui-mon-usd" data-ad2="USD">USD</button></span></div>' +
+          '<div class="fg ui-w-l"><label class="fl" for="ad2-monto">Monto <span class="req">*</span></label><input class="fc u-tr ui-num" type="number" min="0" id="ad2-monto" data-monto><div class="u-s11-mt" id="ad2-eq"></div></div>' +
+          '<div class="fg ui-w-f"><label class="fl" for="ad2-fp">Forma de pago <span class="req">*</span></label><select class="fc" id="ad2-fp">' + o(L[1], 'Elegí') + '</select></div></div>' +
+        '<div class="ui-filas ui-rep"><div class="fg"><label class="fl" for="ad2-cuo">Cuotas</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="1" id="ad2-cuo" value="1"></div>' +
+          '<div class="fg"><label class="fl" for="ad2-sem">Semanas <span class="req">*</span></label><input class="fc u-tr ui-num" style="width:80px" type="number" min="1" id="ad2-sem"></div>' +
+          '<div class="fg"><label class="fl" for="ad2-gar">Días de garantía</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="0" id="ad2-gar"></div>' +
+          '<div class="fg"><span class="fl">Ajuste por IPC</span><label class="u-row6 ui-vio"><input type="checkbox" id="ad2-ipc" checked> Ajusta</label></div></div>' +
+        '<div class="ui-nota-t">Nace en Nuevo y sin horas: no hay comparación con el mercado ni con el costo. Para cotizar por funcionalidad, usá el Cotizador.</div>' +
+        '<div class="u-c-rd u-s11" id="ad2-err"></div>',
+        '<button class="btn bg" data-cerrar="m-adev">Cancelar</button><button class="btn bg" data-ad2ok="otro">Agregar y cargar otro</button><button class="btn bp" data-ad2ok="1">Agregar</button>');
+      var eq = function () { var n = Number($e('ad2-monto').value) || 0, tc = window.TC || 0;
+        set('ad2-eq', n && tc ? '= <span class="ui-num ui-p-usd">' + (mon === 'USD' ? fmt(n * tc) : fmt(n / tc, 'USD')) + '</span>' : ''); };
+      md.oninput = eq;
+      md.onclick = async function (ev) {
+        var b = ev.target.closest('[data-ad2],[data-ad2ok]'); if (!b) return;
+        if (b.hasAttribute('data-ad2')) { mon = b.getAttribute('data-ad2'); md.querySelectorAll('[data-ad2]').forEach(function (x) { x.classList.toggle('on', x === b); });
+          $e('ad2-ipc').checked = mon === 'ARS'; return eq(); }   // en USD no suele ajustarse por IPC
+        var v = function (id) { return String($e(id).value || '').trim(); };
+        var falta = [!v('ad2-tipo') && 'el tipo', !v('ad2-tit') && 'el título', !(Number(v('ad2-monto')) > 0) && 'el monto', !v('ad2-fp') && 'la forma de pago', !(Number(v('ad2-sem')) > 0) && 'las semanas'].filter(Boolean);
+        if (falta.length) return set('ad2-err', 'Falta ' + falta.join(', ') + '.');
+        var P2 = { clase: 'desarrollo', tipo: v('ad2-tipo'), titulo: v('ad2-tit'), descripcion: v('ad2-alc'), moneda: mon, monto: v('ad2-monto'), forma_pago: v('ad2-fp'), cuotas: v('ad2-cuo') };
+        var extra = { sem: Number(v('ad2-sem')), gar: v('ad2-gar'), ipc: $e('ad2-ipc').checked };
+        if (alta) {   // queda en el modal; se crea con el proyecto
+          var tc = window.TC || 0, n = Number(P2.monto) || 0, t = $e('ad2-tipo');
+          LOC.devs.push({ _loc: LOC.devs.length, _p: P2, _x: extra, titulo: P2.titulo, tipo: P2.tipo, tipo_nombre: t.options[t.selectedIndex].text, estado: 'Nuevo', moneda: mon,
+                          total_ars: mon === 'USD' ? Math.round(n * tc) : n, total_usd: mon === 'USD' ? n : (tc ? n / tc : 0) });
+          econ();
+        } else {
+          md.querySelectorAll('[data-ad2ok]').forEach(function (x) { x.disabled = true; });
+          var rr = await db().rpc('alta_desarrollo', { p: Object.assign({ pid: p.id }, P2) });
+          md.querySelectorAll('[data-ad2ok]').forEach(function (x) { x.disabled = false; });
+          if (rr.error) return set('ad2-err', esc(rr.error.message));
+          var ex = await completarDev(rr.data.id, extra); if (ex) toast('Se creó ' + rr.data.id + ', pero no se guardó todo: ' + ex, 'err');
+          toast(rr.data.msg, 'ok'); await recargar();
+        }
+        if (b.getAttribute('data-ad2ok') === 'otro') { ['ad2-tit', 'ad2-alc', 'ad2-monto', 'ad2-sem', 'ad2-gar'].forEach(function (id) { $e(id).value = ''; }); set('ad2-eq', ''); set('ad2-err', ''); delete md.dataset.sucio; $e('ad2-tit').focus(); }
+        else closeM('m-adev');
+      };
+      openM('m-adev');
+    };
+    var completarDev = async function (did, x) {   // semanas, IPC y garantía: las mismas funciones de siempre
+      var pr = [db().rpc('desarrollo_semanas', { did: did, semanas: x.sem }), db().rpc('desarrollo_ajuste', { did: did, si: x.ipc })];
+      if (x.gar) pr.push(db().rpc('guardar_desarrollo', { p: { id: did, garantia_dias: x.gar } }));
+      var e = (await Promise.all(pr)).find(function (y) { return y.error; }); return e ? e.error.message : '';
+    };
+    // MMR: el mismo modal para agregar (alta_abono) y para editar (Nuevo: guardar_desarrollo · aprobado: editar_monto_aprobado)
+    var mmrModal = function (it) {
+      var nuevoM = !it, gan = it && esGanado(it.estado), mon = 'ARS';
+      var devs = items().filter(function (x) { return vivo(x) && !esMant(x); });
+      if (nuevoM && !devs.length) return say('Primero agregá el desarrollo que va a mantener.', 'MMR');
+      var ipc0 = nuevoM ? true : (!/sin/i.test(it.inflacion || '') && !!it.inflacion);
+      var mt = armarModal('m-mmr', (nuevoM ? 'Agregar MMR' : 'Editar MMR') + (p.nombre ? ' · ' + p.nombre : ''),
+        (nuevoM ? '<div class="ui-filas"><div class="fg ui-w-f"><label class="fl" for="mm-padre">Mantiene <span class="req">*</span></label><select class="fc" id="mm-padre">' +
+          devs.map(function (x) { return '<option value="' + (x._loc != null ? 'loc:' + x._loc : esc(x.id)) + '">' + esc(x.titulo || x.id) + '</option>'; }).join('') + '</select></div></div>' : '<div class="ui-p-abono u-mb10">' + esc(it.titulo || it.id) + '</div>') +
+        '<div class="ui-filas ui-rep">' +
+          '<div class="fg"><span class="fl">Moneda</span>' + (nuevoM ? '<span class="ui-mon" role="group" aria-label="Moneda"><button type="button" class="ui-mon-b ui-mon-ars on" data-mm="ARS">ARS</button><button type="button" class="ui-mon-b ui-mon-usd" data-mm="USD">USD</button></span>' : '<div class="ui-num">ARS</div>') + '</div>' +
+          '<div class="fg ui-w2"><label class="fl" for="mm-cuota">Cuota mensual <span class="req">*</span></label><input class="fc u-tr ui-num" type="number" min="0" id="mm-cuota" data-monto value="' + (it ? cuota(it) : '') + '"></div>' +
+          '<div class="fg"><label class="fl" for="mm-meses">Meses</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="1" id="mm-meses" value="' + (it ? (Number(it.duracion) || 12) : 12) + '"></div>' +
+          '<div class="fg"><span class="fl">Ajuste por IPC</span><label class="u-row6 ui-vio"><input type="checkbox" id="mm-ipc"' + (ipc0 ? ' checked' : '') + (gan ? ' disabled' : '') + '> Ajusta</label></div>' +
+          '<div class="fg"><label class="fl" for="mm-hs">Horas por mes</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="0" step="0.5" id="mm-hs" value="' + (it && mhs[it.id] ? mhs[it.id] : '') + '"' + (gan ? ' disabled' : '') + '></div>' +
+        '</div><div id="mm-tot"></div>' + (gan ? '<div class="ui-nota-t">Aprobado: sólo se cambian la cuota y los meses. El ajuste por IPC y las horas quedan como se contrataron.</div>' : '') +
+        '<div class="u-c-rd u-s11" id="mm-err"></div>',
+        '<button class="btn bg" data-cerrar="m-mmr">Cancelar</button><button class="btn bp" data-mmok="1">' + (nuevoM ? 'Agregar' : 'Guardar') + '</button>');
+      var tot = function () { var c = Number($e('mm-cuota').value) || 0, n = Number($e('mm-meses').value) || 0, tc = window.TC || 0, ars = (mon === 'USD' ? c * tc : c) * n;
+        set('mm-tot', c && n ? '<div class="ui-kv"><span>Anual · <span class="ui-num">' + n + '</span> meses</span><span class="ui-num ui-p-abono">' + fmt(ars) + '</span></div>' +
+          (tc ? '<div class="ui-kv"><span>Equivale a</span><span class="ui-num ui-p-usd">' + fmt(ars / tc, 'USD') + '</span></div>' : '') + (mon === 'USD' ? '<div class="ui-nota-t">El abono se guarda en pesos, al tipo de cambio del día.</div>' : '') : ''); };
+      mt.oninput = tot; tot();
+      mt.onclick = async function (ev) {
+        var b = ev.target.closest('[data-mm],[data-mmok]'); if (!b) return;
+        if (b.hasAttribute('data-mm')) { mon = b.getAttribute('data-mm'); mt.querySelectorAll('[data-mm]').forEach(function (x) { x.classList.toggle('on', x === b); }); $e('mm-ipc').checked = mon === 'ARS'; return tot(); }
+        var c = Number($e('mm-cuota').value) || 0, n = Number($e('mm-meses').value) || 0, hs = $e('mm-hs').value, si = $e('mm-ipc').checked;
+        if (!(c > 0) || !(n > 0)) return set('mm-err', 'Poné la cuota y los meses.');
+        if (alta) {   // queda en el modal; se crea con el proyecto
+          var pv = $e('mm-padre').value, dv = LOC.devs[Number(pv.slice(4))], tc = window.TC || 0;
+          LOC.mmr = { _loc: 'mmr', _p: { padreLoc: Number(pv.slice(4)), cuota: c, meses: n, ajuste: si, moneda: mon, horas: hs === '' ? null : Number(hs) }, titulo: 'MMR de ' + (dv ? dv.titulo : ''),
+                      modelo: 'FP-03', estado: 'Nuevo', cuota_act: mon === 'USD' ? Math.round(c * tc) : c, duracion: n, inflacion: si ? 'Ajuste' : 'Sin Ajuste', _hs: hs };
+          closeM('m-mmr'); return econ();
+        }
+        var rr = nuevoM ? await db().rpc('alta_abono', { pid: p.id, padre: $e('mm-padre').value, cuota: c, meses: n, ajuste: si, inicio: null, moneda: mon, horas: hs === '' ? null : Number(hs) })
+          : gan ? await db().rpc('editar_monto_aprobado', { did: it.id, cuota_nueva: c, duracion: n })
+          : await db().rpc('guardar_desarrollo', { p: Object.assign({ id: it.id, cuota_act: c, cuotas: n, total_ars: Math.round(c * n * 100) / 100, inflacion: si ? 'Ajuste' : 'Sin Ajuste' }, hs === '' ? {} : { mant_horas: hs }) });   // horas vacías: no se tocan
+        if (rr.error) return set('mm-err', esc(rr.error.message));
+        closeM('m-mmr'); toast(nuevoM ? 'MMR agregado' : 'MMR guardado', 'ok'); await recargar();
+      };
+      openM('m-mmr');
+    };
+    var elegirContacto = async function (k, tit) {   // k: 'sps' (sponsors) o 'con' (contactos del cliente)
+      if (!p.empresa_id) return say('Primero elegí la empresa.', tit);
+      var v = await elegirVarios(tit + ' · ' + (p.empresa || ''), cons.map(function (c) { return { v: c.id, t: nomC(c), sub: c.puesto || c.area_trabajo || '' }; }),
+        { ya: E[k], nuevo: { txt: 'Nuevo contacto', fn: function () {
+          window.abrirContacto(null, { empresa: p.empresa_id, onSave: async function () {
+            var c = await db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre');
+            if (!c.error) cons = c.data || []; elegirContacto(k, tit); } }); } } });
+      if (v && v.length) { E[k] = E[k].concat(v); m.dataset.sucio = '1'; lista(); }
+    };
+    m.onchange = async function (ev) {
+      var t = ev.target;
+      if (t.id === 'ep-emp') {   // alta: la empresa define sus contactos y su Tier
+        p.empresa_id = t.value; p.empresa = t.value ? t.options[t.selectedIndex].text : ''; E.sps = []; E.con = [];
+        var c = await db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre');
+        cons = c.data || []; set('ep-tier', tier()); lista(); return;
+      }
+      if (t.id === 'ep-doc' && t.files && t.files[0]) {
+        var f = t.files[0]; t.value = '';
+        if (alta) { LOC.docs.push(f); return pintarDocs(); }
+        try { docs.unshift(await subirDoc(f, p.id, p.empresa)); pintarDocs(); toast('Adjunto guardado', 'ok'); } catch (e) { toast(e.message, 'err'); }
+      }
+    };
+    m.onclick = async function (ev) {
+      var b = ev.target.closest('[data-ep]'); if (!b) return; var a = b.getAttribute('data-ep');
+      if (a === 'sp-quitar') { E.sps.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
+      if (a === 'ow-quitar') { E.rsp.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
+      if (a === 'co-quitar') { E.con.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
+      if (a === 'sp-agregar') return elegirContacto('sps', 'Agregar sponsor');
+      if (a === 'co-agregar') return elegirContacto('con', 'Agregar contacto');
+      if (a === 'doc-quitar') { LOC.docs.splice(Number(b.getAttribute('data-i')), 1); return pintarDocs(); }
+      if (a === 'dev-agregar') return altaDesarrollo();
+      if (a === 'mmr-agregar') return mmrModal(null);
+      if (a === 'mmr-editar') return mmrModal((p.items || []).find(function (x) { return x.id === b.getAttribute('data-id'); }));
+      if (a === 'mmr-check') {   // la casilla muestra si hay MMR: tildarla abre el alta; para sacarlo, la ✕ del MMR
+        ev.preventDefault(); var hay = items().some(function (x) { return vivo(x) && esMant(x); });
+        return hay ? toast('Para quitar el MMR usá la ✕ de su fila (sólo si está en Nuevo).', 'inf') : mmrModal(null);
+      }
+      if (a === 'dev-editar') return window.abrirDesarrollo(b.getAttribute('data-id'), { onSave: recargar });
+      if ((a === 'dev-quitar' || a === 'mmr-quitar') && b.hasAttribute('data-loc')) {   // alta: se saca del modal
+        if (a === 'mmr-quitar') LOC.mmr = null; else { LOC.devs.splice(Number(b.getAttribute('data-loc')), 1); LOC.devs.forEach(function (x, i) { x._loc = i; }); LOC.mmr = null; }
+        return econ();
+      }
+      if (a === 'dev-quitar' || a === 'mmr-quitar') {
+        var it0 = (p.items || []).find(function (x) { return x.id === b.getAttribute('data-id'); }) || {};
+        if (!(await ask('«' + (it0.titulo || it0.id) + '» pasa a No aceptado. No se borra: queda en el historial del proyecto.', 'No aceptar', { ok: 'No aceptar', peligro: true }))) return;
+        var rq = await db().rpc('accion_desarrollo', { did: it0.id, accion: 'rechazar' }); if (rq.error) return toast(rq.error.message, 'err');
+        toast('No aceptado', 'ok'); return recargar();
+      }
+      if (a === 'ow-agregar') {
+        var v = await elegirVarios('Agregar responsable', Object.keys(P.users).map(function (k) { return { v: k, t: P.users[k] }; }), { ya: E.rsp });
+        if (v && v.length) { E.rsp = E.rsp.concat(v); m.dataset.sucio = '1'; lista(); } return;
+      }
+      if (a === 'acc') {   // las acciones de estado de siempre: abren su modal encima y vuelven acá
+        var q = b.getAttribute('data-a');
+        if (q === 'arrancar') await P.acc.arrancar(p);
+        else if (q === 'detener') await P.acc.corte(p, 'detener');
+        else if (q === 'reanudar') { var rd = await db().rpc('detener_proyecto', { pid: p.id, detener: false }); if (rd.error) return toast(rd.error.message, 'err'); toast('Reanudado', 'ok'); }
+        else await P.acc.estado(p, q);
+        return recargar();
+      }
+      if (a === 'ed-cierre') { var dp = m.querySelector('[data-sec="proy"]'); if (dp && !dp.classList.contains('open')) dp.click(); return $e('ep-cierre').focus(); }
+      if (a === 'ed-fechas') { var d1 = (p.items || []).find(function (x) { return vivo(x) && !esMant(x) && !desCerrado(x); }); if (d1) return fechasDes(document.getElementById('vista'), d1); return; }
+      if (a === 'cotizar') { closeM('m-eproy'); location.hash = '#/cot'; return; }
+      if (a === 'minuta') {   // la misma búsqueda de minutas del Cotizador (cot_minutas)
+        var mm = armarModal('m-bmin', 'Minutas guardadas', '<div id="bmin-b" class="ui-nota-t">Buscando…</div>', '<button class="btn bg" data-cerrar="m-bmin">Cerrar</button>'); openM('m-bmin');
+        var L = await db().rpc('cot_minutas', { empresa: p.empresa_id || '' }); if (L.error) return set('bmin-b', esc(L.error.message)); L = L.data || [];
+        set('bmin-b', L.length ? L.map(function (x, i) { return '<div class="ui-linea"><span class="ui-f1"><b>' + esc(x.nombre) + '</b> <span class="ui-nota-t ui-num">' + esc(x.pid) + '</span>' +
+          '<div class="ui-nota-t">' + esc(x.texto.slice(0, 280)) + (x.texto.length > 280 ? '…' : '') + '</div></span>' + uiBtn('Usar', 'check', 's', 'data-bmin="' + i + '"') + '</div>'; }).join('') : 'Esta empresa no tiene minutas guardadas.');
+        mm.onclick = function (e2) { var u = e2.target.closest('[data-bmin]'); if (!u) return; var x = L[Number(u.getAttribute('data-bmin'))], t = $e('ep-res');
+          t.value = (t.value.trim() ? t.value.trim() + '\n\n' : '') + x.texto; m.dataset.sucio = '1'; closeM('m-bmin'); };
+      }
+    };
     openM('m-eproy');
     return new Promise(function (res) {
-      $e('ep-ok').onclick = function () {
-        closeM('m-eproy');
-        res({ id: p.id, sponsor: $e('ep-sp').value, owner: p.owner, probabilidad: $e('ep-prob').value, fecha_cierre: $e('ep-cierre').value });
+      $e('ep-ok').onclick = async function () {
+        if (!$e('ep-cierre').value) return toast('Falta la fecha probable de aprobación', 'err');
+        if (!alta) {
+          var datos = { id: p.id, owner: E.rsp[0] || p.owner, probabilidad: $e('ep-prob').value, fecha_cierre: $e('ep-cierre').value, descripcion: $e('ep-res').value };
+          // Las listas van sólo si cambiaron (sponsors → «sponsors», contactos del cliente → «contactos»)
+          if (E.sps.join(',') !== sps0.join(',')) datos.sponsors = E.sps; else datos.sponsor = sps0[0] || '';
+          if (E.con.join(',') !== con0.join(',')) datos.contactos_cliente = E.con;
+          if (E.rsp.join(',') !== rsp0.join(',')) datos.responsables = E.rsp;
+          closeM('m-eproy'); return res(datos);
+        }
+        // Nuevo proyecto: crea el proyecto, después sus desarrollos, el MMR y los adjuntos
+        if (!p.empresa_id) return toast('Elegí la empresa', 'err');
+        if (!$e('ep-nom').value.trim()) return toast('Falta el título del proyecto', 'err');
+        var bo = $e('ep-ok'); bo.disabled = true;
+        try {
+          var rp = await db().rpc('alta_proyecto', { p: { empresa_id: p.empresa_id, nombre: $e('ep-nom').value.trim(), fecha_cierre: $e('ep-cierre').value, probabilidad: $e('ep-prob').value,
+            resumen: $e('ep-res').value, sponsors: E.sps, contactos_cliente: E.con, responsables: E.rsp.length ? E.rsp : [yo()] } });
+          if (rp.error) throw new Error(rp.error.message);
+          var pid = rp.data.pid, ids = [], avisos = [];
+          for (var i = 0; i < LOC.devs.length; i++) {
+            var rd2 = await db().rpc('alta_desarrollo', { p: Object.assign({ pid: pid }, LOC.devs[i]._p) });
+            if (rd2.error) { avisos.push(LOC.devs[i].titulo + ': ' + rd2.error.message); ids.push(null); continue; }
+            ids.push(rd2.data.id); var ex2 = await completarDev(rd2.data.id, LOC.devs[i]._x); if (ex2) avisos.push(LOC.devs[i].titulo + ': ' + ex2);
+          }
+          if (LOC.mmr && ids[LOC.mmr._p.padreLoc]) { var q2 = LOC.mmr._p;
+            var ra = await db().rpc('alta_abono', { pid: pid, padre: ids[q2.padreLoc], cuota: q2.cuota, meses: q2.meses, ajuste: q2.ajuste, inicio: null, moneda: q2.moneda, horas: q2.horas });
+            if (ra.error) avisos.push('MMR: ' + ra.error.message); }
+          for (var j = 0; j < LOC.docs.length; j++) { try { await subirDoc(LOC.docs[j], pid, p.empresa); } catch (e3) { avisos.push(e3.message); } }
+          closeM('m-eproy'); toast(pid + ' creado como Prospecto', 'ok'); if (avisos.length) aviso('El proyecto se creó, pero hubo problemas:\n· ' + avisos.join('\n· '));
+          await cargar(); P.sub = 'proy'; abrirFicha(document.getElementById('vista'), pid); res(null);
+        } catch (e4) { toast(e4.message, 'err'); } finally { bo.disabled = false; }
       };
     });
   }
 
   // ── aprobar: qué entró, qué no y qué queda en espera (aprobarProyecto) ──
+  // ── aprobar: qué entró, qué no y qué queda en espera (aprobarProyecto) · diseño aprobado 20/11/2026 ──
+  // Una fila por desarrollo: cotizado · aprobado ($) · decisión (✓ aprueba · ✕ no acepta · ◇ sigue en Nuevo) · inicia (▶ fecha · ⏸ se posterga)
   function abrirAprobar(p) {
     var nuevas = (p.items || []).filter(function (it) { return _canonSol(it.estado || '') === 'nueva'; });
     if (!nuevas.length) return say('Este proyecto no tiene desarrollos en Nuevo para aprobar.', 'Aprobar propuesta');
-    var m = document.getElementById('m-aprob');
-    if (!m) {
-      m = document.createElement('div'); m.className = 'mo'; m.id = 'm-aprob';
-      m.innerHTML = '<div class="md"><div class="mh"><span class="mt2">Aprobar propuesta</span>' +
-        '<button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-aprob">' + ico('cerrar') + '</button></div>' +
-        '<div class="mb2"><div class="fg"><label class="fl" for="ap-fecha">Fecha de aprobación</label><input class="fc u-wauto" type="date" id="ap-fecha"></div><div class="u-s11-mt u-mb10" id="ap-n"></div><div id="ap-list"></div></div>' +
-        '<div class="mf"><button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button></div></div>';
-      document.body.appendChild(m);
-    }
-    document.getElementById('ap-fecha').value = isoMas(0);
-    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar. Si no, queda Aprobado sin facturar.';
-    document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
-      return '<div class="rowb ap-fila"><div><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
-        '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
-        (esMant(it)   // mantenimiento: se carga lo mensual y la duración; el total sale de ahí
-          ? '<label class="ap-c"><span class="u-s10-mt">Cuota mensual</span><input class="fc" type="number" data-monto data-apc="' + esc(it.id) + '" value="' + (Number(it.cuota_act) || Number(it.valor_cuota) || '') + '"></label>' +
-            '<label class="ap-c ap-c-n"><span class="u-s10-mt">Meses</span><input class="fc u-tr ui-num" type="number" min="1" data-apd="' + esc(it.id) + '" value="' + (Number(it.duracion) || 12) + '"></label>'
-          : '<label class="ap-c"><span class="u-s10-mt">Monto aprobado</span><input class="fc" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" title="Se puede corregir, p. ej. por IPC"></label><span></span>') +
-        '<label class="ap-c"><span class="u-s10-mt">Estado</span><select class="fc" data-ap="' + esc(it.id) + '"><option value="entro">Aprobado</option><option value="rechazado">No aceptado</option><option value="espera">Nuevo (sin cambios)</option></select></label>' +
-        '<label class="u-row6" data-tip="¿Inicia el desarrollo? Con fecha arranca y se puede facturar"><input type="checkbox" data-api="' + esc(it.id) + '"> Inicia</label>' +
-        '<input class="fc u-wauto" type="date" data-apf="' + esc(it.id) + '" value="' + isoMas(0) + '" aria-label="Fecha de inicio" disabled></div>';
-    }).join('') + '<div class="ui-kv">Total aprobado<span class="ui-num"><span class="ui-p-contratado" id="ap-tot"></span></span></div>';
-    var total = function () {
-      var t = 0; document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
-        if (x.value !== 'entro') return; var id = x.getAttribute('data-ap'), mo = document.querySelector('#ap-list [data-apm="' + id + '"]');
-        t += mo ? Number(mo.value) || 0 : (Number(document.querySelector('#ap-list [data-apc="' + id + '"]').value) || 0) * (Number(document.querySelector('#ap-list [data-apd="' + id + '"]').value) || 0); });
-      document.getElementById('ap-tot').textContent = fmt(t);
+    var D = {}; nuevas.forEach(function (it) { D[it.id] = { dec: 'entro', ini: esMant(it) ? 'po' : 'in' }; });
+    var cot = function (it) { return esMant(it) ? fmt(Number(it.cuota_act) || Number(it.valor_cuota) || 0) + '/mes' : fmt(Number(it.total_ars) || 0); };
+    var ic = function (k, cls, icono, tip, on) { return '<button type="button" class="ui-ib ap-' + cls + (on ? ' on' : '') + '" data-ap-' + k + '="' + cls + '" data-tip="' + tip + '" aria-label="' + tip + '">' + uiIco(icono) + '</button>'; };
+    var fila = function (it) { var d = D[it.id], off = d.dec === 'entro' ? '' : ' ap-off', m = esMant(it);
+      return '<div class="ap-fila3" data-ap="' + esc(it.id) + '"><span>' + (m ? '<span class="ui-p-abono">' + esc(it.titulo || it.id) + '</span>' : esc(it.titulo || it.id)) +
+          '<div class="ui-li-sub">' + esc(it.tipo_nombre || it.tipo || '') + (m ? ' · <span class="ui-num">' + (Number(it.duracion) || 12) + '</span> meses' : '') + '</div></span>' +
+        '<span class="ui-num">' + cot(it) + '</span>' +
+        '<span class="' + off + '"><span class="ap-pesos"><span class="ui-li-sub">$</span><input class="fc u-tr ui-num" data-monto data-apm="' + esc(it.id) + '" value="' + (m ? (Number(it.cuota_act) || Number(it.valor_cuota) || '') : (Number(it.total_ars) || '')) + '"' + (off ? ' disabled' : '') + '>' + (m ? '<span class="ui-li-sub">/mes</span>' : '') + '</span></span>' +
+        '<span class="ap-ic">' + ic('dec', 'entro', 'e_check', 'Aprueba', d.dec === 'entro') + ic('dec', 'rechazado', 'e_cruz', 'No acepta', d.dec === 'rechazado') + ic('dec', 'espera', 'e_rombo', 'Sigue en Nuevo', d.dec === 'espera') + '</span>' +
+        '<span class="u-row8' + off + '">' + (off ? '' : '<span class="ap-ic">' + ic('ini', 'in', 'e_play', 'Inicia en una fecha', d.ini === 'in') + ic('ini', 'po', 'e_pausa', 'Se posterga, sin fecha', d.ini === 'po') + '</span>' +
+          (d.ini === 'in' ? '<input class="fc" type="date" data-apf="' + esc(it.id) + '" value="' + (d.f || isoMas(0)) + '">' : '<span class="ui-li-sub">Se posterga</span>')) + '</span></div>'; };
+    var m = armarModal('m-aprob', 'Aprobar propuesta · ' + (p.nombre || p.id),
+      '<div class="ui-li-sub u-mb10">Por cada desarrollo: si el cliente lo aprueba, con qué monto y si inicia en una fecha o se posterga. Lo que no se aprueba hoy puede seguir en Nuevo y aprobarse después.</div>' +
+      '<div class="ui-filas"><div class="fg ui-w-m"><label class="fl" for="ap-fecha">Fecha de aprobación <span class="req">*</span></label><input class="fc" type="date" id="ap-fecha" value="' + isoMas(0) + '"></div></div>' +
+      '<div class="ap-fila3 ap-h"><span>Desarrollo</span><span>Monto cotizado</span><span>Monto aprobado</span><span>Decisión</span><span>Inicia</span></div><div id="ap-list"></div><div id="ap-tot" class="u-mt10"></div>',
+      '<button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button>', 'md-xl ap-ancho');
+    var leerMontos = function () { m.querySelectorAll('[data-apm]').forEach(function (x) { D[x.getAttribute('data-apm')].monto = Number(x.value) || 0; });
+      m.querySelectorAll('[data-apf]').forEach(function (x) { D[x.getAttribute('data-apf')].f = x.value; }); };
+    var monto = function (it) { var d = D[it.id]; return d.monto != null ? d.monto : (esMant(it) ? (Number(it.cuota_act) || Number(it.valor_cuota) || 0) : (Number(it.total_ars) || 0)); };
+    var pintar = function () {
+      set('ap-list', nuevas.map(fila).join(''));
+      var ad = 0, am = 0, ne = 0, no = 0;
+      nuevas.forEach(function (it) { var d = D[it.id], v = monto(it);
+        if (d.dec === 'entro') { if (esMant(it)) am += v; else ad += v; } else if (d.dec === 'espera') ne += v; else no += v; });
+      set('ap-tot', '<div class="ui-kv"><span>Aprobado hoy · desarrollos</span><span class="ui-num ui-p-contratado">' + fmt(ad) + '</span></div>' +
+        (am ? '<div class="ui-kv"><span>Aprobado hoy · MMR</span><span class="ui-num ui-p-abono">' + fmt(am) + '/mes</span></div>' : '') +
+        '<div class="ui-kv"><span>Sigue en Nuevo</span><span class="ui-num">' + fmt(ne) + '</span></div>' +
+        '<div class="ui-kv"><span>No aceptado</span><span class="ui-num ui-p-error">' + fmt(no) + '</span></div>');
     };
-    var inicia = function () {   // la fecha sólo con «Aprobado» e «Inicia»
-      document.querySelectorAll('#ap-list [data-api]').forEach(function (c) {
-        var id = c.getAttribute('data-api'), entro = document.querySelector('#ap-list [data-ap="' + id + '"]').value === 'entro';
-        if (!entro) c.checked = false; c.disabled = !entro;
-        document.querySelector('#ap-list [data-apf="' + id + '"]').disabled = !c.checked;
-      });
+    // al escribir un monto se recalculan sólo los totales (no se repinta la fila que se está escribiendo)
+    m.oninput = function () { leerMontos(); var ad = 0, am = 0, ne = 0, no = 0;
+      nuevas.forEach(function (it) { var d = D[it.id], v = monto(it); if (d.dec === 'entro') { if (esMant(it)) am += v; else ad += v; } else if (d.dec === 'espera') ne += v; else no += v; });
+      set('ap-tot', '<div class="ui-kv"><span>Aprobado hoy · desarrollos</span><span class="ui-num ui-p-contratado">' + fmt(ad) + '</span></div>' +
+        (am ? '<div class="ui-kv"><span>Aprobado hoy · MMR</span><span class="ui-num ui-p-abono">' + fmt(am) + '/mes</span></div>' : '') +
+        '<div class="ui-kv"><span>Sigue en Nuevo</span><span class="ui-num">' + fmt(ne) + '</span></div><div class="ui-kv"><span>No aceptado</span><span class="ui-num ui-p-error">' + fmt(no) + '</span></div>'); };
+    m.onclick = function (ev) {
+      var b = ev.target.closest('[data-ap-dec],[data-ap-ini]'); if (!b) return; leerMontos();
+      var id = b.closest('[data-ap]').getAttribute('data-ap');
+      if (b.hasAttribute('data-ap-dec')) D[id].dec = b.getAttribute('data-ap-dec'); else D[id].ini = b.getAttribute('data-ap-ini');
+      pintar();
     };
-    document.getElementById('ap-list').oninput = total; document.getElementById('ap-list').onchange = function () { total(); inicia(); }; setTimeout(function () { total(); inicia(); }, 0);
+    pintar();
     return new Promise(function (res) {
       document.getElementById('ap-ok').onclick = function () {
+        leerMontos();
         var dec = {}, montos = {}, mants = {}, inicios = {}, n = 0, malo = '', sinFecha = '';
-        document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
-          var id = x.getAttribute('data-ap'); dec[id] = x.value;
-          if (x.value !== 'entro') return; n++;
-          var mo = document.querySelector('#ap-list [data-apm="' + id + '"]');
-          if (mo) { var m = Number(mo.value) || 0; if (m <= 0) malo = id; montos[id] = m; }
-          else { var cu = Number(document.querySelector('#ap-list [data-apc="' + id + '"]').value) || 0, du = Number(document.querySelector('#ap-list [data-apd="' + id + '"]').value) || 0; if (cu <= 0 || du <= 0) malo = id; mants[id] = { cuota: cu, duracion: du }; }
-          if (document.querySelector('#ap-list [data-api="' + id + '"]').checked) {
-            var f = document.querySelector('#ap-list [data-apf="' + id + '"]').value; if (!f) sinFecha = id; else inicios[id] = f;
-          }
-        });
-        if (!n) return say('Marcá al menos uno como Aprobado.\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
-        if (malo) return say('Los valores de ' + malo + ' tienen que ser mayores a 0.', 'Aprobar propuesta');
-        if (sinFecha) return say('Falta la fecha de inicio de ' + sinFecha + '.', 'Aprobar propuesta');
+        nuevas.forEach(function (it) { var d = D[it.id]; dec[it.id] = d.dec; if (d.dec !== 'entro') return; n++;
+          var v = monto(it); if (v <= 0) malo = it.titulo || it.id;
+          if (esMant(it)) mants[it.id] = { cuota: v, duracion: Number(it.duracion) || 12 }; else montos[it.id] = v;
+          if (d.ini === 'in') { if (!d.f) sinFecha = it.titulo || it.id; else inicios[it.id] = d.f; } });
+        if (!document.getElementById('ap-fecha').value) return say('Falta la fecha de aprobación.', 'Aprobar propuesta');
+        if (!n) return say('Marcá al menos uno como Aprueba.\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
+        if (malo) return say('El monto aprobado de «' + malo + '» tiene que ser mayor a 0.', 'Aprobar propuesta');
+        if (sinFecha) return say('Falta la fecha de inicio de «' + sinFecha + '».', 'Aprobar propuesta');
         closeM('m-aprob'); res({ dec: dec, montos: montos, mants: mants, inicios: inicios, fecha: document.getElementById('ap-fecha').value || isoMas(0) });
       };
       openM('m-aprob');
@@ -1138,7 +1356,7 @@
     var cab = uiHd('Proyectos', {
       seg: 'Proyectos en marcha y en negociación, para revisar.',
       proy: 'Todos los proyectos, con sus desarrollos y su estado.'
-    }[P.sub] || 'Seguimiento y estado de cada proyecto.', uiBtn('Nueva cotización', 'lista', 's', 'data-pm="nueva-cot"') + uiBtn('Nuevo proyecto rápido', 'mas', 'p', 'data-pm="nv-abrir"'));
+    }[P.sub] || 'Seguimiento y estado de cada proyecto.', uiBtn('Nueva cotización', 'lista', 's', 'data-pm="nueva-cot"') + uiBtn('Nuevo proyecto', 'mas', 'p', 'data-pm="nv-abrir"'));
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
     var tabs = uiTabs([['proy', 'Proyectos', 'data-pm="sub" data-s="proy"'], ['seg', 'Seguimiento', 'data-pm="sub" data-s="seg"']], P.sub);
     if (P.sub === 'seg') el.innerHTML = cab + tabs + '<div id="seg-c">' + htmlSeg() + '</div>';
@@ -1160,7 +1378,7 @@
     var nvPedido = s === 'nuevo';                 // el viejo #/pm/nuevo abre el modal
     await abrirModulo(el, { id: 'pm', texto: 'Cargando proyectos…', forzar: op && op.forzar, cargar: leer,
       cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f]); }, pintar: function () { pintar(el); } });
-    if (nvPedido) nvAbrir(el);
+    if (nvPedido) abrirEditarProy(null);
     if (!el._pmBound) {                          // una vez: #vista es el mismo para todos los módulos
       el._pmBound = true;
       el.addEventListener('ui-toggle', function (ev) {
@@ -1196,9 +1414,7 @@
     var proy = function (id) { return P.proys.find(function (x) { return x.id === id; }); };
     // Un modal simple (C14 de la app: .mo/.md): cuerpo + Cancelar / Confirmar; resuelve true al confirmar
     var modal = function (tit, cuerpo, okTxt, valida) {
-      var m = document.getElementById('m-pm'); if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = 'm-pm'; document.body.appendChild(m); }
-      m.innerHTML = '<div class="md md-sm"><div class="mh"><span class="mt2">' + esc(tit) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="m-pm">' + ico('cerrar') + '</button></div>' +
-        '<div class="mb2">' + cuerpo + '</div><div class="mf"><button class="btn bg" data-cerrar="m-pm">Cancelar</button><button class="btn bp" id="m-pm-ok">' + esc(okTxt) + '</button></div></div>';
+      armarModal('m-pm', tit, cuerpo, '<button class="btn bg" data-cerrar="m-pm">Cancelar</button><button class="btn bp" id="m-pm-ok">' + esc(okTxt) + '</button>');
       openM('m-pm');
       return new Promise(function (res) {
         document.getElementById('m-pm-ok').onclick = function () { var e = valida ? valida() : ''; if (e) return toast(e, 'err'); closeM('m-pm'); res(true); };
@@ -1240,7 +1456,12 @@
         (L.length ? '<label class="u-row6 u-mb6"><input type="radio" name="pm-alc" value="algunos"> Sólo estos desarrollos</label><div class="u-mb10">' + L.map(function (it) {
           return '<label class="u-row6 rowb"><input type="checkbox" data-cor="' + esc(it.id) + '"> ' + esc(it.titulo || it.id) + ' <span class="u-s10-mt">· ' + esc(uiNombreEst(it.estado)) + '</span></label>'; }).join('') + '</div>'
           : '<div class="u-s11-mt u-mb10">' + (rech ? 'No hay desarrollos para marcar como no aceptados por separado.' : 'Sólo se pausan por separado las mejoras, soportes y mantenimientos que dependen de otro.') + '</div>') +
-        '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>', tit,
+        '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>' +
+        // Detener: fecha de recontacto opcional → una tarea ese día (20/11/2026)
+        (rech ? '' : '<div class="ui-filas ui-rep"><div class="fg"><label class="fl" for="pm-recon">Fecha de recontacto</label><input class="fc" type="date" id="pm-recon"></div>' +
+          '<div class="fg"><label class="fl" for="pm-recon-q">Responsable de la tarea</label><select class="fc" id="pm-recon-q">' +
+            Object.keys(P.users).map(function (k) { return '<option value="' + esc(k) + '"' + (k === String(p.owner || '').trim().toLowerCase() ? ' selected' : '') + '>' + esc(P.users[k]) + '</option>'; }).join('') + '</select></div></div>' +
+          '<div class="ui-nota-t">Con fecha, se crea la tarea «Recontactar a ' + esc(p.empresa || 'el cliente') + '» para ese día, vinculada al proyecto. Sin fecha, sólo se detiene.</div>'), tit,
         function () {
           var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value;
           if (alc === 'algunos' && !document.querySelector('#m-pm [data-cor]:checked')) return 'Marcá al menos un desarrollo';
@@ -1248,6 +1469,7 @@
         });
       if (!ok) return;
       var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value, txt = document.getElementById('pm-com').value.trim();
+      var recon = !rech && document.getElementById('pm-recon') ? document.getElementById('pm-recon').value : '', reconQ = recon ? document.getElementById('pm-recon-q').value : '';
       var ids = Array.prototype.filter.call(document.querySelectorAll('#m-pm [data-cor]'), function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-cor'); });
       var r;
       if (alc === 'todo') r = await db().rpc(rech ? 'rechazar_proyecto' : 'detener_proyecto', rech ? { pid: p.id } : { pid: p.id, detener: true });
@@ -1256,6 +1478,10 @@
       if (r && r.error) return toast(r.error.message, 'err');
       var nombres = ids.map(function (x) { var it = itemDe(x); return it ? (it.titulo || x) : x; });
       await db().rpc('comentar', { p: { proyecto_id: p.id, texto: (rech ? 'No aceptado' : 'Detenido') + (alc === 'todo' ? ' (proyecto completo)' : ': ' + nombres.join(', ')) + '. ' + txt } });
+      if (recon) {   // la misma alta de tareas del CRM (nueva_tarea)
+        var tk = await db().rpc('nueva_tarea', { p: { title: 'Recontactar a ' + (p.empresa || p.nombre || p.id), detail: txt, clientId: p.empresa_id, projectId: p.id, priority: 'Media', assignees: reconQ, due: recon } });
+        if (tk.error) toast('Se detuvo, pero no se creó la tarea de recontacto: ' + tk.error.message, 'err'); else toast('Tarea de recontacto para el ' + ff(recon), 'ok');
+      }
       toast(rech ? 'No aceptado' : 'Detenido', 'ok'); if (rech) toast(AVISO_ALERTAS, 'inf'); refrescar();
     };
     // Nueva mejora / Nuevo soporte: una línea simple en Nuevo, que depende del desarrollo elegido
@@ -1336,6 +1562,7 @@
       if (!(await ask('«' + (p.nombre || p.id) + '» pasa a ' + nombreProy(canon) + '.', 'Cambiar estado', { ok: 'Cambiar' }))) return;
       return hacer('cambiar_estado_proyecto', { pid: p.id, estado: nombreProy(canon) }, 'Estado: ' + nombreProy(canon));
     };
+    P.acc = { arrancar: arrancar, corte: corte, estado: cambiarEstado };   // Editar proyecto usa las mismas acciones (20/11/2026)
     el.onchange = function (ev) {
       var t = ev.target;
       if (t.id === 'pr-orden') { P.pr.orden = t.value; return pintar(el); }
@@ -1371,7 +1598,7 @@
         if (!ffin || !ffin.value) return toast('Elegí la fecha de fin', 'err');
         return hacer('fecha_desarrollo', { did: id, campo: 'fecha_fin', fecha: ffin.value }, 'Fecha de fin guardada');
       }
-      if (a === 'nv-abrir') return nvAbrir(el);
+      if (a === 'nv-abrir') return abrirEditarProy(null);
       if (a === 'sem-des') { var fs = document.createElement('input'); fs.type = 'number'; fs.min = '1'; fs.className = 'ui-campo ui-num'; fs.style.width = '90px'; fs.placeholder = 'semanas'; fs.setAttribute('data-fsem', b.getAttribute('data-id')); fs.setAttribute('aria-label', 'Duración en semanas');
         b.replaceWith(fs); fs.focus(); return; }
       if (a === 'ajuste-des') return hacer('desarrollo_ajuste', { did: id, si: b.getAttribute('data-si') === '1' }, 'Ajuste por IPC actualizado');
@@ -1467,6 +1694,6 @@
     P.sub = s; pintar(document.getElementById('vista')); window.scrollTo(0, 0);
   };
   VISTAS.pm.precargar = cargar;
-  // La Carga rápida también se abre desde el Cotizador (03/11/2026): el mismo modal, sin duplicarlo
-  window.abrirCargaRapida = function () { nvAbrir(document.getElementById('vista')); };
+  // Nuevo proyecto también se abre desde otras vistas: el mismo modal (20/11/2026)
+  window.abrirNuevoProyecto = function () { abrirEditarProy(null); };
 })();

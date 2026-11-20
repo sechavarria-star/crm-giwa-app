@@ -123,7 +123,7 @@
                       C.sub === 'ver' ? 'lista' : C.sub);
     var cuerpo = C.sub === 'nuevo' ? htmlEditor() : C.sub === 'ver' ? htmlVer() : C.sub === 'reunion' ? htmlReunion() : htmlLista();
     el.innerHTML = uiHd('Cotizador', 'Cotizar un proyecto por funcionalidad, guardarlo como borrador y crearlo como prospecto.',
-      uiBtn('Reutilizar proyecto', 'repetir', 's', 'data-cot="reutilizar"') + uiBtn('Carga rápida', 'mas', 's', 'data-cot="rapida"')) + tabs + '<div id="cot-c">' + cuerpo + '</div>';
+      uiBtn('Reutilizar proyecto', 'repetir', 's', 'data-cot="reutilizar"') + uiBtn('Nuevo proyecto sin cotizar', 'mas', 's', 'data-cot="rapida"')) + tabs + '<div id="cot-c">' + cuerpo + '</div>';
   }
   function repintar() { var c = document.getElementById('cot-c'); if (!c || C.sub !== 'nuevo') return; edGuardar(); c.innerHTML = htmlEditor(); if (abierto('m-fun')) funPintar(); if (abierto('m-cor')) corPintar(); }
   // Qué desplegables de la ventana de edición están abiertos (se conserva al repintar)
@@ -204,7 +204,7 @@
         '<div class="ui-sub-t">' + esc(d.objetivo || 'Sin alcance') + '</div></div>' +
       '<div class="ui-dev-der"><span class="ui-num">' + (d.est ? fmt(total(d)) : '…') + '</span><span class="ui-fila-ic">' + uiAcc('editar', 'data-cot="dev-editar" data-i="' + i + '"') + '</span></div></div>';
     if (on) h += '<div class="ui-devc">' + incluye(d) + '</div>';
-    if (propio(d)) h += '<div class="cot-mant-f"><span class="ui-f1"><span class="ui-num">' + (n + 1) + '</span>. <span class="ui-p-abono">Mantenimiento</span> · ' + esc(d.titulo || tipoNom(d.tipo)) +
+    if (propio(d)) h += '<div class="cot-mant-f"><span class="ui-f1"><span class="ui-num">' + (n + 1) + '</span>. <span class="ui-p-abono">MMR de ' + esc(d.titulo || tipoNom(d.tipo)) + '</span>' +
       ' <span class="ui-nota-t">· <span class="ui-num">' + h1(d.mant.hs) + '</span> h por mes · ' + mantTxt(d) + ' · IPC cada <span class="ui-num">3</span> meses</span></span>' +
       '<span class="ui-num ui-p-abono">' + fmt(d.mant.abono || 0) + '/mes</span><span class="ui-fila-ic">' + uiIb('editar', 'Editar el mantenimiento', 'edi', 'data-cot="mant-i" data-i="' + i + '"') +
       uiIb('borrar', 'Quitar el mantenimiento', 'bor', 'data-cot="mant-quitar" data-i="' + i + '"') + '</span></div>';
@@ -559,7 +559,7 @@
   function mantPop() {
     var v = dev(), mt = v.mant, sop = soporte();
     var otros = CN.devs.map(function (d, i) { return d.tipo && i !== CN.i && propio(d) ? '<option value="' + i + '"' + (String(mt.comparte) === String(i) ? ' selected' : '') + '>' + esc(tipoNom(d.tipo)) + ' · ' + esc(d.titulo || 'Sin título') + '</option>' : ''; }).join('');
-    var m = modal('m-mant', 'Mantenimiento · ' + (v.titulo || tipoNom(v.tipo)),
+    var m = modal('m-mant', 'MMR de ' + (v.titulo || tipoNom(v.tipo)),
       '<div class="g2"><div class="fg"><label class="fl" for="mt-hs">Horas por mes · sugerido <span class="ui-num">' + mantHs(v) + '</span> h</label><input class="fc u-tr" type="number" min="1" step="0.5" id="mt-hs" value="' + mt.hs + '"></div>' +
       '<div class="fg"><label class="fl" for="mt-ab">Abono mensual · <span id="mt-sug"></span></label><input class="fc u-tr" type="number" min="0" id="mt-ab" data-monto value="' + (mt.abono || 0) + '"></div></div>' +
       '<div class="u-s11-mt">Incluye ' + mantTxt(v) + '. Hora de soporte <span class="ui-num">' + fmt(sop) + '</span>. Ajuste por IPC cada <span class="ui-num">3</span> meses. El monto es tuyo: cambialo si querés.</div>' +
@@ -910,7 +910,7 @@
   async function abrirCot(pid) {
     var r = await rpc('cot_leer', { pid: pid });
     var x = nuevo(); x.pid = r.pid; x.estado = r.estado; x.empresa = r.empresa; x.nombre = r.nombre; x.fecha_cierre = r.fecha_cierre || ''; x.minuta = r.minuta || {};
-    x.sponsors = String(r.contactos || r.sponsor || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    x.sponsors = String(r.sponsors || r.sponsor || '')   /* sponsors en su campo; «contactos» = Contactos del cliente (20/11/2026) */.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     x.owners = (x.minuta.responsables && x.minuta.responsables.length ? x.minuta.responsables : [r.owner]).filter(Boolean);
     var idx = {}; r.devs.forEach(function (d, i) { idx[d.id] = i; });
     x.devs = r.devs.map(function (d) { var v = vacio(); Object.keys(d).forEach(function (k) { if (d[k] != null && k !== 'mant') v[k] = d[k]; });
@@ -953,10 +953,7 @@
   }
   // El modal de la app (.mo/.md), con su título, cuerpo y pie
   function modal(id, tit, cuerpo, pie, cls) {
-    var m = document.getElementById(id); if (!m) { m = document.createElement('div'); m.className = 'mo'; m.id = id; document.body.appendChild(m); }
-    m.innerHTML = '<div class="md ' + (cls || 'md-sm') + '"><div class="mh"><span class="mt2">' + esc(tit) + '</span><button class="btn bg sm btn-ico" data-tip="Cerrar" aria-label="Cerrar" data-cerrar="' + id + '">' + ico('cerrar') + '</button></div>' +
-      '<div class="mb2">' + cuerpo + '</div><div class="mf">' + pie + '</div></div>';
-    m.onclick = m.onchange = m.oninput = null; openM(id); return m;
+    var m = armarModal(id, tit, cuerpo, pie, cls || 'md-sm'); openM(id); return m;   // el armador único (util.js)
   }
 
   VISTAS.cot = async function (el, op) {
@@ -972,7 +969,7 @@
       var a = b.getAttribute('data-cot'), id = b.getAttribute('data-id');
       if (a === 'reutilizar') return reutilizar(el);
       if (a === 'sub') { C.sub = b.getAttribute('data-s'); if (C.sub === 'nuevo' && !CN) CN = recuperar() || nuevo(); pintar(el); if (C.sub === 'nuevo') CN.devs.forEach(function (v, i) { if (v.tipo) catalogo(v.tipo).then(function () { estimar(i); }); }); return; }
-      if (a === 'rapida') return typeof window.abrirCargaRapida === 'function' ? window.abrirCargaRapida() : (location.hash = '#/pm/nuevo');
+      if (a === 'rapida') return typeof window.abrirNuevoProyecto === 'function' ? window.abrirNuevoProyecto() : (location.hash = '#/pm');   // el modal único de Proyectos (20/11/2026)
       if (a === 'ver') { C.sub = 'ver'; C.ver = null; pintar(el);
         try { var o = await abrirCot(id); C.ver = Object.assign(o.r, { _cn: o.cn, empresa_nombre: (C.ini.empresas.filter(function (e) { return e.id === o.r.empresa; })[0] || {}).nombre }); } catch (e) { aviso(e.message); }
         return pintar(el); }
