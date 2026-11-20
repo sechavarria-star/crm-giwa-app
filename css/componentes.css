@@ -631,3 +631,5 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-li .ui-ib .ui-ico { width: var(--ico-xs); height: var(--ico-xs); }
 .ui-li .ui-ib { padding: 2px; }
 .ui-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 var(--e5); }
+.ui-vio input[type=checkbox] { accent-color: var(--secundaria); }   /* MMR e IPC: el violeta del abono */
+.ui-li .ui-p-abono .ui-ico { width: var(--ico-xs); height: var(--ico-xs); vertical-align: -1px; }

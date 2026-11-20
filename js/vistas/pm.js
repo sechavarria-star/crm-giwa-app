@@ -1032,10 +1032,12 @@
     var r = await Promise.all([
       db().from('proyectos').select('creado,fecha_aprobacion,fecha_cierre_probable,minuta,resumen_ejecutivo,contactos,sponsor_id').eq('id', p.id).maybeSingle(),
       db().from('empresas').select('tier_id').eq('id', p.empresa_id || '-').maybeSingle(),
-      db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre')
+      db().from('contactos').select('id,nombre,apellido,puesto,area_trabajo,email,telefono').eq('empresa_id', p.empresa_id || '-').order('nombre'),
+      db().from('desarrollos').select('id,mantenimiento_horas').eq('proyecto_id', p.id)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) return toast(err.error.message, 'err');
-    var d = r[0].data || {}, cons = r[2].data || [], min = {};
+    var d = r[0].data || {}, cons = r[2].data || [], min = {}, mhs = {};
+    (r[3].data || []).forEach(function (x) { mhs[x.id] = Number(x.mantenimiento_horas) || 0; });
     try { min = d.minuta ? JSON.parse(d.minuta) : {}; } catch (e) { min = {}; }
     // Sponsors como los lee el Cotizador: «contactos» cuando incluye al sponsor. Los proyectos viejos (contactos con otra gente) muestran sólo el sponsor.
     var lc = crmLista(d.contactos), sps0 = d.sponsor_id && lc.indexOf(d.sponsor_id) < 0 ? [d.sponsor_id] : (lc.length ? lc : (d.sponsor_id ? [d.sponsor_id] : []));
@@ -1068,9 +1070,121 @@
         '<div><div class="ui-sec-h">Sponsors</div><div id="ep-sps"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="sp-agregar">+ Agregar sponsor</button></div>' +
         '<div><div class="ui-sec-h">Contactos del cliente</div><div class="ui-nota-t">Se habilita cuando tenga su campo propio.</div></div>' +
         '<div><div class="ui-sec-h">Responsables</div><div id="ep-rsp"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="ow-agregar">+ Agregar responsable</button></div>' +
-      '</div>',
+      '</div><div id="ep-econ"></div>',
       '<button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">Guardar</button>');
     lista();
+    // ── Etapa 3 · Desarrollos incluidos, MMR y totales (sale de p.items, lo mismo que muestra la ficha) ──
+    var vivo = function (it) { return _canonSol(it.estado) !== 'rechazada'; };
+    var monto = function (it) { return it.moneda === 'USD' && Number(it.total_usd) ? fmt(it.total_usd, 'USD') : fmt(it.total_ars); };
+    var cuota = function (it) { return Number(it.cuota_act) || Number(it.valor_cuota) || 0; };
+    var econ = function () {
+      var its = (p.items || []).filter(vivo), devs = its.filter(function (it) { return !esMant(it); }), mants = its.filter(esMant);
+      var aprob = 0, neg = 0, mes = 0;
+      devs.forEach(function (it) { if (esGanado(it.estado)) aprob += Number(it.total_ars) || 0; else if (_canonSol(it.estado) === 'nueva') neg += Number(it.total_ars) || 0; });
+      mants.forEach(function (it) { if (!desCerrado(it)) mes += cuota(it); });
+      var tot = aprob + neg + 12 * mes, tc = window.TC || 0;
+      $e('ep-econ').innerHTML = '<div class="ui-sec-h">Desarrollos incluidos</div>' +
+        (devs.length ? devs.map(function (it) { var nuevo = _canonSol(it.estado) === 'nueva';
+          return '<div class="ui-li"><span class="ui-f1">' + esc(it.titulo || it.id) + '<div class="ui-li-sub">' + esc(it.tipo_nombre || it.tipo || '') + '</div></span>' +
+            '<span class="ui-num' + (esGanado(it.estado) ? ' ui-p-contratado' : '') + '">' + monto(it) + '</span><span class="ui-li-sub ui-num">' + (it.moneda === 'USD' ? 'USD' : 'ARS') + '</span>' +
+            '<span>' + uiEstado(uiNombreEst(it.estado)) + '</span>' + uiIb('editar', 'Editar', '', 'data-ep="dev-editar" data-id="' + esc(it.id) + '"') +
+            (nuevo ? uiIb('cerrar', 'No aceptar', '', 'data-ep="dev-quitar" data-id="' + esc(it.id) + '"') : '') + '</div>'; }).join('') : '<div class="ui-nota-t">Sin desarrollos.</div>') +
+        '<button type="button" class="ui-lnk ui-azul u-mt6" data-ep="dev-agregar">+ Agregar desarrollo</button>' +
+        '<div class="ui-sec-h">Mantenimiento mensual · MMR</div>' +
+        '<label class="u-row6 u-mb6 ui-vio"><input type="checkbox" data-ep="mmr-check"' + (mants.length ? ' checked' : '') + '> Incluye mantenimiento</label>' +
+        mants.map(function (it) { var ipc = !/sin/i.test(it.inflacion || '') && !!it.inflacion, nuevo = _canonSol(it.estado) === 'nueva';
+          return '<div class="ui-li"><span class="ui-f1"><span class="ui-p-abono">' + esc(it.titulo || it.id) + '</span><div class="ui-li-sub"><span class="ui-num">' + (Number(it.duracion) || 12) + '</span> meses' +
+            (ipc ? ' · <span class="ui-p-abono">' + uiIco('check') + ' Ajuste por IPC</span>' : ' · sin ajuste por IPC') + (mhs[it.id] ? ' · <span class="ui-num">' + String(mhs[it.id]).replace('.', ',') + '</span> h por mes' : '') +
+            ' · ' + esc(uiNombreEst(it.estado)) + '</div></span><span class="ui-num ui-p-abono">' + fmt(cuota(it)) + '/mes</span><span class="ui-li-sub ui-num">ARS</span>' +
+            uiIb('editar', 'Editar', '', 'data-ep="mmr-editar" data-id="' + esc(it.id) + '"') + (nuevo ? uiIb('cerrar', 'No aceptar', '', 'data-ep="mmr-quitar" data-id="' + esc(it.id) + '"') : '') + '</div>'; }).join('') +
+        (mants.some(function (it) { return !desCerrado(it); }) ? '' : '<button type="button" class="ui-lnk ui-azul u-mt6" data-ep="mmr-agregar">+ Agregar MMR</button>') +
+        '<div class="u-mt10"><div class="ui-kv"><span>Aprobado</span><span class="ui-num ui-p-contratado">' + fmt(aprob) + '</span></div>' +
+        '<div class="ui-kv"><span>En negociación (Nuevo)</span><span class="ui-num">' + fmt(neg) + '</span></div>' +
+        '<div class="ui-kv"><span>MMR por mes · anual</span><span class="ui-num ui-p-abono">' + fmt(mes) + ' · ' + fmt(mes * 12) + '</span></div>' +
+        '<div class="ui-kv"><span>Total del proyecto a <span class="ui-num">12</span> meses</span><span class="ui-num">' + fmt(tot) + (tc ? ' · <span class="ui-p-usd">' + fmt(tot / tc, 'USD') + '</span>' : '') + '</span></div></div>';
+    };
+    var recargar = async function () { await cargar(); p = P.proys.find(function (x) { return x.id === p.id; }) || p;
+      var h = await db().from('desarrollos').select('id,mantenimiento_horas').eq('proyecto_id', p.id); (h.data || []).forEach(function (x) { mhs[x.id] = Number(x.mantenimiento_horas) || 0; }); econ(); };
+    econ();
+    // Agregar desarrollo suelto (alta_desarrollo · clase desarrollo): lo de la Carga rápida, sin horas
+    var altaDesarrollo = async function () {
+      var L = await Promise.all([db().from('tipos_desarrollo').select('id,nombre').order('orden'), db().from('modelos_pago').select('id,nombre').order('orden')]);
+      var o = function (X, ph) { return '<option value="">' + ph + '</option>' + (X.data || []).map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.nombre) + '</option>'; }).join(''); };
+      var mon = 'ARS';
+      var md = armarModal('m-adev', 'Agregar desarrollo · ' + (p.nombre || ''),
+        '<div class="ui-sec-h">Desarrollo</div>' +
+        '<div class="ui-filas"><div class="fg ui-w-l"><label class="fl" for="ad2-tipo">Tipo de desarrollo <span class="req">*</span></label><select class="fc" id="ad2-tipo">' +
+          o({ data: (L[0].data || []).filter(function (t) { return !/mantenimiento/i.test(t.nombre); }) }, 'Elegí') + '</select></div>' +
+          '<div class="fg ui-w-f"><label class="fl" for="ad2-tit">Título <span class="req">*</span></label><input class="fc" id="ad2-tit"></div></div>' +
+        '<div class="fg"><label class="fl" for="ad2-alc">Alcance</label><textarea class="fc" rows="2" id="ad2-alc"></textarea></div>' +
+        '<div class="ui-sec-h">Precio</div>' +
+        '<div class="ui-filas"><div class="fg ui-w-s"><span class="fl">Moneda</span><span class="ui-mon" role="group" aria-label="Moneda"><button type="button" class="ui-mon-b ui-mon-ars on" data-ad2="ARS">ARS</button><button type="button" class="ui-mon-b ui-mon-usd" data-ad2="USD">USD</button></span></div>' +
+          '<div class="fg ui-w-l"><label class="fl" for="ad2-monto">Monto <span class="req">*</span></label><input class="fc u-tr ui-num" type="number" min="0" id="ad2-monto" data-monto><div class="u-s11-mt" id="ad2-eq"></div></div>' +
+          '<div class="fg ui-w-f"><label class="fl" for="ad2-fp">Forma de pago <span class="req">*</span></label><select class="fc" id="ad2-fp">' + o(L[1], 'Elegí') + '</select></div></div>' +
+        '<div class="ui-filas ui-rep"><div class="fg"><label class="fl" for="ad2-cuo">Cuotas</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="1" id="ad2-cuo" value="1"></div>' +
+          '<div class="fg"><label class="fl" for="ad2-sem">Semanas <span class="req">*</span></label><input class="fc u-tr ui-num" style="width:80px" type="number" min="1" id="ad2-sem"></div>' +
+          '<div class="fg"><label class="fl" for="ad2-gar">Días de garantía</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="0" id="ad2-gar"></div>' +
+          '<div class="fg"><span class="fl">Ajuste por IPC</span><label class="u-row6 ui-vio"><input type="checkbox" id="ad2-ipc" checked> Ajusta</label></div></div>' +
+        '<div class="ui-nota-t">Nace en Nuevo y sin horas: no hay comparación con el mercado ni con el costo. Para cotizar por funcionalidad, usá el Cotizador.</div>' +
+        '<div class="u-c-rd u-s11" id="ad2-err"></div>',
+        '<button class="btn bg" data-cerrar="m-adev">Cancelar</button><button class="btn bg" data-ad2ok="otro">Agregar y cargar otro</button><button class="btn bp" data-ad2ok="1">Agregar</button>');
+      var eq = function () { var n = Number($e('ad2-monto').value) || 0, tc = window.TC || 0;
+        set('ad2-eq', n && tc ? '= <span class="ui-num ui-p-usd">' + (mon === 'USD' ? fmt(n * tc) : fmt(n / tc, 'USD')) + '</span>' : ''); };
+      md.oninput = eq;
+      md.onclick = async function (ev) {
+        var b = ev.target.closest('[data-ad2],[data-ad2ok]'); if (!b) return;
+        if (b.hasAttribute('data-ad2')) { mon = b.getAttribute('data-ad2'); md.querySelectorAll('[data-ad2]').forEach(function (x) { x.classList.toggle('on', x === b); });
+          $e('ad2-ipc').checked = mon === 'ARS'; return eq(); }   // en USD no suele ajustarse por IPC
+        var v = function (id) { return String($e(id).value || '').trim(); };
+        var falta = [!v('ad2-tipo') && 'el tipo', !v('ad2-tit') && 'el título', !(Number(v('ad2-monto')) > 0) && 'el monto', !v('ad2-fp') && 'la forma de pago', !(Number(v('ad2-sem')) > 0) && 'las semanas'].filter(Boolean);
+        if (falta.length) return set('ad2-err', 'Falta ' + falta.join(', ') + '.');
+        md.querySelectorAll('[data-ad2ok]').forEach(function (x) { x.disabled = true; });
+        var rr = await db().rpc('alta_desarrollo', { p: { clase: 'desarrollo', pid: p.id, tipo: v('ad2-tipo'), titulo: v('ad2-tit'), descripcion: v('ad2-alc'), moneda: mon, monto: v('ad2-monto'), forma_pago: v('ad2-fp'), cuotas: v('ad2-cuo') } });
+        md.querySelectorAll('[data-ad2ok]').forEach(function (x) { x.disabled = false; });
+        if (rr.error) return set('ad2-err', esc(rr.error.message));
+        var did = rr.data.id, extra = [db().rpc('desarrollo_semanas', { did: did, semanas: Number(v('ad2-sem')) }), db().rpc('desarrollo_ajuste', { did: did, si: $e('ad2-ipc').checked })];
+        if (v('ad2-gar')) extra.push(db().rpc('guardar_desarrollo', { p: { id: did, garantia_dias: v('ad2-gar') } }));
+        var ex = (await Promise.all(extra)).find(function (x) { return x.error; }); if (ex) toast('Se creó ' + did + ', pero no se guardó todo: ' + ex.error.message, 'err');
+        toast(rr.data.msg, 'ok'); await recargar();
+        if (b.getAttribute('data-ad2ok') === 'otro') { ['ad2-tit', 'ad2-alc', 'ad2-monto', 'ad2-sem', 'ad2-gar'].forEach(function (id) { $e(id).value = ''; }); set('ad2-eq', ''); set('ad2-err', ''); delete md.dataset.sucio; $e('ad2-tit').focus(); }
+        else closeM('m-adev');
+      };
+      openM('m-adev');
+    };
+    // MMR: el mismo modal para agregar (alta_abono) y para editar (Nuevo: guardar_desarrollo · aprobado: editar_monto_aprobado)
+    var mmrModal = function (it) {
+      var alta = !it, gan = it && esGanado(it.estado), mon = 'ARS';
+      var devs = (p.items || []).filter(function (x) { return vivo(x) && !esMant(x); });
+      var ipc0 = alta ? true : (!/sin/i.test(it.inflacion || '') && !!it.inflacion);
+      var mt = armarModal('m-mmr', (alta ? 'Agregar MMR · ' : 'Editar MMR · ') + (p.nombre || ''),
+        (alta ? '<div class="ui-filas"><div class="fg ui-w-f"><label class="fl" for="mm-padre">Mantiene <span class="req">*</span></label><select class="fc" id="mm-padre">' +
+          devs.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.titulo || x.id) + '</option>'; }).join('') + '</select></div></div>' : '<div class="ui-p-abono u-mb10">' + esc(it.titulo || it.id) + '</div>') +
+        '<div class="ui-filas ui-rep">' +
+          '<div class="fg"><span class="fl">Moneda</span>' + (alta ? '<span class="ui-mon" role="group" aria-label="Moneda"><button type="button" class="ui-mon-b ui-mon-ars on" data-mm="ARS">ARS</button><button type="button" class="ui-mon-b ui-mon-usd" data-mm="USD">USD</button></span>' : '<div class="ui-num">ARS</div>') + '</div>' +
+          '<div class="fg ui-w2"><label class="fl" for="mm-cuota">Cuota mensual <span class="req">*</span></label><input class="fc u-tr ui-num" type="number" min="0" id="mm-cuota" data-monto value="' + (it ? cuota(it) : '') + '"></div>' +
+          '<div class="fg"><label class="fl" for="mm-meses">Meses</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="1" id="mm-meses" value="' + (it ? (Number(it.duracion) || 12) : 12) + '"></div>' +
+          '<div class="fg"><span class="fl">Ajuste por IPC</span><label class="u-row6 ui-vio"><input type="checkbox" id="mm-ipc"' + (ipc0 ? ' checked' : '') + (gan ? ' disabled' : '') + '> Ajusta</label></div>' +
+          '<div class="fg"><label class="fl" for="mm-hs">Horas por mes</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="0" step="0.5" id="mm-hs" value="' + (it && mhs[it.id] ? mhs[it.id] : '') + '"' + (gan ? ' disabled' : '') + '></div>' +
+        '</div><div id="mm-tot"></div>' + (gan ? '<div class="ui-nota-t">Aprobado: sólo se cambian la cuota y los meses. El ajuste por IPC y las horas quedan como se contrataron.</div>' : '') +
+        '<div class="u-c-rd u-s11" id="mm-err"></div>',
+        '<button class="btn bg" data-cerrar="m-mmr">Cancelar</button><button class="btn bp" data-mmok="1">' + (alta ? 'Agregar' : 'Guardar') + '</button>');
+      var tot = function () { var c = Number($e('mm-cuota').value) || 0, n = Number($e('mm-meses').value) || 0, tc = window.TC || 0, ars = (mon === 'USD' ? c * tc : c) * n;
+        set('mm-tot', c && n ? '<div class="ui-kv"><span>Anual · <span class="ui-num">' + n + '</span> meses</span><span class="ui-num ui-p-abono">' + fmt(ars) + '</span></div>' +
+          (tc ? '<div class="ui-kv"><span>Equivale a</span><span class="ui-num ui-p-usd">' + fmt(ars / tc, 'USD') + '</span></div>' : '') + (mon === 'USD' ? '<div class="ui-nota-t">El abono se guarda en pesos, al tipo de cambio del día.</div>' : '') : ''); };
+      mt.oninput = tot; tot();
+      mt.onclick = async function (ev) {
+        var b = ev.target.closest('[data-mm],[data-mmok]'); if (!b) return;
+        if (b.hasAttribute('data-mm')) { mon = b.getAttribute('data-mm'); mt.querySelectorAll('[data-mm]').forEach(function (x) { x.classList.toggle('on', x === b); }); $e('mm-ipc').checked = mon === 'ARS'; return tot(); }
+        var c = Number($e('mm-cuota').value) || 0, n = Number($e('mm-meses').value) || 0, hs = $e('mm-hs').value, si = $e('mm-ipc').checked;
+        if (!(c > 0) || !(n > 0)) return set('mm-err', 'Poné la cuota y los meses.');
+        var rr = alta ? await db().rpc('alta_abono', { pid: p.id, padre: $e('mm-padre').value, cuota: c, meses: n, ajuste: si, inicio: null, moneda: mon, horas: hs === '' ? null : Number(hs) })
+          : gan ? await db().rpc('editar_monto_aprobado', { did: it.id, cuota_nueva: c, duracion: n })
+          : await db().rpc('guardar_desarrollo', { p: Object.assign({ id: it.id, cuota_act: c, cuotas: n, total_ars: Math.round(c * n * 100) / 100, inflacion: si ? 'Ajuste' : 'Sin Ajuste' }, hs === '' ? {} : { mant_horas: hs }) });   // horas vacías: no se tocan
+        if (rr.error) return set('mm-err', esc(rr.error.message));
+        closeM('m-mmr'); toast(alta ? 'MMR agregado' : 'MMR guardado', 'ok'); await recargar();
+      };
+      openM('m-mmr');
+    };
     var sponsor = async function () {
       var v = await elegirVarios('Agregar sponsor · ' + (p.empresa || ''), cons.map(function (c) { return { v: c.id, t: nomC(c), sub: c.puesto || c.area_trabajo || '' }; }),
         { ya: E.sps, nuevo: { txt: 'Nuevo contacto', fn: function () {
@@ -1084,6 +1198,20 @@
       if (a === 'sp-quitar') { E.sps.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
       if (a === 'ow-quitar') { E.rsp.splice(Number(b.getAttribute('data-i')), 1); m.dataset.sucio = '1'; return lista(); }
       if (a === 'sp-agregar') return sponsor();
+      if (a === 'dev-agregar') return altaDesarrollo();
+      if (a === 'mmr-agregar') return mmrModal(null);
+      if (a === 'mmr-editar') return mmrModal((p.items || []).find(function (x) { return x.id === b.getAttribute('data-id'); }));
+      if (a === 'mmr-check') {   // la casilla muestra si hay MMR: tildarla abre el alta; para sacarlo, la ✕ del MMR
+        ev.preventDefault(); var hay = (p.items || []).some(function (x) { return vivo(x) && esMant(x); });
+        return hay ? toast('Para quitar el MMR usá la ✕ de su fila (sólo si está en Nuevo).', 'inf') : mmrModal(null);
+      }
+      if (a === 'dev-editar') return window.abrirDesarrollo(b.getAttribute('data-id'), { onSave: recargar });
+      if (a === 'dev-quitar' || a === 'mmr-quitar') {
+        var it0 = (p.items || []).find(function (x) { return x.id === b.getAttribute('data-id'); }) || {};
+        if (!(await ask('«' + (it0.titulo || it0.id) + '» pasa a No aceptado. No se borra: queda en el historial del proyecto.', 'No aceptar', { ok: 'No aceptar', peligro: true }))) return;
+        var rq = await db().rpc('accion_desarrollo', { did: it0.id, accion: 'rechazar' }); if (rq.error) return toast(rq.error.message, 'err');
+        toast('No aceptado', 'ok'); return recargar();
+      }
       if (a === 'ow-agregar') {
         var v = await elegirVarios('Agregar responsable', Object.keys(P.users).map(function (k) { return { v: k, t: P.users[k] }; }), { ya: E.rsp });
         if (v && v.length) { E.rsp = E.rsp.concat(v); m.dataset.sucio = '1'; lista(); } return;
