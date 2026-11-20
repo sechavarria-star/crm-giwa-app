@@ -17,7 +17,7 @@ function uiMonto(n, usd) {
 // ── C6 · Estado: nombre, ícono y qué significa (va en el hover) ──
 var _UI_EST = {
   prospecto:   ['Prospecto', 'e_rombo', 'Todavía no se envió la propuesta'],
-  negociacion: ['En negociación', 'e_flechas', 'Propuesta enviada: esperando la respuesta del cliente'],
+  negociacion: ['Negociación', 'e_flechas', 'Propuesta enviada: esperando la respuesta del cliente'],
   aprobado:    ['Aprobado', 'e_check', 'El cliente lo aprobó; todavía no arrancó y no se factura'],
   curso:       ['En curso', 'e_play', 'En ejecución: se factura'],
   garantia:    ['En garantía', 'e_trebol', 'Entregado: en período de garantía'],

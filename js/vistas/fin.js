@@ -59,7 +59,7 @@
       ['Cobrado este mes', fmt(F.d.caja), 'caja del mes', 'k-cobrado'],
       ['Contratado mant. / mes', fmt(mrr), 'suma de las cuotas por mes', 'k-abono'],
       ['Detenido', fmt(N(d.detenido)), 'contratado, pero frenado', 'k-neutro'],
-      ['En negociación', fmt(N(d.monto_negociacion)), N(d.cant_negociacion) + ' proyectos · ' + N(d.dev_negociacion) + ' desarrollos', 'k-negociacion']
+      ['Negociación', fmt(N(d.monto_negociacion)), N(d.cant_negociacion) + ' proyectos · ' + N(d.dev_negociacion) + ' desarrollos', 'k-negociacion']
     ];
     return k.map(function (x) {
       return '<div class="kpi ' + x[3] + '"><div class="kpi-lbl">' + x[0] + '</div><div class="kpi-val">' + x[1] + '</div><div class="kpi-sub">' + x[2] + '</div></div>';
@@ -86,7 +86,7 @@
     var meses = c.dif < 0 && c.mmr ? Math.ceil(-c.dif / c.mmr) : 0;
     var lect = c.dif < 0 ? (c.mmr ? 'Se compensa con ' + meses + (meses === 1 ? ' mes' : ' meses') + ' de abono' : 'Sin abono que lo compense') : 'Igual o arriba de la referencia';
     var sinAbono = !c.mmr && c.neg;   // en negociación y sin abono: costo de oportunidad, en rojo
-    return (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="En negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
+    return (sinAbono ? '<td class="m u-tr u-c-rd" data-tip="Negociación y sin abono">' + fmt(0) + '</td>' : td(c.mmr * 12, 'm-abono')) +
       td(c.ref) + '<td class="u-s10-mt">' + esc(lect) + '</td>';
   }
   function porCliente() {

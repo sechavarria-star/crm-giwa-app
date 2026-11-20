@@ -115,7 +115,7 @@
       var v = vivosDe(p); if (!v.length) return 'Activo, pero ningún desarrollo está en curso';
       return 'Activo porque ' + v.map(function (it) { return nom(it) + (_canonSol(it.estado) === 'garantia' ? ' está en garantía' : ' está en curso'); }).join(' y ');
     }
-    if (can === 'negociacion') { var f = _pd(p.fecha_propuesta); return f ? 'En negociación porque la propuesta se envió el ' + ff(f) : 'En negociación'; }
+    if (can === 'negociacion') { var f = _pd(p.fecha_propuesta); return f ? 'Negociación: la propuesta se envió el  la propuesta se envió el ' + ff(f) : 'En negociación'; }
     if (can === 'prospecto') return 'Prospecto porque todavía no se envió la propuesta';
     if (can === 'aprobado') { var a = (p.items || []).filter(function (it) { return _canonSol(it.estado) === 'aprobada'; }).map(nom); return a.length ? 'Aprobado: falta arrancar ' + a.join(', ') : 'Aprobado'; }
     if (can === 'finalizado') return 'Finalizado: todos los desarrollos están cerrados';
@@ -132,25 +132,25 @@
   // ══ ACCIONES (5c) · las tablas de Estados.gs, en espejo ══════
   // El backend (crm_giwa.accion_desarrollo…) valida siempre; esto sólo decide
   // qué botón mostrar. Si cambia una, cambia la otra.
-  var RECH = ['rechazar', 'No aceptar', 'cerrar', 'El cliente no lo aceptó. Se puede recotizar'];
-  var ACC_DES = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó el trabajo'], RECH],
-                  curso: [['entregar', 'Deployar', 'subir', 'Sale a producción y empieza a correr la garantía']],
-                  garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplió la garantía. Acá arranca el mantenimiento']] };
-  var ACC_MANT = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'play', 'Empezó a facturar'], RECH],
-                   curso: [['cerrar', 'Finalizar', 'check', 'Se cumplieron las cuotas']], garantia: [['cerrar', 'Finalizar', 'check', 'Se cumplieron las cuotas']] };
+  var RECH = ['rechazar', 'No aceptar', 'e_cruz', 'El cliente no lo aceptó. Se puede recotizar'];
+  var ACC_DES = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'e_play', 'Empezó el trabajo'], RECH],
+                  curso: [['entregar', 'Deployar', 'e_trebol', 'Sale a producción y empieza a correr la garantía']],
+                  garantia: [['cerrar', 'Finalizar', 'e_cuadrado', 'Se cumplió la garantía. Acá arranca el mantenimiento']] };
+  var ACC_MANT = { nueva: [RECH], aprobada: [['arrancar', 'Arrancar', 'e_play', 'Empezó a facturar'], RECH],
+                   curso: [['cerrar', 'Finalizar', 'e_cuadrado', 'Se cumplieron las cuotas']], garantia: [['cerrar', 'Finalizar', 'e_cuadrado', 'Se cumplieron las cuotas']] };
   function accionesDes(it) { return ((esMant(it) ? ACC_MANT : ACC_DES)[_canonSol(it.estado || '')] || []); }
   function botonesDes(it, soloPrincipal) {
     var acc = accionesDes(it); if (soloPrincipal) acc = acc.filter(function (a) { return a[0] !== 'rechazar'; }).slice(0, 1);
-    var hov = { check: 'fin', cerrar: 'bor' };   // C11: el hover dice el resultado
+    var hov = { check: 'fin', cerrar: 'bor', e_cuadrado: 'fin', e_cruz: 'bor' };   // C11: el hover dice el resultado
     return acc.map(function (a) { return uiIb(a[2], a[1] + ': ' + a[3], hov[a[2]] || '', 'data-pm="acc-des" data-id="' + esc(it.id) + '" data-acc="' + a[0] + '"'); }).join('');
   }
   // La próxima acción del proyecto según dónde está (Activo sale solo al arrancar un desarrollo)
   function accionesProy(p) {
     if (p.detenido) return [];
     switch (_canonProy(p.estado_proyecto)) {
-      case 'prospecto': return [['negociacion', 'Enviar propuesta', 'mail']];
-      case 'negociacion': return [['aprobado', 'Aprobar', 'check'], ['rechazado', 'No aceptar', 'cerrar']];
-      case 'activo': return [['finalizado', 'Finalizar', 'check']];
+      case 'prospecto': return [['negociacion', 'Enviar propuesta', 'e_flechas']];
+      case 'negociacion': return [['aprobado', 'Aprobar', 'e_check'], ['rechazado', 'No aceptar', 'e_cruz']];
+      case 'activo': return [['finalizado', 'Finalizar', 'e_cuadrado']];
     }
     return [];
   }
@@ -221,12 +221,12 @@
     var h = '<div class="ui-tarjeta' + (p.detenido || rev ? ' ui-apagada' : '') + '"><span class="ui-tarjeta-barra ui-e-' + uiClaveEst(e, p.detenido) + '"></span>';
     h += '<div class="ui-tarjeta-top">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + uiBtn('Ver proyecto', 'documento', 's', 'data-pm="ficha" data-id="' + pid + '"') + '</div>';
     // Las acciones del estado, como íconos con su tooltip (todas con confirmación)
-    var ICO = { negociacion: ['mail', 'Enviar la propuesta', ''], aprobado: ['check', 'Aprobar', 'fin'], rechazado: ['cerrar', 'No aceptar', 'bor'], finalizado: ['e_cuadrado', 'Finalizar', 'fin'] };
+    var ICO = { negociacion: ['e_flechas', 'Enviar la propuesta', ''], aprobado: ['e_check', 'Aprobar', 'fin'], rechazado: ['e_cruz', 'No aceptar', 'bor'], finalizado: ['e_cuadrado', 'Finalizar', 'fin'] };
     var iconos = (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('play', 'Reanudar el proyecto', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
+        (p.detenido ? uiIb('e_play', 'Reanudar el proyecto', '', 'data-pm="det-proy" data-id="' + pid + '"') : uiIb('e_pausa', 'Detener', 'det', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       acc.map(function (a) { var k = ICO[a[0]] || [a[2], a[1], '']; return uiIb(k[0], k[1], k[2], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('');
     h += '<div class="ui-tarjeta-hd"><div><div class="ui-pro">' + esc(p.nombre || '—') + '</div><div class="ui-sub-t">' + esc(p.empresa || '') + '</div></div>' +
-      '<div class="ui-tarjeta-der"><div>' + uiEstado(e) + (p.detenido ? ' ' + uiEstado('Detenido', { detenido: true }) : '') + '</div>' +
+      '<div class="ui-tarjeta-der"><div>' + uiEstado(e, { detenido: p.detenido }) + '</div>' +
         (iconos ? '<div class="ui-fila-ic ui-tarjeta-acc">' + iconos + '</div>' : '') + '</div></div>';
     var pq = porQue(p, can); if (pq) h += '<div class="ui-motivo"><span class="ui-e-' + uiClaveEst(e, p.detenido) + '">' + esc(pq) + '</span></div>';
     var av = avisoAbono(p); if (av) h += '<div class="ui-rapido">' + av + '</div>';
@@ -646,7 +646,7 @@
       if (rec) { var cubre = (it.mant_de_ids || []).map(function (x) { var d = (p.items || []).find(function (y) { return y.id === x; }); return d ? (d.titulo || d.id) : ''; }).filter(Boolean); if (cubre.length) sub += ' · cubre ' + cubre.join(', '); }
       var abierto = P.fAb[it.id] !== undefined ? P.fAb[it.id] : (lista.length === 1 || can === 'curso' || can === 'garantia');
       // Pausar se decide en el botón general del proyecto; acá sólo se reanuda lo que ya está pausado (06/11/2026)
-      var iconos = (it.detenido && !p.detenido && can !== 'rechazada' && can !== 'finalizada' ? uiIb('play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : '') +
+      var iconos = (it.detenido && !p.detenido && can !== 'rechazada' && can !== 'finalizada' ? uiIb('e_play', 'Reanudar este desarrollo', '', 'data-pm="det-des" data-id="' + esc(it.id) + '"') : '') +
         (puedeRenovar(it) ? uiBtn('Renovar', 'repetir', 's', 'data-pm="ren-mant" data-id="' + esc(it.id) + '"') : '') +
         (det ? '' : botonesDes(it, false));
       var plata = '', tot = Number(it.total_ars) || 0, cob = Number(it.facturado) || 0;
@@ -855,7 +855,7 @@
   function iconosEstado(p, sinDet) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id), acc = p.detenido ? [] : accionesProy(p);
     return (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : sinDet ? '' : uiAcc('detener', 'data-pm="det-proy" data-id="' + pid + '"'))) +
+        (p.detenido ? uiIb('e_play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : sinDet ? '' : uiIb('e_pausa', 'Detener', 'det', 'data-pm="det-proy" data-id="' + pid + '"'))) +
       (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
   }
   // Acciones del PROYECTO, arriba a la derecha de la ficha: las del estado (botones con su confirmación),
@@ -869,13 +869,13 @@
   }
   function accionesYAlerta(p, sinDet, txt) {
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
-    var bAcc = { negociacion: ['p', 'mail'], aprobado: ['p', 'e_check'], rechazado: ['s', 'cerrar'] };
+    var bAcc = { negociacion: ['p', 'e_flechas'], aprobado: ['p', 'e_check'], rechazado: ['s', 'e_cruz'] };
     var viejo = function (txt, tipo) { return '<a class="ui-btn ui-' + tipo + '" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
     var aprob = (p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; });
     return (can === 'rechazado' ? viejo('Volver a cotizar', 'p') :
         (p.detenido ? '' : accionesProy(p).filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
           var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
-        (aprob && !p.detenido ? uiBtn('Arrancar', 'play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
+        (aprob && !p.detenido ? uiBtn('Arrancar', 'e_play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
         ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
       (txt ? botonesEstado(p) : iconosEstado(p, sinDet));
   }
@@ -896,7 +896,7 @@
     var cab = enLista
       ? '<div class="ui-ficha-hd"><span class="u-f1">' + (av || '') + '</span>' + acc + '</div>'
       : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
-        '<span>' + uiEstado(e) + (p.detenido ? uiMarcaDet() : '') + '</span>' + av + acc + '</div>' + motivo + riel(p);
+        '<span>' + uiEstado(e, { detenido: p.detenido }) + '</span>' + av + acc + '</div>' + motivo + riel(p);
     // Tareas a la altura de las pestañas, con su mismo formato (17/11/2026)
     var cuerpo = cab + '<div class="ui-cols ui-cols-ficha"><div>' + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
       t[2](p) + '</div><div>' + tabTareas(p) + novedadesProy() + '</div></div>';
@@ -1101,7 +1101,7 @@
             uiIb('editar', 'Editar', '', 'data-ep="mmr-editar" data-id="' + esc(it.id) + '"') + (nuevo ? uiIb('cerrar', 'No aceptar', '', 'data-ep="mmr-quitar" data-id="' + esc(it.id) + '"') : '') + '</div>'; }).join('') +
         (mants.some(function (it) { return !desCerrado(it); }) ? '' : '<button type="button" class="ui-lnk ui-azul u-mt6" data-ep="mmr-agregar">+ Agregar MMR</button>') +
         '<div class="u-mt10"><div class="ui-kv"><span>Aprobado</span><span class="ui-num ui-p-contratado">' + fmt(aprob) + '</span></div>' +
-        '<div class="ui-kv"><span>En negociación (Nuevo)</span><span class="ui-num">' + fmt(neg) + '</span></div>' +
+        '<div class="ui-kv"><span>Negociación (Nuevo)</span><span class="ui-num">' + fmt(neg) + '</span></div>' +
         '<div class="ui-kv"><span>MMR por mes · anual</span><span class="ui-num ui-p-abono">' + fmt(mes) + ' · ' + fmt(mes * 12) + '</span></div>' +
         '<div class="ui-kv"><span>Total del proyecto a <span class="ui-num">12</span> meses</span><span class="ui-num">' + fmt(tot) + (tc ? ' · <span class="ui-p-usd">' + fmt(tot / tc, 'USD') + '</span>' : '') + '</span></div></div>';
     };
@@ -1245,55 +1245,65 @@
   }
 
   // ── aprobar: qué entró, qué no y qué queda en espera (aprobarProyecto) ──
+  // ── aprobar: qué entró, qué no y qué queda en espera (aprobarProyecto) · diseño aprobado 20/11/2026 ──
+  // Una fila por desarrollo: cotizado · aprobado ($) · decisión (✓ aprueba · ✕ no acepta · ◇ sigue en Nuevo) · inicia (▶ fecha · ⏸ se posterga)
   function abrirAprobar(p) {
     var nuevas = (p.items || []).filter(function (it) { return _canonSol(it.estado || '') === 'nueva'; });
     if (!nuevas.length) return say('Este proyecto no tiene desarrollos en Nuevo para aprobar.', 'Aprobar propuesta');
-    armarModal('m-aprob', 'Aprobar propuesta',
-      '<div class="fg"><label class="fl" for="ap-fecha">Fecha de aprobación</label><input class="fc u-wauto" type="date" id="ap-fecha"></div><div class="u-s11-mt u-mb10" id="ap-n"></div><div id="ap-list"></div>',
-      '<button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button>', '');
-    document.getElementById('ap-fecha').value = isoMas(0);
-    document.getElementById('ap-n').textContent = nuevas.length + ' desarrollo(s) cotizado(s). Si ya inicia, marcá «Inicia» con su fecha: arranca y empieza a facturar. Si no, queda Aprobado sin facturar.';
-    document.getElementById('ap-list').innerHTML = nuevas.map(function (it) {
-      return '<div class="rowb ap-fila"><div><div class="u-fw6">' + esc(it.titulo || it.tipo || it.id) + '</div>' +
-        '<div class="u-s10-mt">' + esc(it.tipo_nombre || it.tipo || '') + ' · ' + fmt(Number(it.total_ars) || 0) + '</div></div>' +
-        (esMant(it)   // mantenimiento: se carga lo mensual y la duración; el total sale de ahí
-          ? '<label class="ap-c"><span class="u-s10-mt">Cuota mensual</span><input class="fc" type="number" data-monto data-apc="' + esc(it.id) + '" value="' + (Number(it.cuota_act) || Number(it.valor_cuota) || '') + '"></label>' +
-            '<label class="ap-c ap-c-n"><span class="u-s10-mt">Meses</span><input class="fc u-tr ui-num" type="number" min="1" data-apd="' + esc(it.id) + '" value="' + (Number(it.duracion) || 12) + '"></label>'
-          : '<label class="ap-c"><span class="u-s10-mt">Monto aprobado</span><input class="fc" type="number" data-monto data-apm="' + esc(it.id) + '" value="' + (Number(it.total_ars) || '') + '" title="Se puede corregir, p. ej. por IPC"></label><span></span>') +
-        '<label class="ap-c"><span class="u-s10-mt">Estado</span><select class="fc" data-ap="' + esc(it.id) + '"><option value="entro">Aprobado</option><option value="rechazado">No aceptado</option><option value="espera">Nuevo (sin cambios)</option></select></label>' +
-        '<label class="u-row6" data-tip="¿Inicia el desarrollo? Con fecha arranca y se puede facturar"><input type="checkbox" data-api="' + esc(it.id) + '"> Inicia</label>' +
-        '<input class="fc u-wauto" type="date" data-apf="' + esc(it.id) + '" value="' + isoMas(0) + '" aria-label="Fecha de inicio" disabled></div>';
-    }).join('') + '<div class="ui-kv">Total aprobado<span class="ui-num"><span class="ui-p-contratado" id="ap-tot"></span></span></div>';
-    var total = function () {
-      var t = 0; document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
-        if (x.value !== 'entro') return; var id = x.getAttribute('data-ap'), mo = document.querySelector('#ap-list [data-apm="' + id + '"]');
-        t += mo ? Number(mo.value) || 0 : (Number(document.querySelector('#ap-list [data-apc="' + id + '"]').value) || 0) * (Number(document.querySelector('#ap-list [data-apd="' + id + '"]').value) || 0); });
-      document.getElementById('ap-tot').textContent = fmt(t);
+    var D = {}; nuevas.forEach(function (it) { D[it.id] = { dec: 'entro', ini: esMant(it) ? 'po' : 'in' }; });
+    var cot = function (it) { return esMant(it) ? fmt(Number(it.cuota_act) || Number(it.valor_cuota) || 0) + '/mes' : fmt(Number(it.total_ars) || 0); };
+    var ic = function (k, cls, icono, tip, on) { return '<button type="button" class="ui-ib ap-' + cls + (on ? ' on' : '') + '" data-ap-' + k + '="' + cls + '" data-tip="' + tip + '" aria-label="' + tip + '">' + uiIco(icono) + '</button>'; };
+    var fila = function (it) { var d = D[it.id], off = d.dec === 'entro' ? '' : ' ap-off', m = esMant(it);
+      return '<div class="ap-fila3" data-ap="' + esc(it.id) + '"><span>' + (m ? '<span class="ui-p-abono">' + esc(it.titulo || it.id) + '</span>' : esc(it.titulo || it.id)) +
+          '<div class="ui-li-sub">' + esc(it.tipo_nombre || it.tipo || '') + (m ? ' · <span class="ui-num">' + (Number(it.duracion) || 12) + '</span> meses' : '') + '</div></span>' +
+        '<span class="ui-num">' + cot(it) + '</span>' +
+        '<span class="' + off + '"><span class="ap-pesos"><span class="ui-li-sub">$</span><input class="fc u-tr ui-num" data-monto data-apm="' + esc(it.id) + '" value="' + (m ? (Number(it.cuota_act) || Number(it.valor_cuota) || '') : (Number(it.total_ars) || '')) + '"' + (off ? ' disabled' : '') + '>' + (m ? '<span class="ui-li-sub">/mes</span>' : '') + '</span></span>' +
+        '<span class="ap-ic">' + ic('dec', 'entro', 'e_check', 'Aprueba', d.dec === 'entro') + ic('dec', 'rechazado', 'e_cruz', 'No acepta', d.dec === 'rechazado') + ic('dec', 'espera', 'e_rombo', 'Sigue en Nuevo', d.dec === 'espera') + '</span>' +
+        '<span class="u-row8' + off + '">' + (off ? '' : '<span class="ap-ic">' + ic('ini', 'in', 'e_play', 'Inicia en una fecha', d.ini === 'in') + ic('ini', 'po', 'e_pausa', 'Se posterga, sin fecha', d.ini === 'po') + '</span>' +
+          (d.ini === 'in' ? '<input class="fc" type="date" data-apf="' + esc(it.id) + '" value="' + (d.f || isoMas(0)) + '">' : '<span class="ui-li-sub">Se posterga</span>')) + '</span></div>'; };
+    var m = armarModal('m-aprob', 'Aprobar propuesta · ' + (p.nombre || p.id),
+      '<div class="ui-li-sub u-mb10">Por cada desarrollo: si el cliente lo aprueba, con qué monto y si inicia en una fecha o se posterga. Lo que no se aprueba hoy puede seguir en Nuevo y aprobarse después.</div>' +
+      '<div class="ui-filas"><div class="fg ui-w-m"><label class="fl" for="ap-fecha">Fecha de aprobación <span class="req">*</span></label><input class="fc" type="date" id="ap-fecha" value="' + isoMas(0) + '"></div></div>' +
+      '<div class="ap-fila3 ap-h"><span>Desarrollo</span><span>Monto cotizado</span><span>Monto aprobado</span><span>Decisión</span><span>Inicia</span></div><div id="ap-list"></div><div id="ap-tot" class="u-mt10"></div>',
+      '<button class="btn bg" data-cerrar="m-aprob">Cancelar</button><button class="btn bp" id="ap-ok">Aprobar</button>', 'md-xl ap-ancho');
+    var leerMontos = function () { m.querySelectorAll('[data-apm]').forEach(function (x) { D[x.getAttribute('data-apm')].monto = Number(x.value) || 0; });
+      m.querySelectorAll('[data-apf]').forEach(function (x) { D[x.getAttribute('data-apf')].f = x.value; }); };
+    var monto = function (it) { var d = D[it.id]; return d.monto != null ? d.monto : (esMant(it) ? (Number(it.cuota_act) || Number(it.valor_cuota) || 0) : (Number(it.total_ars) || 0)); };
+    var pintar = function () {
+      set('ap-list', nuevas.map(fila).join(''));
+      var ad = 0, am = 0, ne = 0, no = 0;
+      nuevas.forEach(function (it) { var d = D[it.id], v = monto(it);
+        if (d.dec === 'entro') { if (esMant(it)) am += v; else ad += v; } else if (d.dec === 'espera') ne += v; else no += v; });
+      set('ap-tot', '<div class="ui-kv"><span>Aprobado hoy · desarrollos</span><span class="ui-num ui-p-contratado">' + fmt(ad) + '</span></div>' +
+        (am ? '<div class="ui-kv"><span>Aprobado hoy · MMR</span><span class="ui-num ui-p-abono">' + fmt(am) + '/mes</span></div>' : '') +
+        '<div class="ui-kv"><span>Sigue en Nuevo</span><span class="ui-num">' + fmt(ne) + '</span></div>' +
+        '<div class="ui-kv"><span>No aceptado</span><span class="ui-num ui-p-error">' + fmt(no) + '</span></div>');
     };
-    var inicia = function () {   // la fecha sólo con «Aprobado» e «Inicia»
-      document.querySelectorAll('#ap-list [data-api]').forEach(function (c) {
-        var id = c.getAttribute('data-api'), entro = document.querySelector('#ap-list [data-ap="' + id + '"]').value === 'entro';
-        if (!entro) c.checked = false; c.disabled = !entro;
-        document.querySelector('#ap-list [data-apf="' + id + '"]').disabled = !c.checked;
-      });
+    // al escribir un monto se recalculan sólo los totales (no se repinta la fila que se está escribiendo)
+    m.oninput = function () { leerMontos(); var ad = 0, am = 0, ne = 0, no = 0;
+      nuevas.forEach(function (it) { var d = D[it.id], v = monto(it); if (d.dec === 'entro') { if (esMant(it)) am += v; else ad += v; } else if (d.dec === 'espera') ne += v; else no += v; });
+      set('ap-tot', '<div class="ui-kv"><span>Aprobado hoy · desarrollos</span><span class="ui-num ui-p-contratado">' + fmt(ad) + '</span></div>' +
+        (am ? '<div class="ui-kv"><span>Aprobado hoy · MMR</span><span class="ui-num ui-p-abono">' + fmt(am) + '/mes</span></div>' : '') +
+        '<div class="ui-kv"><span>Sigue en Nuevo</span><span class="ui-num">' + fmt(ne) + '</span></div><div class="ui-kv"><span>No aceptado</span><span class="ui-num ui-p-error">' + fmt(no) + '</span></div>'); };
+    m.onclick = function (ev) {
+      var b = ev.target.closest('[data-ap-dec],[data-ap-ini]'); if (!b) return; leerMontos();
+      var id = b.closest('[data-ap]').getAttribute('data-ap');
+      if (b.hasAttribute('data-ap-dec')) D[id].dec = b.getAttribute('data-ap-dec'); else D[id].ini = b.getAttribute('data-ap-ini');
+      pintar();
     };
-    document.getElementById('ap-list').oninput = total; document.getElementById('ap-list').onchange = function () { total(); inicia(); }; setTimeout(function () { total(); inicia(); }, 0);
+    pintar();
     return new Promise(function (res) {
       document.getElementById('ap-ok').onclick = function () {
+        leerMontos();
         var dec = {}, montos = {}, mants = {}, inicios = {}, n = 0, malo = '', sinFecha = '';
-        document.querySelectorAll('#ap-list [data-ap]').forEach(function (x) {
-          var id = x.getAttribute('data-ap'); dec[id] = x.value;
-          if (x.value !== 'entro') return; n++;
-          var mo = document.querySelector('#ap-list [data-apm="' + id + '"]');
-          if (mo) { var m = Number(mo.value) || 0; if (m <= 0) malo = id; montos[id] = m; }
-          else { var cu = Number(document.querySelector('#ap-list [data-apc="' + id + '"]').value) || 0, du = Number(document.querySelector('#ap-list [data-apd="' + id + '"]').value) || 0; if (cu <= 0 || du <= 0) malo = id; mants[id] = { cuota: cu, duracion: du }; }
-          if (document.querySelector('#ap-list [data-api="' + id + '"]').checked) {
-            var f = document.querySelector('#ap-list [data-apf="' + id + '"]').value; if (!f) sinFecha = id; else inicios[id] = f;
-          }
-        });
-        if (!n) return say('Marcá al menos uno como Aprobado.\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
-        if (malo) return say('Los valores de ' + malo + ' tienen que ser mayores a 0.', 'Aprobar propuesta');
-        if (sinFecha) return say('Falta la fecha de inicio de ' + sinFecha + '.', 'Aprobar propuesta');
+        nuevas.forEach(function (it) { var d = D[it.id]; dec[it.id] = d.dec; if (d.dec !== 'entro') return; n++;
+          var v = monto(it); if (v <= 0) malo = it.titulo || it.id;
+          if (esMant(it)) mants[it.id] = { cuota: v, duracion: Number(it.duracion) || 12 }; else montos[it.id] = v;
+          if (d.ini === 'in') { if (!d.f) sinFecha = it.titulo || it.id; else inicios[it.id] = d.f; } });
+        if (!document.getElementById('ap-fecha').value) return say('Falta la fecha de aprobación.', 'Aprobar propuesta');
+        if (!n) return say('Marcá al menos uno como Aprueba.\n\nSi no entró nada, usá No aceptar.', 'Aprobar propuesta');
+        if (malo) return say('El monto aprobado de «' + malo + '» tiene que ser mayor a 0.', 'Aprobar propuesta');
+        if (sinFecha) return say('Falta la fecha de inicio de «' + sinFecha + '».', 'Aprobar propuesta');
         closeM('m-aprob'); res({ dec: dec, montos: montos, mants: mants, inicios: inicios, fecha: document.getElementById('ap-fecha').value || isoMas(0) });
       };
       openM('m-aprob');

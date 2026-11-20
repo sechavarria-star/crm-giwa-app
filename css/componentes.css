@@ -633,3 +633,16 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 var(--e5); }
 .ui-vio input[type=checkbox] { accent-color: var(--secundaria); }   /* MMR e IPC: el violeta del abono */
 .ui-li .ui-p-abono .ui-ico { width: var(--ico-xs); height: var(--ico-xs); vertical-align: -1px; }
+.ui-fecha > input:first-child { text-align: center; }   /* fechas centradas en toda la app (20/11/2026) */
+/* Aprobar propuesta (20/11/2026): una fila por desarrollo, decisión e inicio con los íconos de los estados */
+.md.ap-ancho { max-width: 1000px; }
+.ap-fila3 { display: grid; grid-template-columns: minmax(0, 1.3fr) 115px 170px 112px 200px; gap: var(--e3) 16px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+.ap-fila3.ap-h { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: var(--espaciado); color: var(--texto2); padding-top: 0; }
+.ap-off { opacity: .3; }
+.ap-pesos { display: inline-flex; align-items: center; gap: 6px; } .ap-pesos .fc { width: 125px; }
+.ap-ic { display: inline-flex; gap: 4px; }
+.ap-ic .ui-ib { border: 1px solid var(--marco); border-radius: var(--r); padding: 4px; opacity: .55; }
+.ap-ic .ui-ib.on { opacity: 1; border-color: currentColor; }
+.ap-ic .ap-entro { color: var(--p-contratado); } .ap-ic .ap-rechazado { color: var(--p-error); } .ap-ic .ap-espera { color: var(--e-prospecto); }
+.ap-ic .ap-in { color: var(--e-curso); } .ap-ic .ap-po { color: var(--texto2); }
+.ap-fila3 .ui-fecha { width: 150px; }
