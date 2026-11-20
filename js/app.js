@@ -28,7 +28,7 @@ var MODULOS = [
     subs: [['fact', 'Facturación'], ['gastos', 'Gastos'], ['prov', 'Proveedores'], ['imp', 'Impuestos'], ['tip', 'Tipos de desarrollo']] },   // IPC y TC pasa a Herramientas (17/11/2026)
   { id: 'fin',      nombre: 'Estado financiero', ico: 'porcentaje', listo: true },
   { id: 'her',      nombre: 'Herramientas',   ico: 'lamparita', listo: true,
-    subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['idx', 'IPC y TC'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']] },
+    subs: [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['idx', 'IPC y TC'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras'], ['fun', 'Funcionalidades', ['v.gagey@giwa-ia.com', 's.echavarria@giwa-ia.com']]] },   // Funcionalidades: sólo Sebas y Victoria (20/11/2026)
   { id: 'config',   nombre: 'Configuración',  ico: 'ajustes',  listo: true,
     subs: [['listas', 'Listas'], ['vh', 'Valor hora y targets'], ['gastos', 'Tipos de gastos'], ['usu', 'Usuarios'], ['telegram', 'Telegram'], ['diag', 'Diagnóstico'], ['otros', 'Más'], ['datos', 'Datos', 'v.gagey@giwa-ia.com', '#/datos']] },
   // Administración de datos (03/11/2026): el menú sólo se lo muestra a Victoria; el permiso real lo da la base (crm_giwa.es_duena)
@@ -60,7 +60,7 @@ function pintarBarra() {
   var act = _moduloActual(), sub = _ruta().sub;
   var yo = String((CRM_USUARIO && CRM_USUARIO.mail) || '').toLowerCase();
   document.getElementById('nav-mods').innerHTML = MODULOS.filter(function(m) { return !m.oculto && (!m.solo || m.solo === yo); }).map(function(m) {
-    var on = m.id === act.id, subs = (m.subs || []).filter(function(s) { return !s[2] || s[2] === yo; });
+    var on = m.id === act.id, subs = (m.subs || []).filter(function(s) { return !s[2] || [].concat(s[2]).indexOf(yo) >= 0; });   // s[2]: un mail o una lista (20/11/2026)
     var h = '<div class="lat-grupo"><a class="lat-mod ui-mi' + (on ? ' on' : '') + '" href="#/' + m.id + '"' + (on ? ' aria-current="page"' : '') + '>' +
       ico(m.ico, 'ui-ico') + '<span class="lat-txt">' + m.nombre + '</span>' +
       (subs.length ? '<span class="lat-chev">' + ico(on ? 'arriba' : 'abajo') + '</span>' : '') + '</a>';

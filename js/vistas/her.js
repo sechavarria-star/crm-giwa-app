@@ -24,7 +24,7 @@
                                (cot_herramientas): no guarda nada.
    ══════════════════════════════════════════════════════════════════════ */
 (function () {
-  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras']];
+  var SUBS = [['meta', 'Simulador Costos Meta'], ['nda', 'NDA'], ['mercado', 'Valores de mercado'], ['analisis', 'Análisis'], ['mejoras', 'Solicitudes de mejoras'], ['fun', 'Funcionalidades']];
   var MJ = { filas: null }, MK = { filas: null, tipo: '' }, EV = { categoria: 'Hosting', backend: true, db: true, evitar_tarjeta: false, presupuesto: 'Bajo', complejidad: 'Baja', costo_max: '' };
   function subValida(s) { return SUBS.some(function (x) { return x[0] === s; }) ? s : 'meta'; }
   var S = { sub: 'meta' };
@@ -271,6 +271,7 @@
     if (S.sub === 'mercado') return pintarMercado(el);
     if (S.sub === 'analisis') return pintarAnalisis(el);
     if (S.sub === 'mejoras') return pintarMejoras(el);
+    if (S.sub === 'fun') return FUN.pintar(el);   // vistas/fun.js (20/11/2026)
     marcarSub('meta');
     SIM.pintar(el);
   }
