@@ -666,3 +666,7 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-cr-l { display: flex; gap: 16px; font-size: var(--t-s); color: var(--texto2); margin-bottom: 6px; }
 .ui-cr-l i { display: inline-block; width: 18px; height: 9px; border: 1px solid var(--texto2); border-radius: 2px; margin-right: 5px; vertical-align: -1px; } .ui-cr-l i.d { border-style: dashed; }
 .ui-hi { display: grid; grid-template-columns: 92px 180px 1fr 90px; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--marco); font-size: var(--t-m); }
+/* Nuevo / Editar proyecto con el fondo oscuro de la ficha, no el azul de los modales (20/11/2026) */
+.md.ep-md { background: var(--fondo); border-color: var(--marco); }
+.md.ep-md .mh, .md.ep-md .mf { background: var(--fondo); }
+.md.ep-md .fc { background: var(--caja); }

@@ -970,19 +970,19 @@
           '<div class="fg"><label class="fl" for="ep-cierre">Fecha probable de aprobación <span class="req">*</span></label><input class="fc" type="date" id="ep-cierre" value="' + esc(d.fecha_cierre_probable || '') + '"></div>' +
           '<div class="fg"><label class="fl" for="ep-prob">Probabilidad de aprobación (%)</label><input class="fc u-tr ui-num" style="width:80px" type="number" min="0" max="100" id="ep-prob" value="' + esc(p.probabilidad || 50) + '"' + (fijo ? ' disabled' : '') + '></div><div></div>' +
         '</div><div id="ep-imp" class="ui-g4"></div>', '', '', 'proy') +
-      sec('Resumen ejecutivo', alta,
+      sec('Resumen ejecutivo', false,
         '<div class="u-row8 u-mb6"><span class="ui-f1"></span>' + uiIb('buscar', 'Buscar una minuta guardada', '', 'data-ep="minuta"') +
           '<label class="ui-lnk ui-azul">' + uiIco('clip') + ' Adjuntar .md o propuesta<input type="file" class="ui-arch-inp" id="ep-doc" accept=".md,.txt,.pdf,.doc,.docx,.ppt,.pptx" hidden></label></div>' +
         '<textarea class="fc" rows="4" id="ep-res" aria-label="Resumen ejecutivo">' + esc(d.resumen_ejecutivo || '') + '</textarea><div id="ep-docs"></div>', '', '', 'res') +
-      sec('Contactos', alta,
+      sec('Contactos', false,
         '<div class="ui-cols3">' +
           '<div><div class="ui-li-sub">SPONSORS</div><div id="ep-sps"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="sp-agregar">+ Agregar sponsor</button></div>' +
           '<div><div class="ui-li-sub">CONTACTOS DEL CLIENTE</div><div id="ep-con"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="co-agregar">+ Agregar contacto</button></div>' +
           '<div><div class="ui-li-sub">RESPONSABLES</div><div id="ep-rsp"></div><button type="button" class="ui-lnk ui-azul u-mt6" data-ep="ow-agregar">+ Agregar responsable</button></div></div>',
         '', '', 'con') +
       (alta ? '' : sec('Estado y cronograma', false, '<div id="ep-estado"></div>', '', '<span id="ep-v-est"></span>', 'est')) +
-      sec('Desarrollos', alta, '<div id="ep-devs"></div>', '', '<span id="ep-v-devm"></span>', 'devs') +
-      sec('Mantenimiento mensual · MMR', alta, '<div id="ep-mmr"></div>', '', '<span id="ep-v-mmr"></span>', 'mmr') +
+      sec('Desarrollos', false, '<div id="ep-devs"></div>', '', '<span id="ep-v-devm"></span>', 'devs') +
+      sec('Mantenimiento mensual · MMR', false, '<div id="ep-mmr"></div>', '', '<span id="ep-v-mmr"></span>', 'mmr') +
       (alta ? '' : sec('Historial', false, '<div id="ep-hist"></div>', String(hist.length), '', 'hist')),
       '<button class="btn bg" data-cerrar="m-eproy">Cancelar</button><button class="btn bp" id="ep-ok">' + (alta ? 'Crear proyecto' : 'Guardar') + '</button>', 'ep-md');
     lista();
