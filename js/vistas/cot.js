@@ -763,7 +763,7 @@
         (v.estado === 'Borrador' ? uiBtn('Crear proyecto', 'check', 'p', 'data-cot="ver-crear"') : uiBtn('Ver proyecto', 'abrir', 'p', 'data-cot="ver-pm"')) + '</div><div class="ficha-secs">' +
       sec('Proyecto', true, '<div class="ui-g4">' + dato('Creado', fecha(v.fecha)) + dato('Fecha probable de aprobación', fecha(v.fecha_cierre)) +
         dato('Desarrollos', num(fmt(suma))) + dato('MMR por mes', mmr ? '<span class="ui-num ui-p-abono">' + fmt(mmr) + '</span>' : '—') + '</div>') +
-      sec('Resumen ejecutivo', false, (M.texto || v.resumen ? '<div class="u-mb10">' + esc(M.texto || v.resumen) + '</div>' : '') + (min ? '<div class="ui-g3">' + min + '</div>' : '') || '<div class="ui-nota-t">Sin minuta cargada.</div>') +
+      sec('Resumen ejecutivo', false, (M.texto || v.resumen ? '<div class="u-mb10">' + esc(v.resumen || M.texto) + '</div>' : '') + (min ? '<div class="ui-g3">' + min + '</div>' : '') || '<div class="ui-nota-t">Sin minuta cargada.</div>') +
       sec('Contactos', false, '<div class="ui-cols3">' + col('SPONSORS', X.sponsors.map(persona).join('')) + col('CONTACTOS DEL CLIENTE', cli.map(persona).join('')) + col('RESPONSABLES', X.owners.map(usuario).join('')) + '</div>',
         String(X.sponsors.length + cli.length + X.owners.length)) +
       sec('Desarrollos', true, devs.map(function (d) {
@@ -943,7 +943,8 @@
   function olvidar() { try { localStorage.removeItem(LS); } catch (e) {} }
   async function abrirCot(pid) {
     var r = await rpc('cot_leer', { pid: pid });
-    var x = nuevo(); x.pid = r.pid; x.estado = r.estado; x.empresa = r.empresa; x.nombre = r.nombre; x.fecha_cierre = r.fecha_cierre || ''; x.minuta = r.minuta || {};
+    var x = nuevo(); x.pid = r.pid; x.estado = r.estado; x.empresa = r.empresa; x.nombre = r.nombre; x.fecha_cierre = r.fecha_cierre || '';
+    x.minuta = Object.assign({}, r.minuta, { texto: r.resumen || (r.minuta || {}).texto || '' });   // el Resumen ejecutivo es el del proyecto (24/11/2026)
     x.sponsors = String(r.sponsors || r.sponsor || '')   /* sponsors en su campo; «contactos» = Contactos del cliente (20/11/2026) */.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
     x.owners = (x.minuta.responsables && x.minuta.responsables.length ? x.minuta.responsables : [r.owner]).filter(Boolean);
     var idx = {}; r.devs.forEach(function (d, i) { idx[d.id] = i; });
@@ -953,22 +954,41 @@
       if (d.mant && d.mant.on && d.mant.cubre && d.mant.cubre[0] !== d.id) { v.mant = Object.assign(vacio().mant, { on: true, comparte: idx[d.mant.cubre[0]] }); }
       return v; });
     for (var i = 0; i < x.devs.length; i++) { await catalogo(x.devs[i].tipo); conMadres(x.devs[i]); }
+    var g = CN; CN = x; x.orig = JSON.parse(JSON.stringify(payload(true))); CN = g;   // cómo se abrió: al guardar va sólo lo que cambió
     return { r: r, cn: x };
   }
-  function payload() {
+  // Un proyecto que ya existe manda sólo lo que cambió desde que se abrió (24/11/2026): lo demás no se escribe.
+  function payload(todo) {
     var con = CN.devs.filter(function (v) { return v.tipo; });
     CN.minuta.responsables = CN.owners;
-    return { pid: CN.pid, empresa: CN.empresa, nombre: CN.nombre, fecha_cierre: CN.fecha_cierre || '', sponsor: CN.sponsors.join(','), owner: CN.owners[0] || '', minuta: CN.minuta, borrados: CN.borrados,
+    var d = { pid: CN.pid, empresa: CN.empresa, nombre: CN.nombre, fecha_cierre: CN.fecha_cierre || '', sponsor: CN.sponsors.join(','), owner: CN.owners[0] || '', resumen: CN.minuta.texto || '', minuta: CN.minuta, borrados: CN.borrados,
       devs: con.map(function (v) { var mt = Object.assign({}, v.mant), c = propio(v) ? null : CN.devs[v.mant.comparte];
         mt.comparte = c ? con.indexOf(c) : null;
         return { id: v.id, tipo: v.tipo, titulo: v.titulo, objetivo: v.objetivo, mejora: !!v.mejora, escala: v.escala || '', r: v.r, cant: v.cant, etapa: v.etapa, notas: v.notas, ext: v.ext, base: v.base, na: v.na,
                  precio: v.precio || 0, mant: mt, moneda: v.moneda || 'ARS', forma_pago: v.forma_pago || '', inicio: v.inicio || '', vh: v.vh || null, vh_sop: v.vh_sop || null, semanas: v.semanas || '', garantia: v.garantia || '' }; }) };
+    return todo || !CN.orig ? d : soloCambios(d, CN.orig);
+  }
+  function soloCambios(d, o) {
+    var j = JSON.stringify, partes = function (x, ks) { return j(ks.map(function (k) { return x[k]; })); };
+    // Del mantenimiento cuenta lo que se elige; la hora de soporte y lo estimado sin abono los calcula la pantalla
+    var mant = function (m) { return !m.on ? 'no' : m.comparte != null ? 'con' + m.comparte : partes(m, ['id', 'hs', 'abono', 'ipc', 'modalidad']); };
+    var r = Object.assign({}, d, { minuta: {} });
+    Object.keys(d.minuta).forEach(function (k) { if (j(d.minuta[k]) !== j(o.minuta[k])) r.minuta[k] = d.minuta[k]; });
+    ['fecha_cierre', 'sponsor', 'owner', 'resumen'].forEach(function (k) { if (d[k] === o[k]) delete r[k]; });
+    r.devs = d.devs.map(function (v) {
+      var a = v.id && d.empresa === o.empresa ? o.devs.filter(function (y) { return y.id === v.id; })[0] : null; if (!a) return v;
+      var mi = mant(v.mant) === mant(a.mant), ks = Object.keys(v).filter(function (k) { return k !== 'mant'; });
+      return Object.assign({}, v, { igual: mi && partes(v, ks) === partes(a, ks),
+        func_igual: partes(v, ['tipo', 'r', 'cant', 'etapa', 'mejora', 'escala']) === partes(a, ['tipo', 'r', 'cant', 'etapa', 'mejora', 'escala']), ext_igual: j(v.ext) === j(a.ext),
+        mant: Object.assign({}, v.mant, { igual: mi && v.titulo === a.titulo }) });
+    });
+    return r;
   }
   async function guardar(crear, el) {
     var d = payload();
     if (!d.empresa || !d.nombre) return aviso('Falta la empresa o el título del proyecto.');
     if (!d.devs.length) return aviso('Cargá al menos un desarrollo.');
-    if (crear && !d.fecha_cierre) return aviso('Falta la fecha probable de cierre de negociación.');
+    if (crear && !CN.fecha_cierre) return aviso('Falta la fecha probable de cierre de negociación.');
     var alta = !CN.pid, msg = crear ? (alta ? 'Se crea «' + d.nombre + '» como Prospecto, con sus horas, costos y tareas. Queda en Proyectos.' : 'El borrador «' + d.nombre + '» pasa a Prospecto y escribe sus horas, costos y tareas.')
       : (alta ? 'Se guarda «' + d.nombre + '» como Borrador. No se ve en Proyectos hasta que lo crees.' : 'Se guardan los cambios de «' + d.nombre + '» (' + CN.estado + ').');
     if (!(await ask(msg, crear ? 'Crear proyecto' : 'Guardar', { ok: crear ? 'Crear' : 'Guardar' }))) return;
