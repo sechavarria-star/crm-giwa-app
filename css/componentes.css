@@ -670,3 +670,8 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .md.ep-md { background: var(--fondo); border-color: var(--marco); }
 .md.ep-md .mh, .md.ep-md .mf { background: var(--fondo); }
 .md.ep-md .fc { background: var(--caja); }
+/* Ficha del proyecto: secciones plegables sin caja, como en Nuevo / Editar proyecto (20/11/2026) */
+.ficha-secs > .ui-d { border: 0; border-bottom: 1px solid var(--marco); border-radius: 0; background: none; padding: 10px 0; margin: 0; }
+.ficha-secs > .ui-d > .ui-d-t { font-weight: 600; }
+.ficha-secs > .ui-cuerpo { border: 0; background: none; box-shadow: none; border-radius: 0; padding: 12px 0 18px; }
+.ui-ficha-hd + .ficha-secs { margin-top: var(--e3); }

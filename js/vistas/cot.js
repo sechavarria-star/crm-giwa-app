@@ -687,16 +687,22 @@
   }
 
   // ── Minuta: lo relevado, sin precios, con los pendientes ──
+  // Lo relevado de un desarrollo: alcance, etapa futura, lo que no incluye, mantenimiento y pendientes
+  // enLinea (la ficha): las funcionalidades en un renglón; sin eso (minuta, impresión), en lista
+  function relDev(v, enLinea) {
+    var li = function (arr) { if (enLinea) return '<div class="ui-li u-mb6">' + (arr.map(function (m) { return esc(nom(m)) + (m.instancia && v.cant[m.id] > 1 ? ' ×' + v.cant[m.id] : '') + (v.notas[m.id] ? ' (' + esc(v.notas[m.id]) + ')' : ''); }).join(' · ') || '—') + '</div>';
+      return arr.length ? '<ul>' + arr.map(function (m) { return '<li>' + esc(nom(m)) + (m.instancia && v.cant[m.id] > 1 ? ' ×' + v.cant[m.id] : '') + (v.notas[m.id] ? ' — ' + esc(v.notas[m.id]) : '') + '</li>'; }).join('') + '</ul>' : '<div class="ui-nota-t">—</div>'; };
+    var M = mods(v);
+    return (v.objetivo ? '<div class="u-s11">' + esc(v.objetivo) + '</div>' : '') +
+      '<div class="u-s11"><b>Alcance · 1ª etapa</b></div>' + li(M.filter(function (m) { return si(v, m.id) && v.etapa[m.id] !== 'futura'; })) +
+      '<div class="u-s11"><b>Etapa futura</b></div>' + li(M.filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura'; })) +
+      '<div class="u-s11"><b>No incluye</b></div>' + li(M.filter(function (m) { return v.r[m.id] === 'No'; })) +
+      (v.mant.on ? '<div class="u-s11">Incluye mantenimiento: <span class="ui-num">' + v.mant.hs + '</span> h por mes (monitoreo, reunión mensual, análisis y ajustes), ajuste por IPC cada <span class="ui-num">3</span> meses.</div>' : '') +
+      '<div class="u-s11 ui-p-pendiente"><b>Pendientes</b></div>' + li(pend(v));
+  }
   function relevado() {
     return CN.devs.filter(function (v) { return v.tipo; }).map(function (v) {
-      var li = function (arr) { return arr.length ? '<ul>' + arr.map(function (m) { return '<li>' + esc(nom(m)) + (m.instancia && v.cant[m.id] > 1 ? ' ×' + v.cant[m.id] : '') + (v.notas[m.id] ? ' — ' + esc(v.notas[m.id]) : '') + '</li>'; }).join('') + '</ul>' : '<div class="ui-nota-t">—</div>'; };
-      var M = mods(v);
-      return '<div class="ui-lat-h u-mt10">' + esc(v.titulo || tipoNom(v.tipo)) + '</div>' + (v.objetivo ? '<div class="u-s11">' + esc(v.objetivo) + '</div>' : '') +
-        '<div class="u-s11"><b>Alcance · 1ª etapa</b></div>' + li(M.filter(function (m) { return si(v, m.id) && v.etapa[m.id] !== 'futura'; })) +
-        '<div class="u-s11"><b>Etapa futura</b></div>' + li(M.filter(function (m) { return si(v, m.id) && v.etapa[m.id] === 'futura'; })) +
-        '<div class="u-s11"><b>No incluye</b></div>' + li(M.filter(function (m) { return v.r[m.id] === 'No'; })) +
-        (v.mant.on ? '<div class="u-s11">Incluye mantenimiento: <span class="ui-num">' + v.mant.hs + '</span> h por mes (monitoreo, reunión mensual, análisis y ajustes), ajuste por IPC cada <span class="ui-num">3</span> meses.</div>' : '') +
-        '<div class="u-s11 ui-p-pendiente"><b>Pendientes</b></div>' + li(pend(v));
+      return '<div class="ui-lat-h u-mt10">' + esc(v.titulo || tipoNom(v.tipo)) + '</div>' + relDev(v);
     }).join('');
   }
   function minuta() {
@@ -732,15 +738,43 @@
   }
 
   // ── Ver (lectura) ──
+  // La misma ficha de Proyectos (20/11/2026): encabezado con sus acciones y secciones plegables, sin pestañas
   function htmlVer() {
     var v = C.ver; if (!v) return '<div class="ui-nota-t">Cargando…</div>';
-    var M = v.minuta || {}, min = MIN.filter(function (k) { return M[k[0]]; }).map(function (k) { return '<div class="u-s11"><b>' + k[1] + '</b></div><div class="u-s11 u-mb6">' + esc(M[k[0]]) + '</div>'; }).join('');
-    var guard = CN; CN = v._cn; var rel = relevado(); CN = guard;
-    return '<div class="ui-ficha-hd"><div><div class="ui-pro">' + esc(v.nombre) + '</div><div class="ui-emp">' + esc(v.empresa_nombre || '') + ' · <span class="ui-num">' + esc(v.pid) + '</span></div></div>' +
-      '<span>' + uiEstado(v.estado) + '</span><span class="ui-acc-est ui-fila-ic">' +
-        uiBtn('Imprimir minuta', 'documento', 's', 'data-cot="ver-imprimir"') + (v.editable ? uiBtn('Editar', 'editar', 's', 'data-cot="editar" data-id="' + esc(v.pid) + '"') : '') +
-        (v.estado === 'Borrador' ? uiBtn('Crear proyecto', 'check', 'p', 'data-cot="ver-crear"') : uiBtn('Abrir en Proyectos', 'abrir', 'p', 'data-cot="ver-pm"')) + '</span></div>' +
-      '<div class="ui-cols"><div>' + (M.texto ? '<div class="u-s11 u-mb6">' + esc(M.texto) + '</div>' : '') + (min || '<div class="ui-nota-t">Sin minuta cargada.</div>') + '</div><div>' + rel + '</div></div>';
+    var M = v.minuta || {}, X = v._cn, devs = X.devs.filter(function (d) { return d.tipo; });
+    var sec = function (t, open, cuerpo, n, val) { return uiDesp({ t: t, open: open, n: n, v: val }, cuerpo); };
+    var dato = function (l, val) { return '<div class="fg"><span class="fl">' + l + '</span><div>' + val + '</div></div>'; };
+    var num = function (t) { return '<span class="ui-num">' + t + '</span>'; };
+    var fecha = function (f) { return f ? num(ff(String(f).slice(0, 10))) : '—'; };
+    var lista = function (x) { return String(x || '').split(',').map(function (y) { return y.trim(); }).filter(Boolean); };
+    var monto = function (d) { return Number(d.total) || Number(d.precio) || 0; };
+    var suma = devs.reduce(function (a, d) { return a + monto(d); }, 0);
+    var conMmr = devs.filter(function (d) { return propio(d); }), mmr = conMmr.reduce(function (a, d) { return a + (Number(d.mant.abono) || 0); }, 0);
+    var persona = function (id) { var c = (C.ini.contactos || []).filter(function (y) { return y.id === id; })[0] || { nombre: id }, t = telWa(c.tel);
+      return '<div class="ui-li"><span class="ui-f1">' + esc(c.nombre) + '</span>' + (t ? '<a class="ui-ib ui-wa" href="https://wa.me/' + t + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') + '</div>'; };
+    var usuario = function (m) { var u = (C.ini.usuarios || []).filter(function (y) { return y.mail === m; })[0]; return '<div class="ui-li"><span class="ui-f1">' + esc(u ? u.nombre : m) + '</span></div>'; };
+    var nada = '<div class="ui-nota-t">—</div>', cli = lista(v.contactos);
+    var col = function (t, html) { return '<div><div class="ui-li-sub">' + t + '</div>' + (html || nada) + '</div>'; };
+    var min = MIN.filter(function (k) { return M[k[0]]; }).map(function (k) { return dato(k[1], esc(M[k[0]])); }).join('');
+    var fp = function (id) { var f = (C.ini.modelos || []).filter(function (y) { return y.id === id; })[0]; return f ? esc(f.nombre) : '—'; };
+    return '<div class="ui-ficha ui-ficha-sola"><div class="ui-ficha-hd">' + uiLogo(v.empresa_nombre || '', '') + '<div><div class="ui-pro">' + esc(v.nombre) + '</div><div class="ui-emp">' + esc(v.empresa_nombre || '') + '</div></div>' +
+      '<span>' + uiEstado(v.estado) + '</span><span class="u-f1"></span>' +
+        uiBtn('Imprimir minuta', 'documento', 's', 'data-cot="ver-imprimir"') + (v.editable ? uiBtn('Editar cotización', 'editar', 's', 'data-cot="editar" data-id="' + esc(v.pid) + '"') : '') +
+        (v.estado === 'Borrador' ? uiBtn('Crear proyecto', 'check', 'p', 'data-cot="ver-crear"') : uiBtn('Ver proyecto', 'abrir', 'p', 'data-cot="ver-pm"')) + '</div><div class="ficha-secs">' +
+      sec('Proyecto', true, '<div class="ui-g4">' + dato('Creado', fecha(v.fecha)) + dato('Fecha probable de aprobación', fecha(v.fecha_cierre)) +
+        dato('Desarrollos', num(fmt(suma))) + dato('MMR por mes', mmr ? '<span class="ui-num ui-p-abono">' + fmt(mmr) + '</span>' : '—') + '</div>') +
+      sec('Resumen ejecutivo', false, (M.texto || v.resumen ? '<div class="u-mb10">' + esc(M.texto || v.resumen) + '</div>' : '') + (min ? '<div class="ui-g3">' + min + '</div>' : '') || '<div class="ui-nota-t">Sin minuta cargada.</div>') +
+      sec('Contactos', false, '<div class="ui-cols3">' + col('SPONSORS', X.sponsors.map(persona).join('')) + col('CONTACTOS DEL CLIENTE', cli.map(persona).join('')) + col('RESPONSABLES', X.owners.map(usuario).join('')) + '</div>',
+        String(X.sponsors.length + cli.length + X.owners.length)) +
+      sec('Desarrollos', true, devs.map(function (d) {
+        return uiDesp({ n2: true, t: d.titulo || tipoNom(d.tipo), open: devs.length === 1, v: num(fmt(monto(d))) + ' ' + uiEstado(d.estado || 'Nuevo') },
+          '<div class="ui-g3">' + dato('Tipo', esc(tipoNom(d.tipo))) + dato('Forma de pago', fp(d.forma_pago)) + dato('Horas', d.horas ? num(Math.round(d.horas) + ' h') : '—') +
+            dato('Duración', Number(d.semanas) > 0 ? num(d.semanas) + ' semanas' : '—') + dato('Garantía', d.garantia ? num(d.garantia) + ' días' : '—') + dato('Inicio', fecha(d.inicio)) + '</div>' + relDev(d, true)); }).join('') || '<div class="ui-nota-t">Sin desarrollos.</div>',
+        String(devs.length), num(fmt(suma))) +
+      sec('Mantenimiento mensual · MMR', false, conMmr.map(function (d) {
+        return '<div class="ui-li"><span class="ui-f1"><span class="ui-p-abono">' + esc('MMR de ' + (d.titulo || tipoNom(d.tipo))) + '</span><div class="ui-li-sub">' + num(String(Number(d.mant.hs) || 0).replace('.', ',')) + ' h por mes' + (d.mant.ipc ? ' · Ajuste por IPC' : '') + '</div></span>' +
+          '<span class="ui-num ui-p-abono">' + fmt(Number(d.mant.abono) || 0) + '/mes</span></div>'; }).join('') || '<div class="ui-nota-t">Sin mantenimiento mensual.</div>', '', mmr ? '<span class="ui-num ui-p-abono">' + fmt(mmr) + '/mes</span>' : '') +
+      '</div></div>';
   }
 
   // ── En la reunión: la misma pantalla para escribir la minuta o pegar un README ──

@@ -30,7 +30,7 @@
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'proy', tareas: {}, cons: [], tst: TareasUI.estado(),
             seg: { fil: [], q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
-            f: null, fLista: [], fTab: 'desarrollos', fAb: {}, dTab: {}, prev: 'proy' };
+            f: null, fLista: [], fAb: {}, dTab: {}, prev: 'proy' };
   var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento']];   // pestañas; entra directo a Proyectos. Nuevo proyecto rápido es un modal (02/11/2026)
 
   async function cargar() {
@@ -153,17 +153,6 @@
       case 'activo': return [['finalizado', 'Finalizar', 'e_cuadrado']];
     }
     return [];
-  }
-  // ¿Se puede pasar el proyecto a «nuevo» desde la barra? (_puedeEstado)
-  function puedeEstado(p, nuevo) {
-    var a = _canonProy(p.estado_proyecto), b = _canonProy(nuevo), aprob = (p.items || []).some(function (it) { return esGanado(it.estado); });
-    if (a === b) return { ok: true };
-    if (a === 'finalizado') return { ok: false, msg: 'El proyecto está Finalizado: su estado no se cambia.' };
-    if (b === 'activo') return { ok: false, msg: '«Activo» se calcula solo: arranca un desarrollo y el proyecto pasa a Activo.' };
-    var prosp = b === 'prospecto' || b === 'negociacion';
-    if (prosp && aprob) return { ok: false, msg: 'Tiene desarrollos aprobados: no puede volver a ' + nuevo + '.' };
-    if (prosp && ['aprobado', 'activo', 'finalizado'].indexOf(a) >= 0) return { ok: false, msg: 'Un proyecto ' + p.estado_proyecto + ' no vuelve a ' + nuevo + '.' };
-    return { ok: true };
   }
   // Aprobar o rechazar el proyecto no crea recordatorios (tampoco en el Apps Script):
   // quedan en «Faltan recordatorios» del dashboard de Administración.
@@ -384,9 +373,10 @@
       db().from('proyecto_horas').select('desarrollo_id,modulo_nombre,etapa,horas_est,horas_reales').eq('proyecto_id', id),
       db().from('v_analisis_clientes').select('*').eq('empresa', p.empresa_id || '-'),
       db().from('entregables').select('id,titulo,tipo,accesos,creado').eq('proyecto_id', id).order('creado', { ascending: false }),
-      db().from('proyectos').select('fecha_cierre_probable').eq('id', id).maybeSingle(),
+      db().from('proyectos').select('fecha_cierre_probable,creado,fecha_aprobacion,fecha_propuesta_enviada,fecha_inicio,fecha_finalizado,minuta,sponsors,sponsor_id').eq('id', id).maybeSingle(),
       db().from('cobros').select('desarrollo_id,cuota_nro,tipo_comprobante,comprobante_nro,comprobante_fecha,deposito_fecha,monto_ars,link_fc').eq('proyecto_id', id).order('comprobante_fecha'),
-      db().from('desarrollos').select('id,monto_cotizado,mantenimiento_horas').eq('proyecto_id', id)
+      db().from('desarrollos').select('id,monto_cotizado,mantenimiento_horas').eq('proyecto_id', id),
+      db().from('historial_proyecto').select('evento,fecha,prevista,detalle,quien').eq('proyecto_id', id).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(60)
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     P.f = {
@@ -395,7 +385,7 @@
       // comentarios del proyecto (la columna puede traer varios, separados por coma), los más nuevos primero
       coms: r[1].data.filter(function (c) { return crmLista(c.proyecto_id).indexOf(id) >= 0; })
         .sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')) || (a.orden - b.orden); }),
-      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null, entregables: r[5].data, cierreProb: (r[6].data || {}).fecha_cierre_probable, cobros: r[7].data, cotizado: r[8].data.reduce(function (o, d) { o[d.id] = Number(d.monto_cotizado) || 0; return o; }, {}), an: {}
+      cons: r[2].data, horas: r[3].data, analisis: r[4].data[0] || null, entregables: r[5].data, cierreProb: (r[6].data || {}).fecha_cierre_probable, pd: r[6].data || {}, hist: r[9].data || [], cobros: r[7].data, cotizado: r[8].data.reduce(function (o, d) { o[d.id] = Number(d.monto_cotizado) || 0; return o; }, {}), an: {}
     };
     // Análisis económico (12/11/2026): el mismo del Cotizador (cot_analisis), por desarrollo con horas
     var mhs = {}; r[8].data.forEach(function (d) { mhs[d.id] = Number(d.mantenimiento_horas) || 0; });
@@ -463,19 +453,6 @@
       return { lbl: lbl, cls: colorEstadoProy(lbl).cls, est: aqui ? 'aqui' : hecho ? 'pas' : 'fut', tit: aqui ? 'El proyecto está ' + lbl : lbl };
     }), can === 'finalizado') + '</div>';
   }
-  function riel(p) {
-    var can = _canonProy(p.estado_proyecto), det = esProyDetenido(p) || can === 'rechazado', idx = CAMINO.indexOf(can);
-    return '<div class="riel"><div class="riel-h">' + ib('info', 'Tocá un paso de la barra para cambiar el estado del proyecto. Los apagados no se pueden elegir desde acá.', 'type="button"') +
-      barraEstados(CAMINO.map(function (c, i) {
-        var lbl = nombreProy(c), hecho = !det && idx >= 0 && i < idx, aqui = !det && i === idx;
-        var chk = puedeEstado(p, lbl), clic = chk.ok && !aqui;
-        return { lbl: lbl, cls: colorEstadoProy(lbl).cls, est: aqui ? 'aqui' : hecho ? 'pas' : 'fut', no: !(chk.ok || aqui),
-                 attrs: clic ? ' data-pm="estado" data-id="' + esc(p.id) + '" data-est="' + c + '"' : ' disabled',
-                 tit: aqui ? 'El proyecto está ' + lbl : (chk.ok ? 'Marcar como ' + lbl : chk.msg) };
-      }), can === 'finalizado') + (esProyDetenido(p) ? est('Detenido', 'xd') : '') +
-      (can === 'finalizado' ? '' : ib(esProyDetenido(p) ? 'play' : 'pausa', esProyDetenido(p) ? 'Reanudar el proyecto' : 'Detener el proyecto: los estados no cambian, queda marcado', 'data-pm="det-proy" data-id="' + esc(p.id) + '"')) +
-      '</div></div>';
-  }
   // Cronograma (02/11/2026): línea de tiempo con los hitos del proyecto y la secuencia de cada desarrollo,
   // en orden de fecha; cada hito dice si ya pasó y de qué desarrollo depende.
   // soloId (02/11/2026): la secuencia de UN desarrollo (la de su fila), con su arranque estimado si es un abono
@@ -507,43 +484,6 @@
       return '<li class="tl-paso ui-e-' + (x.f ? x.c : 'rechazado') + (x.f && x.f <= hoy ? ' hecho' : '') + '"><span class="tl-flecha"><span class="ui-num">' + (x.f ? ff(x.f) : '—') + '</span></span>' +
         '<span class="tl-nom">' + esc(nom || hito) + '</span>' + (nom ? '<span class="tl-est">' + esc(hito) + '</span>' : '') + '</li>';
     }).join('') + '</ol>';
-  }
-  function tabInfo(p) {
-    var F = P.f, dur = mDuracionMeses(p), cie = mCierre(p);
-    // Un proyecto Activo o Finalizado ya se cargó: se mira. Lo que sigue cambiando son los contactos.
-    var editar = ['activo', 'finalizado', 'rechazado'].indexOf(_canonProy(p.estado_proyecto)) < 0   // Activo ya no se edita (16/11/2026)
-      ? uiBtn('Editar proyecto', 'editar', 'p', 'data-pm="editar-proy"')
-      : '<span class="ui-nota-t" title="El proyecto ya arrancó: los datos se cargaron al cotizar. Acá sólo se suman contactos.">Sólo lectura</span>';
-    var dato = function (l, v) { return '<div><span class="ui-lbl">' + l + '</span>' + v + '</div>'; };
-    // Datos del proyecto (17/11/2026): sin las fechas (están en el riel) y con los contactos adentro
-    var datosB = dato('Descripción', esc(p.descripcion || '—')) + '<br><div class="ui-datos">' +
-      [['Sponsor', esc(p.sponsor || '—')], ['Owner', esc(nombre(p.owner) || '—')], ['Probabilidad', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>'],
-       ].concat(F.cierreProb ? [] : [['Cierre probable de negociación',
-         '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')]]).map(function (x) {   // sólo si falta, para cargarla
-        return dato(x[0], x[1]);
-      }).join('') + '</div>' +
-      (false ? '' +   // sin el campo de fecha suelto ni su «Guardar»: las fechas se editan desde el Cronograma (18/11/2026)
-        _devsDe(p).filter(function (it) { return !_pd(it.fecha_fin) && !_pd(it.fecha_cierre) && !(_pd(it.fecha_ini || it.fecha_est) && _nFront(it.semanas) > 0); }).map(function (it) {
-          return '<div class="ui-linea"><span class="ui-f1">' + esc(it.titulo || it.id) + '</span><input class="fc u-wauto ui-num" type="date" data-ffin="' + esc(it.id) + '" aria-label="Fecha de fin de ' + esc(it.titulo || it.id) + '">' +
-            uiBtn('Guardar', 'check', 's', 'data-pm="fin-des" data-id="' + esc(it.id) + '"') + '</div>'; }).join('') : '');
-    // Contactos de la empresa; la estrella marca (y desmarca) los de este proyecto
-    var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
-    var h = uiDesp({ t: 'Datos del proyecto', v: editar }, datosB + cronoProy(p, dur) + '<div class="ui-barra u-mt10"><span class="ui-lat-h u-f1">Contactos · ' + esc(p.empresa || '') + '</span>' +
-      (_canonProy(p.estado_proyecto) === 'rechazado' ? '' : uiBtn('Contacto', 'mas', 's', 'data-pm="contacto"')) + '</div>' +
-      (F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
-        var tel = telWa(c.telefono), tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
-        return '<div class="ui-linea"><button type="button" class="ui-ib' + (mio(c) ? ' on' : '') + '" data-pm="estrella" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + (mio(c) ? '★' : '☆') + '</button>' +
-          '<span class="ui-f1">' + esc(((c.nombre || '') + ' ' + (c.apellido || '')).trim() || '—') + ' <span class="ui-nota-t">· ' + esc(c.puesto || c.area_trabajo || c.email || '') + '</span></span>' +
-          (tel ? '<a class="ui-ib ui-wa" href="https://wa.me/' + tel + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
-          (c.email ? '<a class="ui-ib ui-azul" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Mail">' + uiIco('mail') + '</a>' : '') + '</div>';
-      }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>'));
-    // Las acciones de estado (Aprobar, No aceptar, Detener, Finalizar…) van una sola vez, debajo del riel (17/11/2026)
-    return h;
-  }
-  // Cronograma dentro de Datos del proyecto (18/11/2026): título, duración, riel y los botones de estado con su nombre
-  function cronoProy(p, dur) {
-    return '<div class="ui-lat-h u-mt10">Cronograma' + (dur ? ' <span class="ui-nota-t">· duración <span class="ui-num">' + dur + '</span> mes' + (dur === 1 ? '' : 'es') + '</span>' : '') + '</div>' +
-      fechasHTML(p) + '<div class="ui-barra">' + accionesYAlerta(p, false, true) + '</div>';
   }
   // Alta del abono mensual (MMR) del proyecto (18/11/2026): cuota, meses, ajuste e inicio; uno solo activo
   function altaAbono(el, p) {
@@ -628,16 +568,17 @@
     return h;
   }
   // Cada desarrollo se abre debajo de su fila (C3): ícono de tipo, nombre y estado, sin montos; los datos al abrir
-  function tabDesarrollos(p) {
+  // Desarrollos y, en su propia sección, el mantenimiento (mmr)
+  function tabDesarrollos(p, mmr) {
     var ord = { curso: 0, garantia: 1, aprobada: 2, nueva: 3, finalizada: 4, rechazada: 5 };
     var k = function (it) { return it.detenido ? 3.5 : (ord[_canonSol(it.estado)] === undefined ? 3 : ord[_canonSol(it.estado)]); };
-    var lista = (p.items || []).slice().sort(function (a, b) { return k(a) - k(b); });
+    var lista = (p.items || []).filter(function (it) { return !!esMant(it) === !!mmr; }).sort(function (a, b) { return k(a) - k(b); });
     // Mejora o soporte: una sola acción del PROYECTO; el modal pregunta cuál y de qué desarrollo depende
     var bases = basesAlta(p);
     var hayMmr = (p.items || []).some(function (it) { return esMant(it) && ['finalizada', 'rechazada'].indexOf(_canonSol(it.estado)) < 0; });
-    var alta = bases.length ? '<div class="ui-barra ui-der u-mt10">' + (hayMmr ? '' : uiBtn('Abono mensual', 'mas', 's', 'data-pm="alta-abono" data-id="' + esc(p.id) + '"')) +   // un único MMR (18/11/2026)
-      uiBtn('Desarrollo', 'mas', 's', 'data-pm="alta-des" data-id="' + esc(p.id) + '"') + '</div>' : '';
-    if (!lista.length) return alta + '<div class="ui-nota-t">Sin desarrollos.</div>';
+    var alta = !bases.length || (mmr && hayMmr) ? '' : '<div class="ui-barra ui-der u-mt10">' + (mmr ? uiBtn('Abono mensual', 'mas', 's', 'data-pm="alta-abono" data-id="' + esc(p.id) + '"')   // un único MMR (18/11/2026)
+      : uiBtn('Desarrollo', 'mas', 's', 'data-pm="alta-des" data-id="' + esc(p.id) + '"')) + '</div>';
+    if (!lista.length) return alta + '<div class="ui-nota-t">' + (mmr ? 'Sin mantenimiento mensual.' : 'Sin desarrollos.') + '</div>';
     // «+ Desarrollo» abajo de todos los desarrollos (16/11/2026)
     return lista.map(function (it) {
       var rec = esMant(it), det = !!it.detenido || !!p.detenido, can = _canonSol(it.estado);
@@ -742,7 +683,7 @@
     }, 0);
     return '<div id="pm-tk"><div class="loading"><div class="spin"></div></div></div>';
   }
-  function tabDocs(p) {
+  function tabDocs(p, plano) {
     var drv = p.carpeta || '', emp = (P.emps[p.empresa] || {}).drive_interno || '';
     var lnk = function (u, t) { return '<a class="ui-lnk ui-azul" href="' + esc(u) + '" target="_blank" rel="noopener">' + uiIco('carpeta') + t + '</a>'; };
     var h = '<div class="ui-barra">' + (drv ? lnk(drv, 'Carpeta del proyecto') : '') + (emp && emp !== drv ? lnk(emp, 'Drive de ' + esc(p.empresa || 'la empresa')) : '') + '</div>';
@@ -751,7 +692,8 @@
     // Mismo formato que Contactos (16/11/2026): desplegable con título, cantidad y «+ Mockup o propuesta»
     var ents = P.f.entregables || [];
     // Documentos, Drive, mockups y propuestas en un solo desplegable (17/11/2026)
-    return uiDesp({ t: 'Documentos, Drive y propuestas', n: ents.length, v: uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') }, h + (ents.length ? ents.map(function (e) {
+    var arma = plano ? function (o, c) { return '<div class="ui-barra ui-der">' + o.v + '</div>' + c; } : uiDesp;
+    return arma({ t: 'Documentos, Drive y propuestas', n: ents.length, v: uiBtn('Mockup o propuesta', 'mas', 's', 'data-pm="ent-nuevo" data-id="' + esc(p.id) + '"') }, h + (ents.length ? ents.map(function (e) {
       var ac = (e.accesos || [])[0] || {}, u = String(ac.url || ''), web = /^https?:\/\//i.test(u);
       return '<div class="ui-linea"><span class="ui-f1">' + esc(e.titulo || ac.nombre || 'Sin título') + ' <span class="ui-nota-t">· ' + esc(e.tipo || '') + '</span></span>' +
         (web ? '<a class="ui-ib" href="' + esc(u) + '" target="_blank" rel="noopener" data-tip="Abrir" aria-label="Abrir ' + esc(e.titulo || '') + '">' + uiIco('abrir') + '</a>' : '<span class="ui-nota-t">' + esc(u) + '</span>') + '</div>'; }).join('')
@@ -850,58 +792,57 @@
       (lista.length > 1 ? uiIb('izquierda', 'Proyecto anterior', '', 'data-pm="nav" data-dir="-1"') + '<span class="ui-num ui-nota-t">' + (i + 1) + '/' + lista.length + '</span>' + uiIb('derecha', 'Proyecto siguiente', '', 'data-pm="nav" data-dir="1"') : '') + '</div>';
     return h + fichaCuerpo(p);
   }
-  // Acciones del proyecto: Detener y Finalizar como íconos junto al estado (C5); las demás, botones con su confirmación
-  // sinDet (16/11/2026): en la fila abierta de la lista, Detener va con su palabra debajo del estado
-  function iconosEstado(p, sinDet) {
-    var can = _canonProy(p.estado_proyecto), pid = esc(p.id), acc = p.detenido ? [] : accionesProy(p);
-    return (can === 'finalizado' || can === 'rechazado' ? '' :
-        (p.detenido ? uiIb('e_play', 'Reanudar', '', 'data-pm="det-proy" data-id="' + pid + '"') : sinDet ? '' : uiIb('e_pausa', 'Detener', 'det', 'data-pm="det-proy" data-id="' + pid + '"'))) +
-      (acc.some(function (a) { return a[0] === 'finalizado'; }) ? uiAcc('finalizar', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
-  }
-  // Acciones del PROYECTO, arriba a la derecha de la ficha: las del estado (botones con su confirmación),
-  // Arrancar si hay aprobados, y Tarea y Comentario como íconos (02/11/2026)
-  // Debajo del riel: Detener / Reanudar y Finalizar con su nombre, no sólo el ícono (18/11/2026)
-  function botonesEstado(p) {
-    var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
-    if (can === 'finalizado' || can === 'rechazado') return '';
-    return (p.detenido ? uiBtn('Reanudar', 'play', 's', 'data-pm="det-proy" data-id="' + pid + '"') : uiBtn('Detener', 'pausa', 's', 'data-pm="det-proy" data-id="' + pid + '"')) +
-      (!p.detenido && accionesProy(p).some(function (a) { return a[0] === 'finalizado'; }) ? uiBtn('Finalizar', 'check', 's', 'data-pm="estado" data-id="' + pid + '" data-est="finalizado"') : '');
-  }
-  function accionesYAlerta(p, sinDet, txt) {
-    var can = _canonProy(p.estado_proyecto), pid = esc(p.id);
-    var bAcc = { negociacion: ['p', 'e_flechas'], aprobado: ['p', 'e_check'], rechazado: ['s', 'e_cruz'] };
-    var viejo = function (txt, tipo) { return '<a class="ui-btn ui-' + tipo + '" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
-    var aprob = (p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; });
-    return (can === 'rechazado' ? viejo('Volver a cotizar', 'p') :
-        (p.detenido ? '' : accionesProy(p).filter(function (a) { return a[0] !== 'finalizado'; }).map(function (a) {
-          var b = bAcc[a[0]] || ['s', a[2]]; return uiBtn(a[1], b[1], b[0], 'data-pm="estado" data-id="' + pid + '" data-est="' + a[0] + '"'); }).join('')) +
-        (aprob && !p.detenido ? uiBtn('Arrancar', 'e_play', 'p', 'data-pm="arrancar" data-id="' + pid + '"') : '') +
-        ((can === 'prospecto' || can === 'negociacion') ? viejo('Cotizar en el CRM actual', 's') : '')) +
-      (txt ? botonesEstado(p) : iconosEstado(p, sinDet));
-  }
   // C5 · la ficha: motivo en gris y, junto al estado, Detener y Finalizar; botones secundarios; pestañas; lateral de plata
   // C5 · la ficha: el motivo en el color del estado; arriba a la derecha las acciones del proyecto;
   // pestañas; lateral de plata. Las acciones de cada desarrollo van en su fila (02/11/2026)
   function fichaCuerpo(p, enLista) {
-    var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e);
-    // Tres pestañas (16/11/2026): Información con Documentos y Drive adentro; Análisis con lo Económico
-    var tabs = [['info', 'Información', function (x) { return tabInfo(x) + tabDocs(x); }],
-                ['analisis', 'Presupuesto', function (x) { return lateral(x) + porDesarrollo(x); }],
-                ['desarrollos', 'Desarrollos del proyecto' + ((p.items || []).length ? ' (' + p.items.length + ')' : ''), tabDesarrollos],
-                ['tickets', 'Tickets', tabTickets]];
-    var t = tabs.find(function (x) { return x[0] === P.fTab; }) || tabs[0];
+    // Ficha única (diseño aprobado 20/11/2026): encabezado con «Editar proyecto» y secciones plegables, con las mismas
+    // piezas de antes (Datos, Presupuesto, Documentos, Contactos ★, Desarrollos, Tickets) y el historial. Tareas a la derecha.
+    var e = p.estado_proyecto || 'Prospecto', can = _canonProy(e), F = P.f, d = F.pd || {}, min = {};
+    try { min = d.minuta ? JSON.parse(d.minuta) : {}; } catch (x) { min = {}; }
+    P.fsec = P.fsec || { proy: true };
+    var sec = function (k, t, cuerpo, n, v) { return uiDesp({ t: t, open: !!P.fsec[k], n: n, v: v, attrs: 'data-fsec="' + k + '"' }, cuerpo); };
+    var dato = function (l, v) { return '<div class="fg"><span class="fl">' + l + '</span><div>' + v + '</div></div>'; };
     var av = avisoAbono(p), pq = porQue(p, can) || deDondeSale(p);
-    var motivo = '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e) + '">' + esc(pq) + '</span></div>';
-    var acc = '';   // las acciones de estado van debajo del riel del cronograma (17/11/2026)
-    var cab = enLista
-      ? '<div class="ui-ficha-hd"><span class="u-f1">' + (av || '') + '</span>' + acc + '</div>'
-      : '<div class="ui-ficha-hd">' + uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
-        '<span>' + uiEstado(e, { detenido: p.detenido }) + '</span>' + av + acc + '</div>' + motivo + riel(p);
-    // Tareas a la altura de las pestañas, con su mismo formato (17/11/2026)
-    var cuerpo = cab + '<div class="ui-cols ui-cols-ficha"><div>' + uiTabs(tabs.map(function (x) { return [x[0], x[1], 'data-pm="ftab" data-t="' + x[0] + '"']; }), t[0]) +
-      t[2](p) + '</div><div>' + tabTareas(p) + novedadesProy() + '</div></div>';
+    var editar = ['finalizado', 'rechazado'].indexOf(can) < 0 ? uiBtn('Editar proyecto', 'editar', 'p', 'data-pm="editar-proy"') : '';
+    var cab = '<div class="ui-ficha-hd">' + (enLista ? '' : uiLogo(p.empresa, (P.emps[p.empresa] || {}).logo) + '<div><div class="ui-pro">' + esc(p.nombre) + '</div><div class="ui-emp">' + esc(p.empresa) + '</div></div>' +
+        '<span>' + uiEstado(e, { detenido: p.detenido }) + '</span>') + '<span class="u-f1">' + (av || '') + '</span>' + editar + '</div>' +
+      (enLista ? '' : '<div class="ui-motivo ui-fuerte"><span class="ui-e-' + uiClaveEst(e, p.detenido) + '">' + esc(pq) + '</span></div>');
+    // CONTACTOS: sponsors · contactos del cliente (la ★ los marca) · responsables
+    var nomC = function (c) { return ((c.nombre || '') + ' ' + (c.apellido || '')).trim() || '—'; };
+    var linC = function (c) { var t = telWa(c.telefono); return (t ? '<a class="ui-ib ui-wa" href="https://wa.me/' + t + '" target="_blank" rel="noopener" data-tip="WhatsApp" aria-label="WhatsApp">' + uiIco('whatsapp') + '</a>' : '') +
+      (c.email ? '<a class="ui-ib" href="mailto:' + esc(c.email) + '" data-tip="' + esc(c.email) + '" aria-label="Correo">' + uiIco('mail') + '</a>' : ''); };
+    var sps = crmLista(d.sponsors).length ? crmLista(d.sponsors) : (d.sponsor_id ? [d.sponsor_id] : []);
+    var enProy = crmLista(p.contactos), mio = function (c) { return enProy.indexOf(String(c.id)) >= 0; };
+    var rsp = (min.responsables && min.responsables.length ? min.responsables : [p.owner]).filter(Boolean);
+    var contactos = '<div class="ui-cols3">' +
+      '<div><div class="ui-li-sub">SPONSORS</div>' + (sps.length ? sps.map(function (id) { var c = F.cons.filter(function (x) { return x.id === id; })[0] || { nombre: id };
+          return '<div class="ui-li"><span class="ui-f1">' + esc(nomC(c)) + (c.puesto ? '<div class="ui-li-sub">' + esc(c.puesto) + '</div>' : '') + '</span>' + linC(c) + '</div>'; }).join('') : '<div class="ui-nota-t">—</div>') + '</div>' +
+      '<div><div class="ui-li-sub">CONTACTOS DEL CLIENTE</div>' + (F.cons.length ? F.cons.slice().sort(function (a, b) { return (mio(b) ? 1 : 0) - (mio(a) ? 1 : 0); }).map(function (c) {
+          var tip = mio(c) ? 'Sacar del proyecto' : 'Marcar como contacto de este proyecto';
+          return '<div class="ui-li"><button type="button" class="ui-ib' + (mio(c) ? ' on' : '') + '" data-pm="estrella" data-id="' + esc(c.id) + '" data-tip="' + tip + '" aria-label="' + tip + '">' + (mio(c) ? '★' : '☆') + '</button>' +
+            '<span class="ui-f1">' + esc(nomC(c)) + (c.puesto || c.area_trabajo ? '<div class="ui-li-sub">' + esc(c.puesto || c.area_trabajo) + '</div>' : '') + '</span>' + linC(c) + '</div>'; }).join('') : '<div class="ui-nota-t">Sin contactos cargados.</div>') +
+        (can === 'rechazado' ? '' : '<button type="button" class="ui-lnk ui-azul u-mt6" data-pm="contacto">+ Contacto nuevo</button>') + '</div>' +
+      '<div><div class="ui-li-sub">RESPONSABLES</div>' + rsp.map(function (m) { return '<div class="ui-li"><span class="ui-f1">' + esc(nombre(m)) + '</span></div>'; }).join('') + '</div></div>';
+    var acc = accionesEstado(p, false);
+    var cuerpoSecs =
+      sec('proy', 'Proyecto',
+        '<div class="ui-g3">' + dato('Creado', d.creado ? '<span class="ui-num">' + ff(String(d.creado).slice(0, 10)) + '</span>' : '—') + dato('Creado por', '—') +
+          dato('Aprobado el', d.fecha_aprobacion ? '<span class="ui-num">' + ff(d.fecha_aprobacion) + '</span>' : '—') +
+          dato('Fecha probable de aprobación', F.cierreProb ? '<span class="ui-num">' + ff(F.cierreProb) + '</span>' : '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')) +
+          dato('Probabilidad de aprobación', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>') + '<div></div></div>' +
+        lateral(p) + porDesarrollo(p)) +
+      sec('res', 'Resumen ejecutivo', '<div class="u-mb10">' + esc(p.descripcion || '—') + '</div>' + tabDocs(p, true), String((F.entregables || []).length)) +
+      sec('con', 'Contactos', contactos, String(sps.length + enProy.length + rsp.length)) +
+      sec('est', 'Estado y cronograma', rielCiclo(p, Object.assign({ fecha_cierre_probable: F.cierreProb }, d), F.hist, false) + (acc ? '<div class="ui-acc-der">' + acc + '</div>' : ''), '', uiEstado(e, { detenido: p.detenido })) +
+      sec('devs', 'Desarrollos', tabDesarrollos(p), String((p.items || []).filter(function (it) { return !esMant(it); }).length)) +
+      sec('mmr', 'Mantenimiento mensual · MMR', tabDesarrollos(p, true), '', mRecurrente(p) > 0 ? '<span class="ui-num ui-p-abono">' + fmt(mRecurrente(p)) + '/mes</span>' : '') +
+      sec('tick', 'Tickets', tabTickets(p)) +
+      sec('hist', 'Historial', histHTML(F.hist), String((F.hist || []).length));
+    var cuerpo = cab + '<div class="ui-cols ui-cols-ficha"><div class="ficha-secs">' + cuerpoSecs + '</div><div>' + tabTareas(p) + novedadesProy() + '</div></div>';
     return enLista ? cuerpo : '<div class="ui-ficha ui-ficha-sola">' + cuerpo + '</div>';
   }
+
   // Carga rápida desapareció (20/11/2026): Nuevo proyecto usa el mismo modal que Editar proyecto (abrirEditarProy sin proyecto).
 
   async function abrirFicha(el, id, desde) {
@@ -919,6 +860,41 @@
 
   // ── editar el proyecto (saveProyecto · crm_giwa.editar_proyecto) ──
   // El estado sólo ofrece a los que puede pasar hoy (la misma guarda que la barra).
+  // ── El riel del ciclo de vida (20/11/2026): lleno = ocurrió · punteado = previsto. Lo usan la ficha y Editar proyecto ──
+  // d: fechas del proyecto (creado, fecha_propuesta_enviada, fecha_aprobacion, fecha_cierre_probable, fecha_inicio, fecha_finalizado) · hist: historial · edit: con lápices
+  function rielCiclo(p, d, hist, edit) {
+    var can = _canonProy(p.estado_proyecto), devs = (p.items || []).filter(function (it) { return _canonSol(it.estado) !== 'rechazada' && !esMant(it); });
+    var fIni = devs.map(function (it) { return it.fecha_est || it.fecha_ini; }).filter(Boolean).sort()[0], fFin = devs.map(function (it) { return it.fecha_fin; }).filter(Boolean).sort().reverse()[0];
+    var ultimo = function (ev) { var x = (hist || []).filter(function (h) { return h.evento === ev; })[0]; return x && x.fecha; };
+    var paso = function (cls, color, f, nom, est, ed) { return '<div class="ui-cr-p ' + cls + ' ui-e-' + color + '"><div class="ui-cr-f">' + (f ? ff(f).slice(0, 5) : '—') +
+      (edit && ed ? uiIb('editar', 'Cambiar la fecha prevista', '', 'data-ep="' + ed + '"') : '') + '</div><div class="ui-cr-n">' + nom + '</div><div class="ui-cr-e">' + est + '</div></div>'; };
+    var arrancado = !!d.fecha_inicio || can === 'activo' || can === 'finalizado';
+    return '<div class="ui-cr-l"><span><i></i>Ocurrió</span><span><i class="d"></i>Previsto' + (edit ? ' · se puede cambiar' : '') + '</span></div><div class="ui-cr">' +
+      paso('', 'prospecto', String(d.creado || '').slice(0, 10), 'Creado', 'Prospecto') +
+      paso(d.fecha_propuesta_enviada ? '' : 'nada', 'negociacion', d.fecha_propuesta_enviada, 'Propuesta enviada', 'Negociación') +
+      (d.fecha_aprobacion ? '' : paso('prev', 'aprobado', d.fecha_cierre_probable, 'Aprobación prevista', 'previsto', 'ed-cierre')) +
+      paso(d.fecha_aprobacion ? '' : 'nada', 'aprobado', d.fecha_aprobacion, 'Aprobado', '') +
+      (arrancado ? paso('', 'curso', d.fecha_inicio || fIni, 'Inicio', 'Activo') : paso('prev', 'curso', fIni, 'Inicio previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
+      (can === 'finalizado' ? '' : paso('prev', 'garantia', fFin, 'Fin previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
+      (p.detenido ? paso('', 'detenido', ultimo('Detenido'), 'Detenido', '') : '') +
+      (can === 'rechazado' ? paso('', 'rechazado', ultimo('No aceptado'), 'No aceptado', '') : paso(d.fecha_finalizado ? '' : 'nada', 'finalizado', d.fecha_finalizado, 'Finalizado', '')) + '</div>';
+  }
+  function histHTML(hist) {
+    return (hist || []).length ? hist.map(function (h) { return '<div class="ui-hi"><span class="ui-num' + (h.prevista ? ' ui-li-sub' : '') + '">' + ff(h.fecha) + '</span><span>' + esc(h.evento) + '</span>' +
+      '<span class="ui-li-sub">' + esc(h.detalle || '') + '</span><span class="ui-li-sub">' + esc(h.quien ? nombre(h.quien) : '') + '</span></div>'; }).join('') : '<div class="ui-nota-t">Sin movimientos.</div>';
+  }
+  // Las acciones de estado del proyecto, con su nombre (las mismas reglas de siempre)
+  function accionesEstado(p, prefijo) {
+    var can = _canonProy(p.estado_proyecto), pid = esc(p.id), at = function (a) { return prefijo ? 'data-ep="acc" data-a="' + a + '"' : ''; };
+    var ficha = function (a) { return a === 'arrancar' ? 'data-pm="arrancar" data-id="' + pid + '"' : (a === 'detener' || a === 'reanudar') ? 'data-pm="det-proy" data-id="' + pid + '"' : 'data-pm="estado" data-id="' + pid + '" data-est="' + a + '"'; };
+    var b = function (a, txt, ic, cls) { return '<button type="button" class="ui-btn ui-s' + (cls ? ' ' + cls : '') + '" ' + (prefijo ? at(a) : ficha(a)) + '>' + uiIco(ic) + esc(txt) + '</button>'; };
+    // En la ficha siguen los enlaces al CRM actual que ya estaban
+    var viejo = function (txt) { return '<a class="ui-btn ui-s" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
+    return (prefijo ? '' : can === 'rechazado' ? viejo('Volver a cotizar') : can === 'prospecto' || can === 'negociacion' ? viejo('Cotizar en el CRM actual') : '') +
+      (p.detenido || can === 'finalizado' || can === 'rechazado' ? '' : accionesProy(p).map(function (a) { return b(a[0], a[1], a[2]); }).join('')) +
+      ((p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; }) && !p.detenido ? b('arrancar', 'Arrancar', 'e_play') : '') +
+      (can === 'finalizado' || can === 'rechazado' ? '' : p.detenido ? b('reanudar', 'Reanudar', 'e_play') : b('detener', 'Detener', 'e_pausa', 'ui-btn-det'));
+  }
   async function abrirEditarProy(p0) {
     // Nuevo y Editar proyecto, un solo modal (diseño aprobado 20/11/2026). Secciones plegables:
     // PROYECTO (con fecha probable, probabilidad e importes) · RESUMEN EJECUTIVO · CONTACTOS · ESTADO Y CRONOGRAMA · DESARROLLOS · MMR · HISTORIAL
@@ -1041,31 +1017,10 @@
     // ── Estado y cronograma: el estado sale de los desarrollos; sólo las acciones que la regla permite ──
     var estado = function () {
       if (alta) return;
-      var can = _canonProy(p.estado_proyecto), devs = (p.items || []).filter(function (it) { return vivo(it) && !esMant(it); });
-      var fIni = devs.map(function (it) { return it.fecha_est || it.fecha_ini; }).filter(Boolean).sort()[0], fFin = devs.map(function (it) { return it.fecha_fin; }).filter(Boolean).sort().reverse()[0];
-      var ultimo = function (ev) { var x = hist.filter(function (h) { return h.evento === ev; })[0]; return x && x.fecha; };
-      var paso = function (cls, color, f, nom, est, edit) { return '<div class="ui-cr-p ' + cls + ' ui-e-' + color + '"><div class="ui-cr-f">' + (f ? ff(f).slice(0, 5) : '—') +
-        (edit ? uiIb('editar', 'Cambiar la fecha prevista', '', 'data-ep="' + edit + '"') : '') + '</div><div class="ui-cr-n">' + nom + '</div><div class="ui-cr-e">' + est + '</div></div>'; };
-      var arrancado = !!d.fecha_inicio || can === 'activo' || can === 'finalizado';
-      var riel = paso('', 'prospecto', String(d.creado || '').slice(0, 10), 'Creado', 'Prospecto') +
-        paso(d.fecha_propuesta_enviada ? '' : 'nada', 'negociacion', d.fecha_propuesta_enviada, 'Propuesta enviada', 'Negociación') +
-        (d.fecha_aprobacion ? '' : paso('prev', 'aprobado', d.fecha_cierre_probable, 'Aprobación prevista', 'previsto', 'ed-cierre')) +
-        paso(d.fecha_aprobacion ? '' : 'nada', 'aprobado', d.fecha_aprobacion, 'Aprobado', '') +
-        (arrancado ? paso('', 'curso', d.fecha_inicio || fIni, 'Inicio', 'Activo') : paso('prev', 'curso', fIni, 'Inicio previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
-        (can === 'finalizado' ? '' : paso('prev', 'garantia', fFin, 'Fin previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
-        (p.detenido ? paso('', 'detenido', ultimo('Detenido'), 'Detenido', '') : '') +
-        (can === 'rechazado' ? paso('', 'rechazado', ultimo('No aceptado'), 'No aceptado', '') : paso(d.fecha_finalizado ? '' : 'nada', 'finalizado', d.fecha_finalizado, 'Finalizado', ''));
-      var acc = (p.detenido || can === 'finalizado' || can === 'rechazado' ? [] : accionesProy(p)).map(function (a) {
-          return uiBtn(a[1], a[2], 's', 'data-ep="acc" data-a="' + a[0] + '"'); }).join('') +
-        ((p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; }) && !p.detenido ? uiBtn('Arrancar', 'e_play', 's', 'data-ep="acc" data-a="arrancar"') : '') +
-        (can === 'finalizado' || can === 'rechazado' ? '' : p.detenido ? uiBtn('Reanudar', 'e_play', 's', 'data-ep="acc" data-a="reanudar"')
-          : '<button type="button" class="ui-btn ui-s ui-btn-det" data-ep="acc" data-a="detener">' + uiIco('e_pausa') + 'Detener</button>');
-      set('ep-estado', '<div class="ui-li-sub u-mb6">' + esc(porQue(p, can) || deDondeSale(p) || '') + '</div>' +
-        '<div class="ui-cr-l"><span><i></i>Ocurrió</span><span><i class="d"></i>Previsto · se puede cambiar</span></div><div class="ui-cr">' + riel + '</div>' +
-        (acc ? '<div class="ui-acc-der">' + acc + '</div>' : ''));
+      var can = _canonProy(p.estado_proyecto), acc = accionesEstado(p, true);
+      set('ep-estado', '<div class="ui-li-sub u-mb6">' + esc(porQue(p, can) || deDondeSale(p) || '') + '</div>' + rielCiclo(p, d, hist, true) + (acc ? '<div class="ui-acc-der">' + acc + '</div>' : ''));
       set('ep-v-est', uiEstado(p.estado_proyecto, { detenido: p.detenido }));
-      set('ep-hist', hist.length ? hist.map(function (h) { return '<div class="ui-hi"><span class="ui-num' + (h.prevista ? ' ui-li-sub' : '') + '">' + ff(h.fecha) + '</span><span>' + esc(h.evento) + '</span>' +
-          '<span class="ui-li-sub">' + esc(h.detalle || '') + '</span><span class="ui-li-sub">' + esc(h.quien ? nombre(h.quien) : '') + '</span></div>'; }).join('') : '<div class="ui-nota-t">Sin movimientos.</div>');
+      set('ep-hist', histHTML(hist));
     };
     var recargar = async function () {
       if (alta) return econ();
@@ -1384,6 +1339,7 @@
       el.addEventListener('ui-toggle', function (ev) {
         var d = ev.target, o = ev.detail.open;
         if (d.hasAttribute('data-segdesp')) P.seg.abierto[d.getAttribute('data-segdesp')] = o;
+        if (d.hasAttribute('data-fsec') && P.fsec) P.fsec[d.getAttribute('data-fsec')] = o;   // secciones de la ficha
         if (d.hasAttribute('data-des')) {
           var did = d.getAttribute('data-des'); P.fAb[did] = o;
           if (o) P.fSel = did; else if (P.fSel === did) P.fSel = null;
@@ -1620,7 +1576,6 @@
       if (a === 'dtab') { P.dTab[id] = b.getAttribute('data-t'); return pintar(el); }
       if (a === 'ren-mant') { ev.preventDefault(); return renovar(id); }
       if (a === 'ed-monto') return edMonto(id);
-      if (a === 'ftab') { P.fTab = b.getAttribute('data-t'); return pintar(el); }
       // ── acciones (5c) ──
       if (a === 'estado') { ev.preventDefault(); return cambiarEstado(proy(id), b.getAttribute('data-est')); }
       if (a === 'det-proy') {
@@ -1637,7 +1592,7 @@
       if (a === 'inline') {
         ev.preventDefault();
         if (P.inline === id) { P.inline = null; return pintar(el); }
-        P.inline = id; P.fTab = P.fTab || 'info';
+        P.inline = id;
         return cargarFicha(id).then(function () { pintar(el); }).catch(function (e2) { P.inline = null; toast(e2.message, 'err'); });
       }
       if (a === 'acc-des') {
