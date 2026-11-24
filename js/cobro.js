@@ -359,9 +359,14 @@ window.leerFactura = leerFactura; window.htmlLeido = htmlLeido;
     if (!para) return toast('No hay Mail de facturación en la razón social: el mail no se preparó', 'inf');
     var dos = function (n) { return (v('cb-mon') === 'USD' ? 'USD ' : '$ ') + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
     try {
+      // Los datos para el pago son los de quien emite la factura (Configuración › Usuarios · 24/11/2026): si falta alguno, no se arma
+      var u = await db().from('usuarios').select('titular,cuit,banco,cbu,alias').eq('mail', (CRM_USUARIO && CRM_USUARIO.mail) || '').maybeSingle();
+      if (u.error) throw new Error(u.error.message);
+      var B = u.data || {}, falta = [['titular', 'Titular'], ['cuit', 'CUIT'], ['banco', 'Banco'], ['cbu', 'CBU'], ['alias', 'Alias']].filter(function (x) { return !B[x[0]]; }).map(function (x) { return x[1]; });
+      if (falta.length) return toast('El mail no se preparó: cargá ' + falta.join(', ') + ' en Configuración › Usuarios', 'err');
       toast('Preparando el mail…', 'inf');
       var r = await puente('mailFacturaVer', { para: para, cliente: v('cb-emp'), numero: v('cb-nro'), fecha_emision: ff(v('cb-fecha')), concepto: P[0].concepto,
-        monto: dos(total), pdf_id: pdfId, detalle: P.map(function (x) { return { concepto: x.concepto, monto: dos(x.monto) }; }) });
+        monto: dos(total), pdf_id: pdfId, banco: B, detalle: P.map(function (x) { return { concepto: x.concepto, monto: dos(x.monto) }; }) });
       mailAdmin({ para: r.para, asunto: r.asunto, html: r.html, pdf_id: pdfId, pdf_nombre: 'Factura ' + v('cb-nro') + '.pdf' });
     } catch (e) { toast(e.message, 'err'); }
   }

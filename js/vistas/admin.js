@@ -866,7 +866,7 @@
         var fe = await pedir('¿Qué día le transferiste?', isoMas(0), 'Transferencia al socio'); if (!fe) return;
         var r2 = await db().rpc('marcar_transferido_socio', { ids: lista, fecha: fe });
         if (r2.error) return toast(r2.error.message, 'err');
-        toast(n(r2.data.marcados, 'marcada'), 'ok'); return refrescar();
+        toast(n(r2.data.marcados, 'marcada') + (r2.data.aviso === false ? ' · no se pudo comentar el aviso' : ''), r2.data.aviso === false ? 'inf' : 'ok'); return refrescar();
       }
       var al = alerta(id); if (!al) return;
       if (a === 'alt-ver') return verTarea(id, { onSave: refrescar });

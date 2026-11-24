@@ -30,7 +30,7 @@
 (function () {
   var P = { proys: [], emps: {}, users: {}, sub: 'proy', tareas: {}, cons: [], tst: TareasUI.estado(),
             seg: { fil: [], q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
-            f: null, fLista: [], fAb: {}, dTab: {}, prev: 'proy' };
+            f: null, fLista: [], fAb: {}, prev: 'proy' };
   var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento']];   // pestañas; entra directo a Proyectos. Nuevo proyecto rápido es un modal (02/11/2026)
 
   async function cargar() {
@@ -612,35 +612,36 @@
       if (it.garantia_dias && !rec) l1.push('<span class="ui-num">' + it.garantia_dias + '</span> días de garantía');   // el mantenimiento (MRR) no tiene garantía (16/11/2026)
       // Información del desarrollo (17/11/2026): como Datos del proyecto, arriba qué es y debajo el valor.
       // Sin pagos ni repetidos: las fechas están en el riel; lo económico en texto, con cuotas y ajuste.
-      var dd = function (l, v, ancho) { return '<div' + (ancho ? ' class="u-col-todo"' : '') + '><span class="ui-lbl">' + l + '</span>' + v + '</div>'; };
+      var dd = function (l, v) { return '<div class="fg"><span class="fl">' + l + '</span><div>' + v + '</div></div>'; };
       var cs0 = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id && c.deposito_fecha; }), cobrado0 = cs0.reduce(function (a, c) { return a + (Number(c.monto_ars) || 0); }, 0);
       var tot0 = Number(it.total_ars) || 0, gan0 = esGanado(it.estado), cot0 = (P.f.cotizado || {})[it.id] || 0, nc0 = Number(rec ? it.duracion : it.cuotas) || 0, vc0 = Number(it.cuota_act) || Number(it.valor_cuota) || (nc0 && !rec ? Math.round(tot0 / nc0) : 0);
-      var num0 = function (v) { return v ? '<span class="ui-num">' + fmt(v) + '</span>' : '—'; };
-      var inf = '<div class="u-mb10">' + dd('Descripción', it.descripcion && it.descripcion !== it.titulo ? esc(it.descripcion) : '<span class="ui-nota-t">Sin descripción: se carga en el Alcance de la cotización.</span>') + '</div><div class="ui-datos">' +
+      var num0 = function (v, c) { return v ? '<span class="ui-num ui-p-' + (c || 'neutro') + '">' + fmt(v) + '</span>' : '—'; };   // los mismos colores que los recuadros de arriba
+      var desc = it.descripcion && it.descripcion !== it.titulo ? esc(it.descripcion) : '<span class="ui-nota-t">Sin descripción: se carga en el Alcance de la cotización.</span>';
+      var inf = '<div class="ui-g3">' +
         dd('Forma de pago', esc(it.modelo_nombre || it.modelo || '—')) +
-        dd(rec ? 'Abono' : 'Cuotas', nc0 ? '<span class="ui-num">' + nc0 + '</span> × ' + num0(vc0) + (rec ? ' por mes' : '') : '—') +
+        dd(rec ? 'Abono' : 'Cuotas', nc0 ? '<span class="ui-num">' + nc0 + '</span> × ' + num0(vc0, rec ? 'abono' : gan0 ? 'contratado' : 'neutro') + (rec ? ' por mes' : '') : '—') +
         dd('Ajuste por IPC', (/sin/i.test(it.inflacion || '') || !it.inflacion ? 'No' : 'Sí') + (!gan0 && can !== 'rechazada' ? ' ' + uiIb('editar', 'Cambiar el ajuste por IPC', '', 'data-pm="ajuste-des" data-id="' + esc(it.id) + '" data-si="' + (/sin/i.test(it.inflacion || '') || !it.inflacion ? '1' : '0') + '"') : '')) +
-        (rec ? '' : dd('Cotizado', num0(cot0))) + dd(gan0 ? 'Contratado' : 'Cotizado hoy', num0(tot0)) +
-        dd('Cobrado', num0(cobrado0)) + dd('Pendiente', gan0 ? num0(Math.max(0, tot0 - cobrado0)) : '—') +
+        (rec ? '' : dd('Cotizado', num0(cot0))) + dd(gan0 ? 'Contratado' : 'Cotizado hoy', num0(tot0, !gan0 ? 'neutro' : rec ? 'abono' : 'contratado')) +
+        dd('Cobrado', num0(cobrado0, 'cobrado')) + dd('Pendiente', gan0 ? num0(Math.max(0, tot0 - cobrado0), 'pendiente') : '—') +
+        (rec || !gan0 ? '' : dd('Termina de cobrarse', tot0 - cobrado0 <= 0 ? '<span class="ui-p-cobrado">Cobrado</span>' : (function (f) { return 'en <span class="ui-num">' + f + '</span> cuota' + (f === 1 ? '' : 's'); })(Math.max(0, (Number(it.cuotas) || 1) - cs0.length)))) +
         (rec ? '' : dd('Horas vendidas', it.horas ? '<span class="ui-num">' + it.horas + ' h</span>' : '—')) +
         (rec ? '' : dd('Duración', Number(it.semanas) > 0 ? '<span class="ui-num">' + Number(it.semanas) + '</span> semanas' : '— ' + uiIb('calendario', 'Cargar la duración en semanas', '', 'data-pm="sem-des" data-id="' + esc(it.id) + '"'))) +
         (rec ? '' : dd('Garantía', it.garantia_dias ? '<span class="ui-num">' + it.garantia_dias + '</span> días' : '—')) +
         (it.socios ? dd('Responsables', esc(crmLista(it.socios).map(nombre).join(', '))) : '') + '</div>';
       var corre = function (a, d, txt, tit) { return uiBtn(txt, 'mas', 's', 'data-pm="' + a + '" data-id="' + esc(it.id) + '" data-d="' + d + '" title="' + tit + '"'); };
-      inf += '<div class="ui-linea-sub u-mt10">';
-      if (rec) { if (!it.fecha_est && !mantArranca(p, it)) inf += '<span class="ui-p-pendiente">No se sabe cuándo arranca: falta vincularlo a un desarrollo o cargarle la fecha de fin</span>'; }
-      else if (can === 'garantia') inf += corre('post-fin', 7, '1 sem.', 'Corre la garantía y el arranque del mantenimiento una semana') + corre('post-fin', 30, '1 mes', 'Corre la garantía y el arranque del mantenimiento un mes');
-      else if (!(desCerrado(it) || can === 'rechazada')) inf += '<span>Cambiar inicio</span>' + uiIb('calendario', 'Cambiar el inicio', '', 'data-pm="ini-des" data-id="' + esc(it.id) + '"') +
+      var mueve = '';
+      if (rec) { if (!it.fecha_est && !mantArranca(p, it)) inf += '<div class="ui-linea-sub"><span class="ui-p-pendiente">No se sabe cuándo arranca: falta vincularlo a un desarrollo o cargarle la fecha de fin</span></div>'; }
+      else if (can === 'garantia') mueve = corre('post-fin', 7, '1 sem.', 'Corre la garantía y el arranque del mantenimiento una semana') + corre('post-fin', 30, '1 mes', 'Corre la garantía y el arranque del mantenimiento un mes');
+      else if (!(desCerrado(it) || can === 'rechazada')) mueve = '<span>Cambiar inicio</span>' + uiIb('calendario', 'Cambiar el inicio', '', 'data-pm="ini-des" data-id="' + esc(it.id) + '"') +
           (depende(it) ? corre('post-ini', 7, '1 sem.', 'Corre el inicio una semana') + corre('post-ini', 30, '1 mes', 'Corre el inicio un mes') : '');
-      inf += '</div>';
-      // Dos pestañas (16/11/2026): Información junta las fechas y los pagos; Módulos de trabajo queda aparte
-      var dt = P.dTab[it.id] === 'mods' ? 'mods' : 'info', at = function (k) { return 'data-pm="dtab" data-id="' + esc(it.id) + '" data-t="' + k + '"'; };
-      h += uiTabs([['info', 'Información', at('info')], ['mods', 'Módulos de trabajo', at('mods')]], dt) +
-        // Un único recuadro de Información, sin desplegables ni pagos (17/11/2026): descripción, fechas, riel, forma de pago,
-        // los recuadros económicos y «Editar» cuando corresponde. Los pagos se ven en Administración.
-        (dt === 'mods' ? modulosDe(it.id) : '<div class="card dev-info">' + (econDes(it).btn ? '<div class="ui-barra ui-der">' + econDes(it).btn + '</div>' : '') +
-          inf + '<div class="ui-lat-h u-mt10">Cronograma ' + uiIb('editar', 'Editar las fechas', '', 'data-pm="fechas-des" data-id="' + esc(it.id) + '"') + '</div><div class="dev-riel">' + fechasHTML(p, it.id) + '</div>' +
-          (iconos ? '<div class="ui-barra dev-acc">' + iconos + '</div>' : '') + '</div>');
+      // Sin recuadro ni pestañas (24/11/2026): los datos a la vista y Descripción, Módulos y Cronograma plegados, como las secciones del proyecto
+      var mh = (P.f.horas || []).filter(function (r) { return r.desarrollo_id === it.id; }).reduce(function (a, r) { return a + (Number(r.horas_est) || 0); }, 0), btn = econDes(it).btn;
+      P.dsec = P.dsec || {};
+      var ds = function (k, t, cuerpo, n, v) { return uiDesp({ t: t, open: !!P.dsec[it.id + k], n: n, v: v, attrs: 'data-dsec="' + esc(it.id + k) + '"' }, cuerpo); };
+      h += inf + ds('desc', 'Descripción', desc) + (rec && !mh ? '' : ds('mods', 'Módulos', modulosDe(it.id), mh ? Math.round(mh) + ' h' : '')) +
+        ds('crono', 'Cronograma', '<div class="dev-riel">' + fechasHTML(p, it.id) + '</div>' + (mueve ? '<div class="ui-linea-sub">' + mueve + '</div>' : ''), '',
+          uiIb('editar', 'Editar las fechas', '', 'data-pm="fechas-des" data-id="' + esc(it.id) + '"')) +
+        (btn || iconos ? '<div class="ui-acc-der dev-acc">' + btn + iconos + '</div>' : '');
       return h + '</div>';
     }).join('') + alta;
   }
@@ -740,21 +741,6 @@
     if (false && hs) h += '<div class="ui-lat-h">Del contrato</div><div class="ui-lat-g">' + uiKpi('Horas vendidas', Math.round(hs) + ' h', 'p-neutro') + '</div>';
     return h + '</div>';   // sin la comparación con otros proyectos ni el análisis del cliente (17/11/2026)
   }
-  // Análisis económico por desarrollo (17/11/2026): cada uno con su año, sin comparar con otros proyectos.
-  // Cotizado → Aprobado → Cobrado → Pendiente y en cuántas cuotas termina de cobrarse. El abono (MMR) va aparte, arriba.
-  function porDesarrollo(p) {
-    var L = (p.items || []).filter(function (it) { return !esMant(it) && _canonSol(it.estado) !== 'rechazada'; });
-    if (!L.length) return '';
-    var n = function (v) { return '<td class="ui-r ui-num">' + (v ? fmt(v) : '—') + '</td>'; };
-    return '<div class="ui-lat-h u-mt10">Por desarrollo</div><table class="ui-tbl"><thead><tr><th>Desarrollo</th><th class="ui-r">Año</th><th class="ui-r">Cotizado</th><th class="ui-r">Aprobado</th><th class="ui-r">Cobrado</th><th class="ui-r">Pendiente</th><th>Cuotas</th><th>Ajuste IPC</th><th>Se termina de cobrar</th></tr></thead><tbody>' +
-      L.map(function (it) {
-        var cs = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id; }), cob = cs.filter(function (c) { return c.deposito_fecha; }), cobrado = cob.reduce(function (a, c) { return a + (Number(c.monto_ars) || 0); }, 0);
-        var ganado = esGanado(it.estado), tot = Number(it.total_ars) || 0, cot = (P.f.cotizado || {})[it.id] || (ganado ? 0 : tot), pend = ganado ? Math.max(0, tot - cobrado) : 0;
-        var cuotas = Number(it.cuotas) || 1, faltan = Math.max(0, cuotas - cob.length), anio = String(it.fecha_aprob || it.fecha_est || '').slice(0, 4);
-        return '<tr><td>' + esc(it.titulo || it.id) + '</td><td class="ui-r ui-num">' + esc(anio || '—') + '</td>' + n(cot) + n(ganado ? tot : 0) + n(cobrado) + n(pend) + '<td><span class="ui-num">' + cuotas + '</span> × ' + fmt(Number(it.cuota_act) || Number(it.valor_cuota) || 0) + '</td><td>' + (/sin/i.test(it.inflacion || '') || !it.inflacion ? 'No' : 'Sí') + '</td>' +
-          '<td>' + (!ganado ? '<span class="ui-nota-t">sin aprobar</span>' : pend <= 0 ? '<span class="ui-p-cobrado">Cobrado</span>' : 'en <span class="ui-num">' + faltan + '</span> cuota' + (faltan === 1 ? '' : 's')) + '</td></tr>';
-      }).join('') + '</tbody></table>';
-  }
   function econDes(it) {
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
     var cot = (P.f.cotizado || {})[it.id], ganado = esGanado(it.estado), tot = Number(it.total_ars) || 0, can = _canonSol(it.estado);
@@ -831,7 +817,7 @@
           dato('Aprobado el', d.fecha_aprobacion ? '<span class="ui-num">' + ff(d.fecha_aprobacion) + '</span>' : '—') +
           dato('Fecha probable de aprobación', F.cierreProb ? '<span class="ui-num">' + ff(F.cierreProb) + '</span>' : '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')) +
           dato('Probabilidad de aprobación', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>') + '<div></div></div>' +
-        lateral(p) + porDesarrollo(p)) +
+        lateral(p)) +
       sec('res', 'Resumen ejecutivo', '<div class="u-mb10">' + esc(p.descripcion || '—') + '</div>' + tabDocs(p, true), String((F.entregables || []).length)) +
       sec('con', 'Contactos', contactos, String(sps.length + enProy.length + rsp.length)) +
       sec('est', 'Estado y cronograma', rielCiclo(p, Object.assign({ fecha_cierre_probable: F.cierreProb }, d), F.hist, false) + (acc ? '<div class="ui-acc-der">' + acc + '</div>' : ''), '', uiEstado(e, { detenido: p.detenido })) +
@@ -1341,6 +1327,7 @@
       el.addEventListener('ui-toggle', function (ev) {
         var d = ev.target, o = ev.detail.open;
         if (d.hasAttribute('data-segdesp')) P.seg.abierto[d.getAttribute('data-segdesp')] = o;
+        if (d.hasAttribute('data-dsec') && P.dsec) P.dsec[d.getAttribute('data-dsec')] = o;   // Descripción, Módulos y Cronograma de un desarrollo
         if (d.hasAttribute('data-fsec') && P.fsec) P.fsec[d.getAttribute('data-fsec')] = o;   // secciones de la ficha
         if (d.hasAttribute('data-des')) {
           var did = d.getAttribute('data-des'); P.fAb[did] = o;
@@ -1575,7 +1562,6 @@
         var L = P.fLista, k = (L.indexOf(P.f.id) + Number(b.getAttribute('data-dir')) + L.length) % L.length;
         return abrirFicha(el, L[k], P.prev);
       }
-      if (a === 'dtab') { P.dTab[id] = b.getAttribute('data-t'); return pintar(el); }
       if (a === 'ren-mant') { ev.preventDefault(); return renovar(id); }
       if (a === 'ed-monto') return edMonto(id);
       // ── acciones (5c) ──

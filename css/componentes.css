@@ -584,7 +584,6 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .ui-tl.ui-tl-h .ui-tl-i::before { display: none; }
 .ui-tl.ui-tl-h .ui-tl-p { position: absolute; top: -5px; left: 0; }
 .ui-tl.ui-tl-h .ui-tl-n { font-size: var(--t-s); }
-.dev-info { padding: var(--e4); margin-top: var(--e3); }   /* desarrollo: un único recuadro de Información (17/11/2026) */
 /* Riel cronológico (17/11/2026): flechas horizontales de color según el estado, como una línea de tiempo */
 .tl-riel { list-style: none; margin: 0; padding: var(--e2) 0; display: flex; gap: 2px; overflow-x: auto; }
 .tl-paso { flex: 1 1 0; min-width: 110px; display: flex; flex-direction: column; gap: 4px; }
@@ -599,13 +598,10 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .tl-paso:not(.hecho) .tl-flecha { opacity: .45; }
 .tl-flecha .ui-num { color: currentColor; }
 .tl-riel { margin-bottom: var(--e4); }
-.dev-info { background: transparent; border: 1px solid var(--marco); box-shadow: none; }
 .ui-datos > .u-col-todo { grid-column: 1 / -1; }
 /* En todas las vistas de formularios, el nombre del campo en mayúscula (17/11/2026) */
 .fl, label.fl { text-transform: uppercase; letter-spacing: .06em; }
-/* 18/11/2026 · desarrollo: campos en mayúscula, valor al lado, en 3 columnas; estado centrado bajo la flecha; acciones con su nombre */
-.dev-info .ui-datos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.dev-info .ui-datos .ui-lbl { display: inline; margin-right: 6px; text-transform: uppercase; letter-spacing: .06em; }
+/* 18/11/2026 · desarrollo: estado centrado bajo la flecha; acciones con su nombre */
 .tl-nom, .tl-est { text-align: center; padding-left: 0; }
 .dev-acc .ui-ib { width: auto; padding: 0 8px; gap: 4px; }
 .dev-acc .ui-ib::after { content: attr(data-tip); font-size: var(--t-s); }
@@ -671,7 +667,14 @@ th[data-orden="desc"]::after { content: " ▼"; font-size: 8px; }
 .md.ep-md .mh, .md.ep-md .mf { background: var(--fondo); }
 .md.ep-md .fc { background: var(--caja); }
 /* Ficha del proyecto: secciones plegables sin caja, como en Nuevo / Editar proyecto (20/11/2026) */
-.ficha-secs > .ui-d { border: 0; border-bottom: 1px solid var(--marco); border-radius: 0; background: none; padding: 10px 0; margin: 0; }
-.ficha-secs > .ui-d > .ui-d-t { font-weight: 600; }
-.ficha-secs > .ui-cuerpo { border: 0; background: none; box-shadow: none; border-radius: 0; padding: 12px 0 18px; }
+.ficha-secs > .ui-d, .ficha-secs .ui-devc > .ui-d { border: 0; border-bottom: 1px solid var(--marco); border-radius: 0; background: none; padding: 10px 0; margin: 0; }
+.ficha-secs > .ui-d > .ui-d-t, .ficha-secs .ui-devc > .ui-d > .ui-d-t { font-weight: 600; }
+.ficha-secs > .ui-cuerpo, .ficha-secs .ui-devc > .ui-cuerpo { border: 0; background: none; box-shadow: none; border-radius: 0; padding: 12px 0 18px; }
 .ui-ficha-hd + .ficha-secs { margin-top: var(--e3); }
+/* Desarrollo abierto dentro de la ficha: una línea y su contenido, sin recuadro (24/11/2026) */
+.ficha-secs .ui-dev, .ficha-secs .ui-cuerpo > .ui-d.ui-n2 { background: none; border: 0; border-bottom: 1px solid var(--marco); border-radius: 0; }
+.ficha-secs .ui-devc, .ficha-secs .ui-cuerpo > .ui-d.ui-n2 + .ui-cuerpo { background: none; border: 0; border-left: 2px solid var(--marco); border-radius: 0; box-shadow: none; padding: var(--e3) 0 var(--e3) var(--e4); margin: var(--e2) 0 var(--e4); }
+.ficha-secs .ui-dev.open, .ficha-secs .ui-dev.open + .ui-devc, .ficha-secs .ui-cuerpo > .ui-d.ui-n2.open, .ficha-secs .ui-cuerpo > .ui-d.ui-n2.open + .ui-cuerpo { border-color: var(--marco); }
+.ficha-secs .ui-devc { color: var(--texto); }
+.ficha-secs .ui-devc > .ui-d { padding: 8px 0; }
+.ficha-secs .ui-devc > .ui-d > .ui-d-t { font-size: var(--t-xs); }

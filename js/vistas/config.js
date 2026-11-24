@@ -210,9 +210,10 @@
         (C.admin ? '' : ' Sólo Administración puede cambiarlos.') + '</div>' +
         (C.admin ? '<button class="ui-btn ui-p" data-cfg="usu" data-id="">' + ico('mas') + ' Nuevo usuario</button>' : '') + '</div>' +
       '<div class="ui-tarjeta u-p0 u-ovx"><table class="ui-tbl"><thead><tr><th>Nombre</th><th>Mail</th><th>Rol</th><th class="u-tc">Factura</th><th>Monotributo</th>' +
-      '<th>DNI</th><th>Cargo</th><th>Telegram</th><th class="u-tc">GIWA</th><th class="u-tc">Activo</th><th></th></tr></thead><tbody>' + C.usu.map(function (u) {
+      '<th>Titular</th><th>CUIT</th><th>Banco</th><th>CBU</th><th>Alias</th><th>DNI</th><th>Cargo</th><th>Telegram</th><th class="u-tc">GIWA</th><th class="u-tc">Activo</th><th></th></tr></thead><tbody>' + C.usu.map(function (u) {
         return '<tr' + (u.activo ? '' : ' class="u-op6"') + '><td>' + esc(u.nombre || '') + '</td><td class="u-c-mt">' + esc(u.mail || '') + '</td><td>' + esc(u.rol || '—') + '</td>' +
           '<td class="u-tc">' + si(u.factura) + '</td><td>' + (u.monotributo_cat ? esc(u.monotributo_cat) + (u.monotributo_giwa ? ' <span class="u-s10-mt">· costo de GIWA</span>' : '') : '<span class="u-c-mt">—</span>') + '</td>' +
+          '<td class="u-nw">' + esc(u.titular || '—') + '</td><td class="m u-nw">' + esc(u.cuit || '—') + '</td><td class="u-nw">' + esc(u.banco || '—') + '</td><td class="m u-nw">' + esc(u.cbu || '—') + '</td><td class="u-nw">' + esc(u.alias || '—') + '</td>' +
           '<td class="m">' + esc(u.dni || '—') + '</td><td>' + esc(u.cargo || '—') + '</td><td class="m">' + (u.telegram ? esc(u.telegram) : '<span class="u-c-wa">sin chat</span>') + '</td>' +
           '<td class="u-tc">' + si(u.es_giwa) + '</td><td class="u-tc">' + si(u.activo) + '</td>' +
           '<td class="u-tr">' + (C.admin ? '<button class="ui-ib ui-azul" data-cfg="usu" data-id="' + esc(u.id) + '" data-tip="Editar" aria-label="Editar">' + ico('editar') + '</button>' : '') + '</td></tr>';
@@ -230,6 +231,11 @@
       '<div class="fg"><label class="fl" for="us-mail">Mail <span class="req">*</span></label><input class="fc" id="us-mail" type="email" value="' + esc(u.mail || '') + '"></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="us-tg">Chat de Telegram</label><input class="fc" id="us-tg" placeholder="123456789" value="' + esc(u.telegram || '') + '"></div>' +
       '<div class="fg"><label class="fl" for="us-cal">Calendario</label><input class="fc" id="us-cal" placeholder="mail del calendario" value="' + esc(u.calendario || '') + '"></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="us-tit">Titular de la cuenta</label><input class="fc" id="us-tit" value="' + esc(u.titular || '') + '"></div>' +
+      '<div class="fg"><label class="fl" for="us-cuit">CUIT</label><input class="fc m" id="us-cuit" value="' + esc(u.cuit || '') + '"></div></div>' +
+      '<div class="g2"><div class="fg"><label class="fl" for="us-ban">Banco</label><input class="fc" id="us-ban" value="' + esc(u.banco || '') + '"></div>' +
+      '<div class="fg"><label class="fl" for="us-ali">Alias</label><input class="fc" id="us-ali" value="' + esc(u.alias || '') + '"></div></div>' +
+      '<div class="fg"><label class="fl" for="us-cbu">CBU</label><input class="fc m" id="us-cbu" value="' + esc(u.cbu || '') + '"></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="us-dni">DNI (para el NDA)</label><input class="fc" id="us-dni" placeholder="DNI 12.345.678" value="' + esc(u.dni || '') + '"></div>' +
       '<div class="fg"><label class="fl" for="us-cargo">Cargo (para el NDA)</label><input class="fc" id="us-cargo" value="' + esc(u.cargo || '') + '"></div></div>' +
       '<div class="g2"><div class="fg"><label class="fl" for="us-mcat">Categoría de monotributo</label><select class="fc" id="us-mcat"><option value="">—</option>' +
@@ -240,7 +246,7 @@
     var v = function (i) { return document.getElementById(i).value.trim(); }, c = function (i) { return document.getElementById(i).checked; };
     document.getElementById('us-ok').onclick = async function () {
       var r = await db().rpc('guardar_usuario', { p: { id: id || null, nombre: v('us-nom'), mail: v('us-mail'), rol: v('us-rol'), telegram: v('us-tg'),
-        calendario: v('us-cal'), dni: v('us-dni'), cargo: v('us-cargo'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo'),
+        calendario: v('us-cal'), titular: v('us-tit'), cuit: v('us-cuit'), banco: v('us-ban'), cbu: v('us-cbu'), alias: v('us-ali'), dni: v('us-dni'), cargo: v('us-cargo'), factura: c('us-factura'), es_giwa: c('us-es_giwa'), activo: c('us-activo'),
         monotributo_cat: v('us-mcat'), monotributo_giwa: c('us-monotributo_giwa') } });
       if (r.error) return toast(r.error.message, 'err');
       closeM('m-usu'); toast('Usuario guardado', 'ok'); alGuardar();
