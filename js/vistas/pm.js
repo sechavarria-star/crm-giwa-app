@@ -888,10 +888,7 @@
     var can = _canonProy(p.estado_proyecto), pid = esc(p.id), at = function (a) { return prefijo ? 'data-ep="acc" data-a="' + a + '"' : ''; };
     var ficha = function (a) { return a === 'arrancar' ? 'data-pm="arrancar" data-id="' + pid + '"' : (a === 'detener' || a === 'reanudar') ? 'data-pm="det-proy" data-id="' + pid + '"' : 'data-pm="estado" data-id="' + pid + '" data-est="' + a + '"'; };
     var b = function (a, txt, ic, cls) { return '<button type="button" class="ui-btn ui-s' + (cls ? ' ' + cls : '') + '" ' + (prefijo ? at(a) : ficha(a)) + '>' + uiIco(ic) + esc(txt) + '</button>'; };
-    // En la ficha siguen los enlaces al CRM actual que ya estaban
-    var viejo = function (txt) { return '<a class="ui-btn ui-s" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener" title="Abre el Cotizador del CRM actual">' + uiIco('abrir') + esc(txt) + '</a>'; };
-    return (prefijo ? '' : can === 'rechazado' ? viejo('Volver a cotizar') : can === 'prospecto' || can === 'negociacion' ? viejo('Cotizar en el CRM actual') : '') +
-      (p.detenido || can === 'finalizado' || can === 'rechazado' ? '' : accionesProy(p).map(function (a) { return b(a[0], a[1], a[2]); }).join('')) +
+    return (p.detenido || can === 'finalizado' || can === 'rechazado' ? '' : accionesProy(p).map(function (a) { return b(a[0], a[1], a[2]); }).join('')) +
       ((p.items || []).some(function (it) { return _canonSol(it.estado) === 'aprobada' && !it.detenido; }) && !p.detenido ? b('arrancar', 'Arrancar', 'e_play') : '') +
       (can === 'finalizado' || can === 'rechazado' ? '' : p.detenido ? b('reanudar', 'Reanudar', 'e_play') : b('detener', 'Detener', 'e_pausa', 'ui-btn-det'));
   }
@@ -1334,6 +1331,11 @@
     await abrirModulo(el, { id: 'pm', texto: 'Cargando proyectos…', forzar: op && op.forzar, cargar: leer,
       cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f]); }, pintar: function () { pintar(el); } });
     if (nvPedido) abrirEditarProy(null);
+    if (/^P-\d+$/.test(s)) {                      // #/pm/P-0001 abre ese proyecto (Cotizador › Ver proyecto)
+      if (P.sub === 'ficha') P.sub = 'proy';
+      if (!P.proys.some(function (x) { return x.id === s; })) await cargar();   // recién creado: todavía no estaba leído
+      abrirFicha(el, s);
+    }
     if (!el._pmBound) {                          // una vez: #vista es el mismo para todos los módulos
       el._pmBound = true;
       el.addEventListener('ui-toggle', function (ev) {

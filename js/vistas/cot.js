@@ -1015,7 +1015,7 @@
       if (a === 'ver-imprimir') { var g = CN; CN = C.ver._cn; imprimir(); CN = g; return; }
       if (a === 'ver-crear') { if (!(await ask('El borrador «' + C.ver.nombre + '» pasa a Prospecto y escribe sus horas, costos y tareas.', 'Crear proyecto', { ok: 'Crear' }))) return;
         try { await rpc('cot_crear', { pid: C.ver.pid }); toast(C.ver.pid + ' · Prospecto', 'ok'); await cargar(); C.sub = 'lista'; pintar(el); } catch (e) { aviso(e.message); } return; }
-      if (a === 'ver-pm') { location.hash = '#/pm/proy'; return; }
+      if (a === 'ver-pm') { location.hash = '#/pm/' + C.ver.pid; return; }
       // editor
       if (a === 'guardar') return guardar(false, el);
       if (a === 'crear') return guardar(true, el);
