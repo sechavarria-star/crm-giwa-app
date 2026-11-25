@@ -31,7 +31,7 @@
   var P = { proys: [], emps: {}, users: {}, sub: 'proy', tareas: {}, cons: [], tst: TareasUI.estado(),
             seg: { fil: [], q: '', rev: [], abierto: {} }, pr: { fil: [], q: '', orden: 'monto', abiertas: {} },
             f: null, fLista: [], fAb: {}, prev: 'proy' };
-  var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento']];   // pestañas; entra directo a Proyectos. Nuevo proyecto rápido es un modal (02/11/2026)
+  var SUBS = [['proy', 'Proyectos'], ['seg', 'Seguimiento'], ['demo', 'Mockups y demostraciones']];   // pestañas; entra directo a Proyectos. Nuevo proyecto rápido es un modal (02/11/2026)
 
   async function cargar() {
     var r = await Promise.all([
@@ -42,9 +42,11 @@
       db().rpc('estados_spec'),
       db().from('v_tipo_cambio_hoy').select('valor').maybeSingle(),
       db().from('v_tareas').select('*').eq('closed', false).eq('hidden', false),   // como Hoy: una alerta aparece recién en su ventana de aviso
-      db().from('contactos').select('id,nombre,apellido,empresa_id,puesto,area_trabajo,email,telefono').order('nombre')
+      db().from('contactos').select('id,nombre,apellido,empresa_id,puesto,area_trabajo,email,telefono').order('nombre'),
+      db().from('v_pm_demos').select('*').order('empresa').order('orden')
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
+    P.demos = r[8].data || [];
     initEstadosSpec(r[4].data);
     window.TC = Number((r[5].data || {}).valor) || 0;   // _tc() de calculos.js: el TC del día (BCRA)
     var extra = {}; r[1].data.forEach(function (s) { extra[s.proyecto_id] = s; });
@@ -821,7 +823,7 @@
     var cuerpoSecs =
       sec('proy', 'Proyecto',
         '<div class="ui-g3">' + dato('Creado', d.creado ? '<span class="ui-num">' + ff(String(d.creado).slice(0, 10)) + '</span>' : '—') +
-          dato('Aprobado el', d.fecha_aprobacion ? '<span class="ui-num">' + ff(d.fecha_aprobacion) + '</span>' : '—') +
+          dato(can === 'rechazado' ? 'No aceptado el' : 'Aprobado el', d.fecha_aprobacion ? '<span class="ui-num">' + ff(d.fecha_aprobacion) + '</span>' : '—') +   // al rechazar se guarda en el mismo campo
           dato('Fecha probable de aprobación', F.cierreProb ? '<span class="ui-num">' + ff(F.cierreProb) + '</span>' : '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')) +
           dato('Probabilidad de aprobación', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>') +
           (can === 'rechazado' ? '<label class="u-row6" style="align-items:center"><input type="checkbox" data-frecon="' + esc(p.id) + '"' + (d.recontactar ? ' checked' : '') + '> Se puede recontactar</label>' : '<div></div>') + '</div>' +
@@ -852,6 +854,26 @@
     await cargarFicha(id); pintar(el); window.scrollTo(0, 0);
   }
 
+  // ── Mockups y demostraciones (25/11/2026): el portfolio de muestras (tipo Demo). No son proyectos comerciales: no suman a ningún indicador ──
+  function htmlDemos() {
+    var D = P.demos || [], emps = [], h = '';
+    if (!D.length) return '<div class="ui-nota-t">Todavía no hay muestras cargadas.</div>';
+    D.forEach(function (d) { if (emps.indexOf(d.empresa) < 0) emps.push(d.empresa); });
+    emps.forEach(function (e) {
+      var L = D.filter(function (d) { return d.empresa === e; });
+      h += '<div class="ui-tarjeta u-p0 u-ovx u-mb12"><table class="ui-tbl" style="width:100%;max-width:none;table-layout:fixed"><thead><tr><th>' + esc(e) + ' · <span class="ui-num">' + L.length + '</span></th><th style="width:200px">Links</th><th class="ui-r" style="width:190px">Valor de referencia</th></tr></thead><tbody>' + L.map(function (d) {
+        var links = []; (d.links || []).forEach(function (x) { (x.accesos || []).forEach(function (a) { if (a && a.url) links.push({ u: String(a.url), n: a.nombre || x.titulo || 'Abrir' }); }); });
+        if (d.carpeta) links.push({ u: d.carpeta, n: 'Carpeta' });
+        return '<tr><td>' + esc(d.nombre) + (d.descripcion ? '<div class="ui-li-sub">' + esc(d.descripcion) + '</div>' : '') + '</td>' +
+          '<td class="u-nw">' + links.map(function (l) { return /^https?:\/\//i.test(l.u) ? '<div><a class="ui-lnk ui-azul" href="' + esc(l.u) + '" target="_blank" rel="noopener">' + uiIco('abrir') + esc(l.n) + '</a></div>' : '<div class="ui-nota-t">' + esc(l.u) + '</div>'; }).join('') +
+            uiIb('mas', 'Agregar un link', '', 'data-pm="ent-nuevo" data-id="' + esc(d.id) + '"') + '</td>' +
+          '<td class="ui-r ui-num">' + (Number(d.valor) ? fmt(d.valor) : '—') + '</td></tr>'; }).join('') +
+        '<tr><td colspan="2">Total</td><td class="ui-r ui-num">' + fmt(sum(L, function (d) { return Number(d.valor) || 0; })) + '</td></tr></tbody></table></div>';
+    });
+    return '<div class="ui-nota-t u-mb10">Trabajos de muestra de GIWA. No cuentan como proyectos, ventas ni ingresos. Valor de referencia de todas: <span class="ui-num">' +
+      fmt(sum(D, function (d) { return Number(d.valor) || 0; })) + '</span> (horas estimadas × valor hora).</div>' + h;
+  }
+
   // ── editar el proyecto (saveProyecto · crm_giwa.editar_proyecto) ──
   // El estado sólo ofrece a los que puede pasar hoy (la misma guarda que la barra).
   // ── El riel del ciclo de vida (20/11/2026): lleno = ocurrió · punteado = previsto. Lo usan la ficha y Editar proyecto ──
@@ -862,16 +884,17 @@
     var ultimo = function (ev) { var x = (hist || []).filter(function (h) { return h.evento === ev; })[0]; return x && x.fecha; };
     var paso = function (cls, color, f, nom, est, ed) { return '<div class="ui-cr-p ' + cls + ' ui-e-' + color + '"><div class="ui-cr-f">' + (f ? ff(f).slice(0, 5) : '—') +
       (edit && ed ? uiIb('editar', 'Cambiar la fecha prevista', '', 'data-ep="' + ed + '"') : '') + '</div><div class="ui-cr-n">' + nom + '</div><div class="ui-cr-e">' + est + '</div></div>'; };
+    var rech = can === 'rechazado', fApr = rech ? null : d.fecha_aprobacion;   // nunca se aprobó: esa fecha es la del rechazo
     var arrancado = !!d.fecha_inicio || can === 'activo' || can === 'finalizado';
     return '<div class="ui-cr-l"><span><i></i>Ocurrió</span><span><i class="d"></i>Previsto' + (edit ? ' · se puede cambiar' : '') + '</span></div><div class="ui-cr">' +
       paso('', 'prospecto', String(d.creado || '').slice(0, 10), 'Creado', 'Prospecto') +
       paso(d.fecha_propuesta_enviada ? '' : 'nada', 'negociacion', d.fecha_propuesta_enviada, 'Propuesta enviada', 'Negociación') +
-      (d.fecha_aprobacion ? '' : paso('prev', 'aprobado', d.fecha_cierre_probable, 'Aprobación prevista', 'previsto', 'ed-cierre')) +
-      paso(d.fecha_aprobacion ? '' : 'nada', 'aprobado', d.fecha_aprobacion, 'Aprobado', '') +
+      (fApr ? '' : paso('prev', 'aprobado', d.fecha_cierre_probable, 'Aprobación prevista', 'previsto', 'ed-cierre')) +
+      paso(fApr ? '' : 'nada', 'aprobado', fApr, 'Aprobado', '') +
       (arrancado ? paso('', 'curso', d.fecha_inicio || fIni, 'Inicio', 'Activo') : paso('prev', 'curso', fIni, 'Inicio previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
       (can === 'finalizado' ? '' : paso('prev', 'garantia', fFin, 'Fin previsto', 'previsto', devs.length ? 'ed-fechas' : '')) +
       (p.detenido ? paso('', 'detenido', ultimo('Detenido'), 'Detenido', '') : '') +
-      (can === 'rechazado' ? paso('', 'rechazado', ultimo('No aceptado'), 'No aceptado', '') : paso(d.fecha_finalizado ? '' : 'nada', 'finalizado', d.fecha_finalizado, 'Finalizado', '')) + '</div>';
+      (rech ? paso('', 'rechazado', ultimo('No aceptado') || d.fecha_aprobacion, 'No aceptado', '') : paso(d.fecha_finalizado ? '' : 'nada', 'finalizado', d.fecha_finalizado, 'Finalizado', '')) + '</div>';
   }
   function histHTML(hist) {
     return (hist || []).length ? hist.map(function (h) { return '<div class="ui-hi"><span class="ui-num' + (h.prevista ? ' ui-li-sub' : '') + '">' + ff(h.fecha) + '</span><span>' + esc(h.evento) + '</span>' +
@@ -1301,12 +1324,14 @@
     marcarSub(P.sub === 'ficha' ? P.prev : P.sub);
     var cab = uiHd('Proyectos', {
       seg: 'Proyectos en marcha y en negociación, para revisar.',
-      proy: 'Todos los proyectos, con sus desarrollos y su estado.'
+      proy: 'Todos los proyectos, con sus desarrollos y su estado.',
+      demo: 'Portfolio de muestras de GIWA, con sus links y su valor de referencia.'
     }[P.sub] || 'Seguimiento y estado de cada proyecto.', uiBtn('Nueva cotización', 'lista', 's', 'data-pm="nueva-cot"') + uiBtn('Nuevo proyecto', 'mas', 'p', 'data-pm="nv-abrir"'));
     if (P.sub === 'ficha') { el.innerHTML = htmlFicha(); return; }
-    var tabs = uiTabs([['proy', 'Proyectos', 'data-pm="sub" data-s="proy"'], ['seg', 'Seguimiento', 'data-pm="sub" data-s="seg"']], P.sub);
+    var tabs = uiTabs([['proy', 'Proyectos', 'data-pm="sub" data-s="proy"'], ['seg', 'Seguimiento', 'data-pm="sub" data-s="seg"'], ['demo', 'Mockups y demostraciones', 'data-pm="sub" data-s="demo"']], P.sub);
     if (P.sub === 'seg') el.innerHTML = cab + tabs + '<div id="seg-c">' + htmlSeg() + '</div>';
     else if (P.sub === 'proy') el.innerHTML = cab + tabs + htmlProy();
+    else if (P.sub === 'demo') el.innerHTML = cab + tabs + htmlDemos();
     else el.innerHTML = cab + '<div class="card"><p>Esta vista todavía funciona en el CRM actual.</p>' +
       '<a class="btn bg xs" href="' + CRM_CONFIG.crmViejo + '" target="_blank" rel="noopener">' + ico('abrir') + ' Abrir el CRM actual</a></div>';
   }
@@ -1323,12 +1348,13 @@
     if (SUBS.some(function (x) { return x[0] === s; })) P.sub = s;
     var nvPedido = s === 'nuevo';                 // el viejo #/pm/nuevo abre el modal
     await abrirModulo(el, { id: 'pm', texto: 'Cargando proyectos…', forzar: op && op.forzar, cargar: leer,
-      cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f]); }, pintar: function () { pintar(el); } });
+      cargado: function () { return P.ok; }, firma: function () { return JSON.stringify([P.proys, P.f, P.demos]); }, pintar: function () { pintar(el); } });
     if (nvPedido) abrirEditarProy(null);
     if (/^P-\d+$/.test(s)) {                      // #/pm/P-0001 abre ese proyecto (Cotizador › Ver proyecto)
       if (P.sub === 'ficha') P.sub = 'proy';
       if (!P.proys.some(function (x) { return x.id === s; })) await cargar();   // recién creado: todavía no estaba leído
-      abrirFicha(el, s);
+      if ((P.demos || []).some(function (x) { return x.id === s; })) { P.sub = 'demo'; pintar(el); }   // una muestra no tiene ficha comercial
+      else abrirFicha(el, s);
     }
     if (!el._pmBound) {                          // una vez: #vista es el mismo para todos los módulos
       el._pmBound = true;
@@ -1460,7 +1486,7 @@
     };
     // Mockup o propuesta: una fila en entregables, con su URL
     var altaEnt = async function (id) {
-      var okE = await modal('Mockup o propuesta · ' + (proy(id).nombre || id),
+      var okE = await modal('Mockup o propuesta · ' + ((proy(id) || (P.demos || []).find(function (x) { return x.id === id; }) || {}).nombre || id),
         '<div class="fg"><label class="fl" for="en-tipo">Tipo</label><select class="fc" id="en-tipo"><option>Mockup</option><option>Propuesta comercial</option><option>Demo</option><option>Aplicación</option></select></div>' +
         '<div class="fg"><label class="fl" for="en-tit">Título <span class="req">*</span></label><input class="fc" id="en-tit"></div>' +
         '<div class="fg"><label class="fl" for="en-url">URL <span class="req">*</span></label><input class="fc" id="en-url" placeholder="https://…"></div>', 'Guardar',
