@@ -6,7 +6,8 @@
      los 7 recuadros            v_resumen_financiero + v_fin_caja_mes (= getDashboardFinanciero)
      Análisis por Cliente       v_resumen_por_empresa; el detalle, v_proyectos_clasif (es_ganado);
                                 margen y referencia, v_analisis_clientes (= getAnalisisCliente)
-     ¿Dónde podríamos estar?    la lista, sin detenidos: v_fin_escenarios (= getProyeccion) y v_fin_no_aceptados. El gráfico:
+     ¿Dónde podríamos estar?    la lista, sin detenidos: v_fin_escenarios (= getProyeccion), v_fin_mmr_aprobados (MMR sin iniciar:
+                                suman sólo el abono, desde el fin de su desarrollo) y v_fin_no_aceptados (los que se pueden recontactar). El gráfico:
                                 barras = abonos (v_proyeccion_12m) + el fee de lo tildado; líneas = ventas de proyectos
                                 de v_fin_ventas_mes (forecast = venta × probabilidad; lo tildado, al 100%). La línea
                                 punteada es el target de facturación mensual, que se carga en Configuración › Valor hora y targets.
@@ -32,12 +33,13 @@
       db().from('v_proyectos_clasif').select('id,estado_proyecto'),
       db().from('v_pm_proyectos').select('empresa,items'),
       db().from('v_fin_no_aceptados').select('*').order('una_vez', { ascending: false }),
-      db().from('cot_config').select('clave,valor').eq('clave', 'target_fee_mensual')
+      db().from('cot_config').select('clave,valor').eq('clave', 'target_fee_mensual'),
+      db().from('v_fin_mmr_aprobados').select('*').order('por_mes', { ascending: false })
     ]);
     var err = r.find(function (x) { return x.error; }); if (err) throw new Error(err.error.message);
     F.d = { res: r[0].data || {}, caja: (r[1].data || {}).cobrado_mes || 0, emp: r[2].data, proy: r[3].data, an: r[4].data,
             esc: r[5].data, p12: r[6].data, vm: r[7].data, neg: r[8].data,
-            proyItems: r[10].data, noAc: r[11].data,
+            proyItems: r[10].data, noAc: r[11].data, mmr: r[13].data,
             target: N((r[12].data[0] || {}).valor),
             estProy: r[9].data.reduce(function (o, p) { o[p.id] = _canonProy(p.estado_proyecto); return o; }, {}) };
   }
@@ -121,17 +123,22 @@
 
   // ── ¿Dónde podríamos estar? · tildá los negocios y el gráfico se mueve ──
   function escenarios() {
-    var E = F.d.esc, NA = F.d.noAc || [];
+    var E = F.d.esc, NA = F.d.noAc || [], M = F.d.mmr || [];
+    // Dos líneas: la empresa y, abajo, el proyecto con estado, fecha de aprobación o rechazo y los dos montos (24/11/2026)
     var fila = function (x) {
-      return '<label class="fin-esc"><input type="checkbox" data-fesc="' + esc(x.proy_id) + '"' + (F.esc[x.proy_id] ? ' checked' : '') + '>' +
-        '<span class="fin-esc-e">' + esc(x.empresa) + '</span><span class="u-f1m u-corta">' + esc(x.proyecto) +
-        '</span>' +
-        (N(x.una_vez) ? '<span class="m m-contratado">+' + fmt(x.una_vez) + '</span>' : '') +
-        (N(x.por_mes) ? '<span class="m m-abono">+' + fmt(x.por_mes) + '/mes</span>' : '') + '</label>';
+      var id = x.id || x.proy_id;   // un MMR aprobado se tilda por su id
+      return '<label class="fin-esc"><input type="checkbox" data-fesc="' + esc(id) + '"' + (F.esc[id] ? ' checked' : '') + '>' +
+        '<span class="u-f1m"><span class="fin-esc-e">' + esc(x.empresa) + '</span>' +
+        '<span style="display:flex;gap:10px;align-items:baseline"><span class="ui-num u-f1m u-corta" title="' + esc(x.proyecto) + '">' + esc(x.proyecto) + '</span>' +
+        uiEstado(x.estado || '—') + (x.fecha ? '<span class="m u-nw">' + ff(x.fecha) + '</span>' : '') +
+        (N(x.una_vez) ? '<span class="m m-contratado u-nw">+' + fmt(x.una_vez) + '</span>' : '') +
+        (N(x.por_mes) ? '<span class="m m-abono u-nw">+' + fmt(x.por_mes) + '/mes</span>' : '') + '</span>' +
+        (x.id && !x.arranque ? '<span class="u-s10-mt u-c-wa">Falta la duración del desarrollo: no suma hasta cargarla</span>' : '') + '</span></label>';
     };
     var izq = '<div class="ui-lat-h">Negocios en curso</div><div class="ui-nota-t u-mb8">Tildá los que querés sumar: su fee se apila en las barras y su venta va a la línea naranja.</div>' +
       (E.length ? E.map(fila).join('') : '<div class="ui-nota-t">Nada en pipeline.</div>') +
-      (NA.length ? '<div class="ui-lat-h u-mt10">No aceptados</div>' + NA.map(fila).join('') : '');
+      (M.length ? '<div class="ui-lat-h u-mt10">Aprobados · MMR sin iniciar</div><div class="ui-nota-t u-mb8">Suman sólo el abono, desde que termina el desarrollo.</div>' + M.map(fila).join('') : '') +
+      (NA.length ? '<div class="ui-lat-h u-mt10">No aceptados · se pueden recontactar</div>' + NA.map(fila).join('') : '');
     return '<div class="fin-dos"><div>' + izq + '</div><div id="fin-der" class="ui-tarjeta">' + simDerecha() + '</div></div>';
   }
   // Los 12 meses: abonos activos, fee y venta de lo tildado, forecast de ventas (venta × probabilidad)
@@ -141,6 +148,9 @@
       var i = r.orden; if (i == null || i < 0 || i >= P.length) return;
       S.fc[i] += N(r.venta) * N(r.prob) / 100;
       if (F.esc[r.proy_id]) { S.fee[i] += N(r.fee); S.vta[i] += N(r.venta); }
+    });
+    (F.d.mmr || []).forEach(function (x) {   // MMR aprobado tildado: sólo el abono, desde que arranca
+      if (F.esc[x.id] && x.arranque) P.forEach(function (m, i) { if (String(m.mes) >= String(x.arranque)) S.fee[i] += N(x.por_mes); });
     });
     S.n = Object.keys(F.esc).filter(function (k) { return F.esc[k]; }).length;
     return S;
@@ -157,7 +167,7 @@
       '<span class="fin-ley-g">Líneas · ventas de proyectos</span><span><i class="fs-l-vta"></i> Ventas tildadas</span><span><i class="fs-l-fc"></i> Forecast de ventas (pipeline × probabilidad)</span>' +
       '<span><i class="fs-l-t"></i> Target de facturación mensual</span></div>' +
       '<div class="ft-info u-mt6">Cada negocio cierra a los 60 días de la propuesta (o el mes que viene, si ya pasó). La venta se cobra 50% al cerrar y 50% a los 2 meses; ' +
-      'el fee, desde el mes de la firma y todos los meses siguientes. Lo tildado entra al 100%. El target se compara con el total del mes (abonos + ventas).</div>';
+      'el fee, desde el mes de la firma y todos los meses siguientes; el MMR aprobado, desde que termina su desarrollo. Lo tildado entra al 100%. El target se compara con el total del mes (abonos + ventas).</div>';
   }
   // Curva suave que no se pasa de los valores (Fritsch-Carlson): no inventa picos
   function curva(P) {
@@ -225,32 +235,48 @@
       }).join('') + '</tbody></table></div>' + (G.length > 10 ? '<div class="ft-info u-mt6">Los 10 de mayor esperado, de ' + G.length + '.</div>' : '');
   }
 
-  // ── Abonos en curso: lo que queda por cobrar, según sus cuotas (29/10/2026) ──
-  // Por abono: cuota del mes, cuotas cobradas de las del contrato, cuántas quedan, lo pendiente
-  // (cuota × las que quedan) y el fin. Potencial anual (× 12) vs previsto real (lo que queda).
-  // No se inventan cuotas: si falta un dato, se marca.
+  // ── Abonos: en curso, aprobados sin iniciar y finalizados que se renovaron (29/10 y 24/11/2026) ──
+  // En curso: cuota del mes, cuotas cobradas de las del contrato, cuántas quedan, lo pendiente (cuota × las que quedan) y el fin.
+  // Potencial anual (× 12) y previsto suman sólo los en curso. No se inventan cuotas: si falta un dato, se marca.
   function abonos() {
-    var L = [];
+    var C = [], A = [], R = [];
     (F.d.proyItems || []).forEach(function (p) {
-      (p.items || []).forEach(function (it) {
-        if (!it.es_mantenimiento || it.detenido || ['aprobada', 'curso', 'garantia'].indexOf(_canonSol(it.estado)) < 0) return;
-        var cu = N(it.cuota_act) || N(it.valor_cuota), tot = N(it.duracion) || N(it.cuotas), cob = N(it.cuotas_facturadas);
-        var fin = _pd(it.fecha_fin), finOk = fin && fin.getFullYear() < 2100;
-        L.push({ emp: p.empresa, tit: it.titulo, cu: cu, tot: tot, cob: cob, quedan: tot ? Math.max(0, tot - cob) : null, fin: finOk ? fin : null, finMal: !!fin && !finOk });
+      var mm = (p.items || []).filter(function (it) { return it.es_mantenimiento; });
+      mm.forEach(function (it) {
+        if (it.detenido) return;
+        var e = _canonSol(it.estado), fin = _pd(it.fecha_fin), finOk = fin && fin.getFullYear() < 2100;
+        var tot = N(it.duracion) || N(it.cuotas), cob = N(it.cuotas_facturadas);
+        var a = { id: it.id, emp: p.empresa, tit: it.titulo, cu: N(it.cuota_act) || N(it.valor_cuota), tot: tot, cob: cob, quedan: tot ? Math.max(0, tot - cob) : null,
+                  ini: it.fecha_est, apr: it.fecha_aprob, fin: finOk ? fin : null, finMal: !!fin && !finOk };
+        if (e === 'curso' || e === 'garantia') C.push(a);
+        else if (e === 'aprobada') { var v = (F.d.mmr || []).find(function (x) { return x.id === it.id; }); a.arr = v && v.arranque; A.push(a); }
+        else if (e === 'finalizada') {   // renovado: otro MMR posterior del mismo desarrollo
+          var ren = mm.find(function (o) { return o.id !== it.id && _canonSol(o.estado) !== 'rechazada' && String(o.fecha_est || '') > String(it.fecha_est || '') &&
+            (o.mant_de_ids || []).some(function (k) { return (it.mant_de_ids || []).indexOf(k) >= 0; }); });
+          if (ren) { a.ren = ren.fecha_est; R.push(a); }
+        }
       });
     });
-    if (!L.length) return '<div class="empty">No hay abonos en curso.</div>';
+    var nom = function (a) { return '<td>' + esc(a.emp || '') + '</td><td class="u-s11">' + esc(a.tit || '') + '</td>'; };
+    var fe = function (f) { return '<td class="m u-tr">' + (f ? ff(f) : '<span class="u-c-wa">sin fecha</span>') + '</td>'; };
+    var tabla = function (cab, filas) { return '<div class="u-ovx"><table class="tbl"><thead><tr>' + cab.map(function (c, i) { return '<th' + (i > 1 ? ' class="u-tr"' : '') + '>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' + filas + '</tbody></table></div>'; };
     var pot = 0, prev = 0;
-    var h = '<div class="u-ovx"><table class="tbl"><thead><tr><th>Cliente</th><th>Abono</th><th class="u-tr">Por mes</th><th class="u-tr">Cuotas</th>' +
-      '<th class="u-tr">Quedan</th><th class="u-tr">Pendiente</th><th class="u-tr">Termina</th></tr></thead><tbody>' + L.map(function (a) {
+    var h = '<div class="ui-lat-h">En curso</div>' + (C.length ? tabla(['Cliente', 'Abono', 'Por mes', 'Cuotas', 'Quedan', 'Pendiente', 'Termina'], C.map(function (a) {
         pot += a.cu * 12; prev += a.quedan != null ? a.cu * a.quedan : 0;
-        return '<tr><td>' + esc(a.emp || '') + '</td><td class="u-s11">' + esc(a.tit || '') + '</td>' + td(a.cu, 'm-abono') +
+        return '<tr>' + nom(a) + td(a.cu, 'm-abono') +
           '<td class="m u-tr">' + (a.tot ? a.cob + ' de ' + a.tot : '<span class="u-c-wa">sin dato</span>') + '</td>' +
           '<td class="m u-tr">' + (a.quedan != null ? a.quedan : '—') + '</td>' + td(a.quedan != null ? a.cu * a.quedan : 0, 'm-pendiente') +
           '<td class="m u-tr">' + (a.fin ? ff(a.fin) : '<span class="u-c-wa">' + (a.finMal ? 'fecha mal cargada' : 'sin fecha') + '</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
-    return h + '<div class="ft-info u-mt6">Potencial anual (cuota × 12): <span class="m m-abono">' + fmt(pot) + '</span> · Previsto según las cuotas que quedan: <span class="m m-pendiente">' + fmt(prev) + '</span>. ' +
-      '</div>';
+      }).join('')) + '<div class="ft-info u-mt6">Potencial anual (cuota × 12): <span class="m m-abono">' + fmt(pot) + '</span> · Previsto según las cuotas que quedan: <span class="m m-pendiente">' + fmt(prev) + '</span>.</div>'
+      : '<div class="empty">No hay abonos en curso.</div>');
+    if (A.length) h += '<div class="ui-lat-h u-mt10">Aprobados · pendientes de inicio</div><div class="ui-nota-t u-mb8">Todavía no ingresan: no suman a los totales.</div>' +
+      tabla(['Cliente', 'Abono', 'Por mes', 'Cuotas', 'Aprobado', 'Empieza'], A.map(function (a) {
+        return '<tr>' + nom(a) + td(a.cu) + '<td class="m u-tr">' + (a.tot || '—') + '</td>' + fe(a.apr) +
+          '<td class="m u-tr">' + (a.arr ? ff(a.arr) : '<span class="u-c-wa">falta la duración</span>') + '</td></tr>'; }).join(''));
+    if (R.length) h += '<div class="ui-lat-h u-mt10">Finalizados · renovados</div><div class="ui-nota-t u-mb8">El período anterior: lo que sigue está en En curso.</div>' +
+      tabla(['Cliente', 'Abono', 'Por mes', 'Cuotas', 'Empezó', 'Terminó', 'Renovado desde'], R.map(function (a) {
+        return '<tr>' + nom(a) + td(a.cu) + '<td class="m u-tr">' + a.cob + ' de ' + a.tot + '</td>' + fe(a.ini) + fe(a.fin) + fe(a.ren) + '</tr>'; }).join(''));
+    return h;
   }
 
   var TABS = [['cli', 'Análisis por Cliente', porCliente], ['esc', '¿Dónde podríamos estar?', escenarios],

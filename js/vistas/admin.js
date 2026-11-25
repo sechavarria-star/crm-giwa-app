@@ -431,7 +431,8 @@
         (sinDep(c) && !nc && c.nro_factura ? ib('fa-mail', 'mail', 'Reclamar por mail') : '') +
         (editable
           ? viejo().replace('btn bg xs"', 'btn bg xs btn-ico" data-tip="Editar en el CRM actual" aria-label="Editar"') + ico('editar') + '</a>' + ib('fa-borrar', 'borrar', 'Eliminar este cobro')
-          : ib('fa-com', 'chat', 'Ya cobrado: sólo se le puede comentar')) +
+          : (c.nro_factura && /admin/i.test((CRM_USUARIO && CRM_USUARIO.rol) || '') ? ib('fa-deshacer', 'recargar', 'Deshacer cobro') : '') +
+            ib('fa-com', 'chat', 'Ya cobrado: sólo se le puede comentar')) +
       '</td></tr>';
   }
   // Reclamo de una factura sin pagar (16/11/2026): vista previa en la app con la plantilla de GIWA,
@@ -478,6 +479,12 @@
       r = await db().rpc('borrar_cobro', { cid: id });
       if (r.error) return toast(r.error.message, 'err');
       toast('Cobro eliminado', 'ok');
+    }
+    if (a === 'fa-deshacer') {   // quita depósito y transferencia; la factura queda emitida (24/11/2026)
+      if (!(await ask('¿Deshacer el cobro?\n\n' + que + '\n' + fmt(c.monto) + '\n\nSe quitan el depósito' + (c.fecha_transf ? ' y la transferencia al socio' : '') + '. La factura queda emitida y vuelve a Pendiente de cobrar.', 'Deshacer cobro', { ok: 'Deshacer' }))) return;
+      r = await db().rpc('deshacer_cobro', { cid: id });
+      if (r.error) return toast(r.error.message, 'err');
+      toast('Cobro deshecho', 'ok'); await cargar();   // el Dashboard también cambia
     }
     if (a === 'fa-com') {
       var t = await pedir('Cobrado el ' + ff(c.fecha_deposito || c.fecha_transf) + '.\nUn cobro con la plata adentro no se edita.\n\n' + que, '', 'Comentario sobre este cobro');

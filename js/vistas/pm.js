@@ -373,7 +373,7 @@
       db().from('proyecto_horas').select('desarrollo_id,modulo_nombre,etapa,horas_est,horas_reales').eq('proyecto_id', id),
       db().from('v_analisis_clientes').select('*').eq('empresa', p.empresa_id || '-'),
       db().from('entregables').select('id,titulo,tipo,accesos,creado').eq('proyecto_id', id).order('creado', { ascending: false }),
-      db().from('proyectos').select('fecha_cierre_probable,creado,fecha_aprobacion,fecha_propuesta_enviada,fecha_inicio,fecha_finalizado,minuta,sponsors,sponsor_id').eq('id', id).maybeSingle(),
+      db().from('proyectos').select('fecha_cierre_probable,creado,fecha_aprobacion,fecha_propuesta_enviada,fecha_inicio,fecha_finalizado,minuta,sponsors,sponsor_id,recontactar').eq('id', id).maybeSingle(),
       db().from('cobros').select('desarrollo_id,cuota_nro,tipo_comprobante,comprobante_nro,comprobante_fecha,deposito_fecha,monto_ars,link_fc').eq('proyecto_id', id).order('comprobante_fecha'),
       db().from('desarrollos').select('id,monto_cotizado,mantenimiento_horas').eq('proyecto_id', id),
       db().from('historial_proyecto').select('evento,fecha,prevista,detalle,quien').eq('proyecto_id', id).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(60)
@@ -615,13 +615,14 @@
       var dd = function (l, v) { return '<div class="fg"><span class="fl">' + l + '</span><div>' + v + '</div></div>'; };
       var cs0 = (P.f.cobros || []).filter(function (c) { return c.desarrollo_id === it.id && c.deposito_fecha; }), cobrado0 = cs0.reduce(function (a, c) { return a + (Number(c.monto_ars) || 0); }, 0);
       var tot0 = Number(it.total_ars) || 0, gan0 = esGanado(it.estado), cot0 = (P.f.cotizado || {})[it.id] || 0, nc0 = Number(rec ? it.duracion : it.cuotas) || 0, vc0 = Number(it.cuota_act) || Number(it.valor_cuota) || (nc0 && !rec ? Math.round(tot0 / nc0) : 0);
-      var num0 = function (v, c) { return v ? '<span class="ui-num ui-p-' + (c || 'neutro') + '">' + fmt(v) + '</span>' : '—'; };   // los mismos colores que los recuadros de arriba
+      var tcU = !gan0 && !rec && it.moneda === 'USD' && Number(it.total_usd) > 0 ? tot0 / Number(it.total_usd) : 0;   // cotizado en USD: en dólares, con el TC guardado (24/11/2026)
+      var num0 = function (v, c) { return v ? '<span class="ui-num ui-p-' + (c || 'neutro') + '">' + (tcU ? fmt(v / tcU, 'USD') : fmt(v)) + '</span>' : '—'; };   // los mismos colores que los recuadros de arriba
       var desc = it.descripcion && it.descripcion !== it.titulo ? esc(it.descripcion) : '<span class="ui-nota-t">Sin descripción: se carga en el Alcance de la cotización.</span>';
       var inf = '<div class="ui-g3">' +
         dd('Forma de pago', esc(it.modelo_nombre || it.modelo || '—')) +
         dd(rec ? 'Abono' : 'Cuotas', nc0 ? '<span class="ui-num">' + nc0 + '</span> × ' + num0(vc0, rec ? 'abono' : gan0 ? 'contratado' : 'neutro') + (rec ? ' por mes' : '') : '—') +
         dd('Ajuste por IPC', (/sin/i.test(it.inflacion || '') || !it.inflacion ? 'No' : 'Sí') + (!gan0 && can !== 'rechazada' ? ' ' + uiIb('editar', 'Cambiar el ajuste por IPC', '', 'data-pm="ajuste-des" data-id="' + esc(it.id) + '" data-si="' + (/sin/i.test(it.inflacion || '') || !it.inflacion ? '1' : '0') + '"') : '')) +
-        (rec ? '' : dd('Cotizado', num0(cot0))) + dd(gan0 ? 'Contratado' : 'Cotizado hoy', num0(tot0, !gan0 ? 'neutro' : rec ? 'abono' : 'contratado')) +
+        (rec ? '' : dd('Cotizado', num0(cot0))) + dd(gan0 ? 'Contratado' : 'Cotizado hoy', num0(tot0, !gan0 ? 'neutro' : rec ? 'abono' : 'contratado') + (tcU ? ' <span class="u-s10-mt ui-num">' + fmt(tot0) + '</span>' : '')) +
         dd('Cobrado', num0(cobrado0, 'cobrado')) + dd('Pendiente', gan0 ? num0(Math.max(0, tot0 - cobrado0), 'pendiente') : '—') +
         (rec || !gan0 ? '' : dd('Termina de cobrarse', tot0 - cobrado0 <= 0 ? '<span class="ui-p-cobrado">Cobrado</span>' : (function (f) { return 'en <span class="ui-num">' + f + '</span> cuota' + (f === 1 ? '' : 's'); })(Math.max(0, (Number(it.cuotas) || 1) - cs0.length)))) +
         (rec ? '' : dd('Horas vendidas', it.horas ? '<span class="ui-num">' + it.horas + ' h</span>' : '—')) +
@@ -722,13 +723,19 @@
       uiMotivo('Cobrado − referencia ' + fmt(c.dif) + ' · abono ' + fmt(c.mmr) + '/mes · con 12 meses de abono ' + fmt(c.a12) +
         ' · con 24 ' + fmt(c.a24) + (c.dif < 0 ? (c.mmr ? ' · lo que faltó son ' + c.meses + ' mes(es) de abono' : ' · sin abono que lo compense') : ' · cobrado igual o arriba de la referencia'));
   }
+  // Lo cotizado en USD se muestra con el dólar guardado: no se vuelve a convertir con el TC de hoy (24/11/2026)
+  function _tcUsd(L) {
+    var enUsd = L.length && L.every(function (x) { return x.moneda === 'USD' && Number(x.total_usd) > 0; });
+    return enUsd ? L.reduce(function (a, x) { return a + (Number(x.total_ars) || 0); }, 0) / L.reduce(function (a, x) { return a + Number(x.total_usd); }, 0) : _tc();
+  }
   // Tab Económico del proyecto: la plata, en recuadros C8 (06/11/2026)
   function lateral(p) {
     var usd = function (ars) { return ars && _tc() > 0 ? fmt(ars / _tc(), 'USD') : ''; };
+    var tcD = _tcUsd((p.items || []).filter(function (x) { return !esMant(x) && _canonSol(x.estado) !== 'rechazada'; })), usdD = function (ars) { return ars && tcD > 0 ? fmt(ars / tcD, 'USD') : ''; };
     var tot = mTotal(p), cob = mCobradoDev(p), sal = mSaldo(p);
     var nDev = (p.items || []).filter(function (x) { return !esMant(x) && esGanado(x.estado); }).length, nDevT = (p.items || []).filter(function (x) { return !esMant(x); }).length;
     var h = '<div id="pm-lat"><div class="ui-lat-h">Desarrollos · ' + nDev + (nDevT > nDev ? ' de ' + nDevT : '') + ' contratado' + (nDev === 1 ? '' : 's') + '</div><div class="ui-lat-g ui-lat-g3">' +
-      uiKpi('Contratado', fmt(tot), 'p-contratado', '', usd(tot)) + uiKpi('Cobrado', fmt(cob), 'p-cobrado', '', usd(cob)) + uiKpi('Pendiente', fmt(sal), 'p-pendiente', '', usd(sal)) + '</div>';
+      uiKpi('Contratado', fmt(tot), 'p-contratado', '', usdD(tot)) + uiKpi('Cobrado', fmt(cob), 'p-cobrado', '', usdD(cob)) + uiKpi('Pendiente', fmt(sal), 'p-pendiente', '', usdD(sal)) + '</div>';
     var rec = mRecurrente(p), sm = mSaldoMant(p);
     if (rec > 0 || sm > 0) {
       var fm = mFinMant(p);
@@ -813,10 +820,11 @@
     var acc = accionesEstado(p, false);
     var cuerpoSecs =
       sec('proy', 'Proyecto',
-        '<div class="ui-g3">' + dato('Creado', d.creado ? '<span class="ui-num">' + ff(String(d.creado).slice(0, 10)) + '</span>' : '—') + dato('Creado por', '—') +
+        '<div class="ui-g3">' + dato('Creado', d.creado ? '<span class="ui-num">' + ff(String(d.creado).slice(0, 10)) + '</span>' : '—') +
           dato('Aprobado el', d.fecha_aprobacion ? '<span class="ui-num">' + ff(d.fecha_aprobacion) + '</span>' : '—') +
           dato('Fecha probable de aprobación', F.cierreProb ? '<span class="ui-num">' + ff(F.cierreProb) + '</span>' : '— ' + uiIb('calendario', 'Cargar la fecha', '', 'data-pm="cierre-prob" data-id="' + esc(p.id) + '"')) +
-          dato('Probabilidad de aprobación', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>') + '<div></div></div>' +
+          dato('Probabilidad de aprobación', '<span class="ui-num">' + (p.probabilidad || 0) + ' %</span>') +
+          (can === 'rechazado' ? '<label class="u-row6" style="align-items:center"><input type="checkbox" data-frecon="' + esc(p.id) + '"' + (d.recontactar ? ' checked' : '') + '> Se puede recontactar</label>' : '<div></div>') + '</div>' +
         lateral(p)) +
       sec('res', 'Resumen ejecutivo', '<div class="u-mb10">' + esc(p.descripcion || '—') + '</div>' + tabDocs(p, true), String((F.entregables || []).length)) +
       sec('con', 'Contactos', contactos, String(sps.length + enProy.length + rsp.length)) +
@@ -1402,6 +1410,7 @@
           return '<label class="u-row6 rowb"><input type="checkbox" data-cor="' + esc(it.id) + '"> ' + esc(it.titulo || it.id) + ' <span class="u-s10-mt">· ' + esc(uiNombreEst(it.estado)) + '</span></label>'; }).join('') + '</div>'
           : '<div class="u-s11-mt u-mb10">' + (rech ? 'No hay desarrollos para marcar como no aceptados por separado.' : 'Sólo se pausan por separado las mejoras, soportes y mantenimientos que dependen de otro.') + '</div>') +
         '<div class="fg"><label class="fl" for="pm-com">Comentario del proyecto <span class="req">*</span></label><textarea class="fc" id="pm-com" rows="3"></textarea></div>' +
+        (rech ? '<label class="u-row6 u-mt8" style="align-items:center"><input type="checkbox" id="pm-recontactar"> Se puede recontactar</label><div class="ui-nota-t">Sólo si no se acepta el proyecto completo: queda disponible en «¿Dónde podríamos estar?».</div>' : '') +
         // Detener: fecha de recontacto opcional → una tarea ese día (20/11/2026)
         (rech ? '' : '<div class="ui-filas ui-rep"><div class="fg"><label class="fl" for="pm-recon">Fecha de recontacto</label><input class="fc" type="date" id="pm-recon"></div>' +
           '<div class="fg"><label class="fl" for="pm-recon-q">Responsable de la tarea</label><select class="fc" id="pm-recon-q">' +
@@ -1414,6 +1423,7 @@
         });
       if (!ok) return;
       var alc = (document.querySelector('#m-pm [name="pm-alc"]:checked') || {}).value, txt = document.getElementById('pm-com').value.trim();
+      var puedeRec = rech && alc === 'todo' && (document.getElementById('pm-recontactar') || {}).checked;
       var recon = !rech && document.getElementById('pm-recon') ? document.getElementById('pm-recon').value : '', reconQ = recon ? document.getElementById('pm-recon-q').value : '';
       var ids = Array.prototype.filter.call(document.querySelectorAll('#m-pm [data-cor]'), function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-cor'); });
       var r;
@@ -1421,6 +1431,7 @@
       else for (var i = 0; i < ids.length && !(r && r.error); i++)
         r = await db().rpc(rech ? 'accion_desarrollo' : 'detener_desarrollo', rech ? { did: ids[i], accion: 'rechazar' } : { did: ids[i], detener: true });
       if (r && r.error) return toast(r.error.message, 'err');
+      if (puedeRec) { var pr = await db().rpc('proyecto_recontactar', { pid: p.id, si: true }); if (pr.error) toast('No aceptado, pero no se guardó «Se puede recontactar»: ' + pr.error.message, 'err'); }
       var nombres = ids.map(function (x) { var it = itemDe(x); return it ? (it.titulo || x) : x; });
       await db().rpc('comentar', { p: { proyecto_id: p.id, texto: (rech ? 'No aceptado' : 'Detenido') + (alc === 'todo' ? ' (proyecto completo)' : ': ' + nombres.join(', ')) + '. ' + txt } });
       if (recon) {   // la misma alta de tareas del CRM (nueva_tarea)
@@ -1512,6 +1523,7 @@
       var t = ev.target;
       if (t.id === 'pr-orden') { P.pr.orden = t.value; return pintar(el); }
       if (t.hasAttribute && t.hasAttribute('data-fsem')) return Number(t.value) > 0 ? hacer('desarrollo_semanas', { did: t.getAttribute('data-fsem'), semanas: Number(t.value) }, 'Duración guardada') : null;
+      if (t.hasAttribute && t.hasAttribute('data-frecon')) return hacer('proyecto_recontactar', { pid: t.getAttribute('data-frecon'), si: t.checked }, 'Guardado');
       if (t.hasAttribute && t.hasAttribute('data-fcierre')) return t.value ? hacer('proyecto_cierre_probable', { pid: t.getAttribute('data-fcierre'), fecha: t.value }, 'Fecha de cierre guardada') : null;
       if (t.hasAttribute && t.hasAttribute('data-fini')) return hacer('fecha_desarrollo', { did: t.getAttribute('data-fini'), campo: 'fecha_ini', fecha: t.value || null }, 'Fecha del desarrollo guardada');
     };
